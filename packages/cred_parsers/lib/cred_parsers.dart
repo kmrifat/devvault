@@ -5,14 +5,24 @@
 /// guessed.
 library;
 
+export 'src/detect.dart' show CredentialFormat, detectFormat;
+export 'src/parse_result.dart';
+export 'src/parsers.dart';
+
 /// File extensions DevVault recognises on import. Everything else is
 /// imported as a generic file.
 const Set<String> knownExtensions = {
   'p8',
   'p12',
+  'pfx',
   'cer',
+  'crt',
+  'der',
+  'pem',
   'mobileprovision',
+  'provisionprofile',
   'jks',
+  'jceks',
   'keystore',
   'json',
   'plist',
