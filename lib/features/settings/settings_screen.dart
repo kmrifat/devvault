@@ -6,6 +6,7 @@ import 'package:vault_core/vault_core.dart';
 import '../../app/routes.dart';
 import '../../data/app_settings.dart';
 import '../../data/providers.dart';
+import '../../data/sync_setup.dart';
 import '../../data/vault_session.dart';
 import '../../services/folder_revealer.dart';
 import '../../shared/ui.dart';
@@ -38,6 +39,7 @@ class SettingsScreen extends ConsumerWidget {
     final session = ref.watch(vaultSessionProvider);
     final vault = session is Unlocked ? session.vault : null;
     final revealer = ref.watch(folderRevealerProvider);
+    final syncSetup = ref.watch(syncSetupProvider);
 
     return Scaffold(
       backgroundColor: bc.background,
@@ -150,8 +152,13 @@ class SettingsScreen extends ConsumerWidget {
                     BCListGroupItem(
                       prefix: const Icon(LucideIcons.cloud),
                       title: 'Sync storage',
-                      description:
+                      description: switch (syncSetup) {
+                        null =>
                           'Not set up: this vault is on this device only.',
+                        final s =>
+                          '${s.settings.provider.label} · '
+                              '${s.settings.bucket}',
+                      },
                       suffix: Icon(
                         LucideIcons.chevronRight,
                         size: 16,
@@ -159,6 +166,20 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       onPressed: () => context.go(Routes.settingsSync),
                     ),
+                    if (syncSetup != null)
+                      BCListGroupItem(
+                        prefix: const Icon(LucideIcons.qrCode),
+                        title: 'Pair a device',
+                        description:
+                            'Show a QR code another device scans to join '
+                            'this vault. It still needs the master password.',
+                        suffix: Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: bc.muted,
+                        ),
+                        onPressed: () => context.push(Routes.pair),
+                      ),
                   ],
                 ),
                 if (vault != null) ...[

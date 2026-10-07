@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>DevVault uses the camera to scan a pairing code from your other device.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>DevVault uses Face ID to unlock your vault without typing the master password.</string>
 	<key>UIApplicationSceneManifest</key>

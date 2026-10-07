@@ -6,12 +6,18 @@ import 'package:vault_core/vault_core.dart';
 import '../../app/routes.dart';
 import '../../data/join_vault.dart';
 import '../../shared/ui.dart';
+import '../../core/pairing.dart';
+import '../../data/providers.dart';
+import '../pairing/scan_pairing_code.dart';
 import '../settings/storage_form.dart';
 import 'setup_layout.dart';
 
 /// Joins a vault that already syncs to a bucket (P2-10): enter the
 /// storage, pick the vault found there, type its master password. The
 /// password is checked against `vault.json` before anything is downloaded.
+///
+/// A pairing code (P4-06) fills in the storage instead: scan the QR from
+/// the other device (or paste its text) and type the 8-character code.
 class JoinVaultScreen extends ConsumerStatefulWidget {
   const JoinVaultScreen({super.key});
 
@@ -22,6 +28,12 @@ class JoinVaultScreen extends ConsumerStatefulWidget {
 class _JoinVaultScreenState extends ConsumerState<JoinVaultScreen> {
   final _form = StorageFormModel();
   final _password = TextEditingController();
+  final _pairText = TextEditingController();
+  final _pairCode = TextEditingController();
+  String? _pairError;
+
+  /// The vault a pairing code was for, picked once it's found.
+  String? _pairedVaultId;
 
   List<RemoteVault>? _found;
   String? _foundFor;
@@ -44,6 +56,10 @@ class _JoinVaultScreenState extends ConsumerState<JoinVaultScreen> {
     _password
       ..clear()
       ..dispose();
+    _pairText
+      ..clear()
+      ..dispose();
+    _pairCode.dispose();
     super.dispose();
   }
 
@@ -69,12 +85,56 @@ class _JoinVaultScreenState extends ConsumerState<JoinVaultScreen> {
       setState(() {
         _found = vaults;
         _foundFor = fingerprint;
-        _chosen = vaults.length == 1 ? vaults.single : null;
+        _chosen = vaults.length == 1
+            ? vaults.single
+            : vaults.where((v) => v.id == _pairedVaultId).firstOrNull;
       });
     } on Object catch (e) {
       if (mounted) setState(() => _error = storageErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _scan() async {
+    final text = await scanPairingCode(context);
+    if (text != null && mounted) setState(() => _pairText.text = text);
+  }
+
+  /// Opens the pairing payload with the code, fills the storage form from
+  /// it and looks for the vault straight away.
+  Future<void> _usePairing() async {
+    setState(() => _pairError = null);
+    if (_pairText.text.trim().isEmpty) {
+      setState(() => _pairError = 'Scan the QR code or paste the pairing text');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final contents = await Pairing.open(
+        crypto: ref.read(cryptoProvider),
+        text: _pairText.text,
+        code: _pairCode.text,
+        now: ref.read(clockProvider)(),
+      );
+      if (!mounted) return;
+      _form.fill(contents.settings, contents.credentials);
+      _pairedVaultId = contents.vaultId;
+      _pairText.clear();
+      _pairCode.clear();
+      setState(() => _busy = false);
+      await _find();
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _pairError = switch (e) {
+          PairingFormatException() ||
+          PairingExpired() ||
+          WrongPairingCode() => e.toString(),
+          _ => "Couldn't read the pairing code.",
+        };
+      });
     }
   }
 
@@ -138,6 +198,70 @@ class _JoinVaultScreenState extends ConsumerState<JoinVaultScreen> {
             'master password.',
             color: BCTextColor.muted,
           ),
+          const StorageSection('With a pairing code'),
+          BCCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: BCSpacing.md,
+              children: [
+                const BCText(
+                  'On your other device: Settings › Pair a device. It shows '
+                  'a QR code and an 8-character code that work for ten '
+                  'minutes.',
+                  type: BCTextType.bodySm,
+                  color: BCTextColor.muted,
+                ),
+                if (canScanPairingCode)
+                  BCButton(
+                    variant: BCButtonVariant.secondary,
+                    isDisabled: _busy,
+                    onPressed: _scan,
+                    startContent: const Icon(LucideIcons.scanQrCode, size: 16),
+                    child: Text(
+                      _pairText.text.isEmpty
+                          ? 'Scan QR code'
+                          : 'QR code scanned',
+                    ),
+                  )
+                else
+                  BCTextField(
+                    key: const ValueKey('pairing-text'),
+                    children: [
+                      const BCTextFieldLabel('Pairing text'),
+                      BCTextFieldInput(
+                        controller: _pairText,
+                        hintText: 'devvault-pair:1:…',
+                      ),
+                      const BCTextFieldDescription(
+                        'From “Copy pairing text” on the other device',
+                      ),
+                    ],
+                  ),
+                BCTextField(
+                  key: const ValueKey('pairing-code'),
+                  isInvalid: _pairError != null,
+                  children: [
+                    const BCTextFieldLabel('Code'),
+                    BCTextFieldInput(
+                      controller: _pairCode,
+                      hintText: 'ABCD-EFGH',
+                      onSubmitted: (_) => _usePairing(),
+                    ),
+                    if (_pairError case final error?) BCTextFieldError(error),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: BCButton(
+                    isDisabled: _busy,
+                    onPressed: _usePairing,
+                    child: const Text('Use pairing code'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const StorageSection('Or enter the storage yourself'),
           StorageFormView(model: _form),
           const SizedBox(height: BCSpacing.lg),
           Align(
