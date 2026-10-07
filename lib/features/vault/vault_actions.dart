@@ -14,6 +14,10 @@ import '../item_editor/item_editor.dart';
 /// Opens the import dialog (design frame D04) for files the user chooses.
 Future<void> openImport(BuildContext context) => showImportDialog(context);
 
+/// Swaps [item]'s file for a new one, keeping the item (P4-04).
+Future<void> replaceFile(BuildContext context, Item item) =>
+    showReplaceFileDialog(context, item);
+
 /// Saves [attachment] of [item] to a file the user picks, byte for byte
 /// (P1-19, [exportAttachment]).
 Future<void> exportFile(
