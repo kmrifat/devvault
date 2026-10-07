@@ -20,9 +20,9 @@ import 'package:devvault/app/app.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vault_core/vault_core.dart';
 
 import '../test_overrides.dart';
 
@@ -30,6 +30,7 @@ import '../test_overrides.dart';
 /// so screenshots show real glyphs instead of the test font's boxes.
 Future<void> loadAppFonts() async {
   TestWidgetsFlutterBinding.ensureInitialized();
+  await loadTestCrypto();
   final manifest = json.decode(
     await rootBundle.loadString('FontManifest.json'),
   ) as List<dynamic>;
@@ -66,6 +67,9 @@ enum ShotDevice {
 /// Registers a test that opens [route] on [device] and compares it with
 /// `screenshots/<name>.png`.
 ///
+/// The vault is unlocked unless [vault] says the device holds no vault or
+/// a locked one (first-run and lock screens).
+///
 /// [interact] runs after the first frame settles (tap through to a dialog,
 /// type into a field) before the capture.
 void shot(
@@ -75,6 +79,8 @@ void shot(
   Brightness brightness = Brightness.dark,
   Future<void> Function(WidgetTester tester)? interact,
   List<Override> overrides = const [],
+  TestVault? vault,
+  bool realKdf = false,
 }) {
   testWidgets(name, (tester) async {
     final ratio = device.pixelRatio;
@@ -97,14 +103,40 @@ void shot(
     // flag has to be restored inside the body: it is checked before
     // tearDowns run.
     debugDisableShadows = false;
+    // Seeded per shot, so vault ids, recovery keys and nonces are the same
+    // on every run and the image only changes when the UI does.
+    final crypto = await tester.runAsync(
+      // Seeded randomness is what reproducible screenshots need.
+      // ignore: invalid_use_of_visible_for_testing_member
+      () => VaultCrypto.withFixedRandom(utf8.encode('devvault shot $name')),
+    );
     try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [...testOverrides(), ...overrides],
-          child: DevVaultApp(initialLocation: route, layout: device.layout),
-        ),
-      );
-      await _settle(tester);
+      if (vault == null) {
+        await pumpUnlockedApp(
+          tester,
+          location: route,
+          layout: device.layout,
+          overrides: overrides,
+          crypto: crypto,
+          settle: () => _settle(tester),
+        );
+      } else {
+        // First-run and lock screens: the device holds [vault], unopened.
+        final dir = await tester.runAsync(
+          () => testSupportDir(vault, crypto, realKdf),
+        );
+        await tester.pumpWidget(
+          testApp(
+            location: route,
+            supportDir: dir!,
+            layout: device.layout,
+            overrides: overrides,
+            realKdf: realKdf,
+            crypto: crypto,
+          ),
+        );
+        await _settle(tester);
+      }
       if (interact != null) {
         await interact(tester);
         await _settle(tester);

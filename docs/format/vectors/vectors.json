@@ -1,0 +1,54 @@
+{
+  "about": "DevVault format v1 test vectors. See docs/format/SPEC.md.",
+  "argon2id": [
+    {
+      "password": "correct horse battery staple",
+      "password_utf8_nfc_hex": "636f727265637420686f727365206261747465727920737461706c65",
+      "salt_hex": "619f991838322df4d0bd47b4317026e1",
+      "ops_limit": 3,
+      "mem_limit": 67108864,
+      "parallelism": 1,
+      "key_hex": "4b8960d4685b049d6c2011b7f18982bd6cd52282644e4ca83389d04b56cbdca6"
+    }
+  ],
+  "recovery_kek": [
+    {
+      "recovery_key_hex": "9db53a4327a9b5cbc3f994c227f0a424b560790f9b43a1da634311bf3035df73",
+      "recovery_key_text": "KPTK-MGS7-N6TW-QGZS-JK12-FW54-4JTP-0Y8F-KD1T-3PK3-8C8V-YC1N-VXSZ-QK3G",
+      "vault_id": "7f3c2d9e-1b4a-4c8f-9e2d-5a6b7c8d9a1e",
+      "info": "devvault/v1/recovery-kek",
+      "kek_hex": "951d6365716e9465ec37ef217b0a51a3ab540a7938318d706d02bd03487b11a6"
+    }
+  ],
+  "vk_id": [
+    {
+      "vk_hex": "87e82d71bb6d11225c93554576e714b101b49d2f58c6353320a2fb04d159d67c",
+      "message": "devvault/v1/vk-id",
+      "vk_id": "df6b1a225f125b961ba68d305fbd0a166984eac7540b8cabd7e6a62505d23ad2"
+    }
+  ],
+  "envelope": [
+    {
+      "key": "87e82d71bb6d11225c93554576e714b101b49d2f58c6353320a2fb04d159d67c",
+      "vault_id": "7f3c2d9e-1b4a-4c8f-9e2d-5a6b7c8d9a1e",
+      "object_id": "0d1c5e7a-2b3c-4d5e-8f60-718293a4b5c6",
+      "object_type": "item",
+      "plaintext_hex": "7b22736368656d61223a317d",
+      "envelope_hex": "44564c540101b6b1a384b78dbc503a485a1dfda5e5731252b9c556d02147feb29c64ff7b163af10a4fc4a073ff63f0381c5501e3011414f0409f"
+    },
+    {
+      "key": "87e82d71bb6d11225c93554576e714b101b49d2f58c6353320a2fb04d159d67c",
+      "vault_id": "7f3c2d9e-1b4a-4c8f-9e2d-5a6b7c8d9a1e",
+      "object_id": "0d1c5e7a-2b3c-4d5e-8f60-718293a4b5c6",
+      "object_type": "blob",
+      "plaintext_hex": "7261772066696c65206279746573",
+      "envelope_hex": "44564c540103682441c269ba16702075444013fb2082df34c4bd9588da90b904b0e5f3c433aa57411aeb2761b35bf23bd0219d85b9a2eb5bf5d516ec"
+    }
+  ],
+  "hlc_sorted": [
+    "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+    "001759827600000-00001-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+    "001759827600000-00001-ffffffff-ffff-4fff-bfff-ffffffffffff",
+    "001759827600001-00000-00000000-0000-4000-8000-000000000000"
+  ]
+}

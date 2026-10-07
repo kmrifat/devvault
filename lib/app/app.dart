@@ -1,13 +1,16 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/vault_session.dart';
 import 'layout.dart';
 import 'router.dart';
 import 'routes.dart';
+import 'session_redirect.dart';
 import 'theme.dart';
 
-class DevVaultApp extends StatefulWidget {
+class DevVaultApp extends ConsumerStatefulWidget {
   const DevVaultApp({
     super.key,
     this.initialLocation = Routes.unlock,
@@ -21,18 +24,39 @@ class DevVaultApp extends StatefulWidget {
   final AppLayout? layout;
 
   @override
-  State<DevVaultApp> createState() => _DevVaultAppState();
+  ConsumerState<DevVaultApp> createState() => _DevVaultAppState();
 }
 
-class _DevVaultAppState extends State<DevVaultApp> {
+class _DevVaultAppState extends ConsumerState<DevVaultApp> {
+  /// Re-runs the router's redirect whenever the session or the pending
+  /// recovery key changes (unlock, lock, create).
+  final _sessionChanges = ValueNotifier<int>(0);
+
   late final GoRouter _router = buildRouter(
     layout: widget.layout ?? AppLayout.current,
     initialLocation: widget.initialLocation,
+    refreshListenable: _sessionChanges,
+    redirect: (state) => sessionRedirect(
+      ref.read(vaultSessionProvider),
+      state.uri,
+      recoveryKitPending: ref.read(pendingRecoveryKeyProvider) != null,
+    ),
   );
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(vaultSessionProvider, (_, _) => _sessionChanges.value++);
+    ref.listenManual(
+      pendingRecoveryKeyProvider,
+      (_, _) => _sessionChanges.value++,
+    );
+  }
 
   @override
   void dispose() {
     _router.dispose();
+    _sessionChanges.dispose();
     super.dispose();
   }
 
