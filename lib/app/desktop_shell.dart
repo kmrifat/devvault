@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../data/vault_filter.dart';
 import '../data/vault_session.dart';
+import '../features/import/drop_import.dart';
 import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
 import '../features/vault/vault_sidebar.dart';
@@ -101,25 +102,27 @@ class _DesktopShellState extends State<DesktopShell> {
     final uri = widget.uri;
     return Scaffold(
       backgroundColor: bc.background,
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          VaultSidebar(section: section, uri: uri),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Toolbar(
-                  section: section,
-                  uri: uri,
-                  searchFocus: _searchFocus,
-                  onQuickOpen: _quickOpen,
-                ),
-                Expanded(child: widget.navigationShell),
-              ],
+      body: ImportDropTarget(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            VaultSidebar(section: section, uri: uri),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Toolbar(
+                    section: section,
+                    uri: uri,
+                    searchFocus: _searchFocus,
+                    onQuickOpen: _quickOpen,
+                  ),
+                  Expanded(child: widget.navigationShell),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

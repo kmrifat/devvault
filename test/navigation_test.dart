@@ -1,6 +1,7 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/features/expiry/expiry_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
@@ -35,7 +36,6 @@ void main() {
   /// placeholder shows. Lock screens are covered by session_routing_test.
   const screens = {
     Routes.pair: 'Pair a device',
-    Routes.expiry: 'Expiry',
     Routes.settingsSync: 'Sync storage',
   };
 
@@ -53,6 +53,18 @@ void main() {
           expect(route.settings, isA<MaterialPage<void>>());
         });
       }
+
+      testWidgets('/expiry opens the expiry dashboard in a MaterialPage', (
+        tester,
+      ) async {
+        await open(tester, layout, Routes.expiry);
+        final screen = find.byType(ExpiryScreen);
+        expect(screen, findsOneWidget);
+        expect(
+          ModalRoute.of(tester.element(screen))!.settings,
+          isA<MaterialPage<void>>(),
+        );
+      });
 
       testWidgets('unknown paths show the not-found screen', (tester) async {
         await open(tester, layout, '/nope');

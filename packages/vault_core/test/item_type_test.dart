@@ -14,10 +14,11 @@ void main() {
     expect(ItemType.appleAuthKey.wireName, 'apple_auth_key');
     expect(ItemType.androidKeystore.wireName, 'android_keystore');
     expect(ItemType.genericSecret.wireName, 'generic_secret');
+    expect(ItemType.sshKey.wireName, 'ssh_key');
   });
 
   test('unknown types and sources are null, not guessed', () {
-    expect(ItemType.fromWireName('ssh_key'), isNull);
+    expect(ItemType.fromWireName('team_secret'), isNull);
     expect(ExpirySource.fromWireName('inferred'), isNull);
     expect(ExpirySource.fromWireName('file'), ExpirySource.file);
     expect(ExpirySource.fromWireName('user'), ExpirySource.user);

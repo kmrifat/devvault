@@ -84,10 +84,10 @@ void main() {
     });
 
     test('keeps an unknown type instead of dropping the item', () {
-      final item = Item.fromJson(keystoreJson()..['type'] = 'ssh_key');
+      final item = Item.fromJson(keystoreJson()..['type'] = 'team_secret');
       expect(item.type, isNull);
-      expect(item.typeName, 'ssh_key');
-      expect(item.toJson()['type'], 'ssh_key');
+      expect(item.typeName, 'team_secret');
+      expect(item.toJson()['type'], 'team_secret');
     });
 
     test('a newer schema is read-only', () {

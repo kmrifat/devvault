@@ -35,6 +35,12 @@ jobs:
       - run: flutter analyze --no-fatal-infos
       - name: App tests (goldens run on macOS)
         run: flutter test --exclude-tags golden
+      - name: Expiry rules in other time zones (P4-01)
+        run: |
+          for tz in America/New_York Europe/Berlin Australia/Lord_Howe Asia/Kolkata Pacific/Chatham; do
+            echo "TZ=$tz"
+            TZ=$tz flutter test test/expiry_test.dart
+          done
       - name: Package tests
         run: |
           for p in packages/*/; do

@@ -10,6 +10,7 @@ enum ItemType {
   firebaseConfig('firebase_config', 'Firebase Config'),
   gcpServiceAccount('gcp_service_account', 'GCP Service Account'),
   oauthClient('oauth_client', 'OAuth Client'),
+  sshKey('ssh_key', 'SSH Key'),
   genericFile('generic_file', 'Generic File'),
   genericSecret('generic_secret', 'Generic Secret');
 

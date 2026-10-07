@@ -39,7 +39,7 @@ not a claim that the feature is missing.
 
 | Provider | Create if absent | Update if unchanged | Delete if unchanged | How verified |
 |---|---|---|---|---|
-| MinIO `RELEASE.2025-09-07T16-13-09Z` | ✅ enforced | ✅ enforced | ❌ ignored (deletes anyway) | CI (`.github/workflows/s3.yml`) and local Docker; the conformance suite plus the probe |
+| MinIO `RELEASE.2025-09-07T16-13-09Z` | ✅ enforced | ✅ enforced | ❌ ignored (deletes anyway) | CI (`.github/workflows/s3.yml`) and locally; the conformance suite plus the probe |
 | Cloudflare R2 (default in the app) | not yet probed | not yet probed | not yet probed | P2-14 acceptance run |
 | AWS S3 | not yet probed | not yet probed | not yet probed | P2-14 acceptance run |
 | Backblaze B2 (S3 API) | not yet probed | not yet probed | not yet probed | — |
@@ -57,12 +57,15 @@ Other differences worth knowing, all handled in `S3Backend`:
 
 ## Running the checks yourself
 
+MinIO no longer publishes community images or binaries, so build the
+pinned release from source (Go 1.24+), as CI does:
+
 ```bash
-docker run -d -p 127.0.0.1:19010:9000 \
-  -e MINIO_ROOT_USER=devvault -e MINIO_ROOT_PASSWORD=devvault-secret \
-  minio/minio server /data
-# create the bucket (mc ships in the image)
-docker exec <container> sh -c 'mc alias set l http://127.0.0.1:9000 devvault devvault-secret && mc mb l/devvault'
+GOBIN=$PWD/minio-bin go install github.com/minio/minio@RELEASE.2025-09-07T16-13-09Z
+MINIO_ROOT_USER=devvault MINIO_ROOT_PASSWORD=devvault-secret \
+  ./minio-bin/minio server /tmp/minio-data --address 127.0.0.1:19010 &
+curl --aws-sigv4 "aws:amz:us-east-1:s3" --user devvault:devvault-secret \
+  -X PUT http://127.0.0.1:19010/devvault   # create the bucket
 
 cd packages/vault_s3
 S3_TEST_ENDPOINT=http://127.0.0.1:19010 S3_TEST_BUCKET=devvault \

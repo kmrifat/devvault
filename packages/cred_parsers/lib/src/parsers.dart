@@ -6,9 +6,11 @@ import 'parsers/apple_auth_key.dart';
 import 'parsers/firebase_config.dart';
 import 'parsers/java_keystore.dart';
 import 'parsers/oauth_client.dart';
+import 'parsers/pem_bundle.dart';
 import 'parsers/pkcs12.dart';
 import 'parsers/provisioning_profile.dart';
 import 'parsers/service_account.dart';
+import 'parsers/ssh_private_key.dart';
 import 'parsers/x509_certificate.dart';
 
 /// Reads facts out of one or more [CredentialFormat]s.
@@ -46,6 +48,8 @@ class CredentialParsers {
     ServiceAccountParser(),
     OAuthClientParser(),
     Pkcs12Parser(),
+    PemBundleParser(),
+    SshPrivateKeyParser(),
     ProvisioningProfileParser(),
   ]);
 
