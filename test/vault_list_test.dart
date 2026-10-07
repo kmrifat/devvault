@@ -3,10 +3,14 @@ import 'dart:ui' show Tristate;
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/core/expiry.dart';
+import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
+import 'package:devvault/services/file_import.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -20,6 +24,7 @@ void main() {
     WidgetTester tester, {
     String? location,
     TestVault vault = TestVault.sample,
+    List<Override> overrides = const [],
   }) async {
     tester.view
       ..physicalSize = const Size(1440, 1400)
@@ -30,6 +35,7 @@ void main() {
       location: location ?? Routes.vault(),
       vault: vault,
       layout: AppLayout.desktop,
+      overrides: overrides,
     );
   }
 
@@ -172,12 +178,17 @@ void main() {
   });
 
   testWidgets('an empty vault invites an import', (tester) async {
-    await open(tester, vault: TestVault.locked);
+    final opener = _CountingOpener();
+    await open(
+      tester,
+      vault: TestVault.locked,
+      overrides: [fileOpenerProvider.overrideWithValue(opener)],
+    );
     expect(inList(find.text('Your vault is empty')), findsOneWidget);
     await tester.tap(inList(find.text('Import')));
-    await tester.pump();
-    expect(find.text('Import is on its way'), findsOneWidget);
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+    await tester.pumpAndSettle();
+    // The file picker opens (import itself is covered in import_test.dart).
+    expect(opener.picks, 1);
   });
 
   group('VaultKind', () {
@@ -200,4 +211,15 @@ void main() {
       '12 days',
     );
   });
+}
+
+/// A file picker the user cancels, counting how often it was opened.
+class _CountingOpener implements FileOpener {
+  int picks = 0;
+
+  @override
+  Future<List<PickedFile>> pick() async {
+    picks++;
+    return const [];
+  }
 }
