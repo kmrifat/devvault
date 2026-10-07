@@ -1,6 +1,6 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/theme.dart';
-import 'package:devvault/main.dart';
+import 'package:devvault/app/app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -26,7 +26,10 @@ void main() {
     final stock = BCTheme.light(
       overrides: const BCThemeOverrides(accent: AppTheme.accent),
     );
-    expect(tokens(light).fieldShadow.shadows, tokens(stock).fieldShadow.shadows);
+    expect(
+      tokens(light).fieldShadow.shadows,
+      tokens(stock).fieldShadow.shadows,
+    );
   });
 
   testWidgets('mono style uses JetBrains Mono with tabular figures', (
@@ -54,7 +57,8 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await tester.pumpWidget(const DevVaultApp());
-    final context = tester.element(find.text('DevVault'));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.text('Unlock'));
     expect(Theme.of(context).brightness, Brightness.dark);
   });
 }
