@@ -2,6 +2,7 @@ import 'dart:isolate';
 
 import 'detect.dart';
 import 'parsers/apple_auth_key.dart';
+import 'parsers/java_keystore.dart';
 import 'parsers/x509_certificate.dart';
 import 'parse_result.dart';
 
@@ -32,8 +33,11 @@ class CredentialParsers {
 
   /// The parsers DevVault ships. Formats are added here as their parsers
   /// land (P1-12…P1-17); until then they import as generic files.
-  factory CredentialParsers.standard() =>
-      CredentialParsers(const [AppleAuthKeyParser(), X509CertificateParser()]);
+  factory CredentialParsers.standard() => CredentialParsers(const [
+    AppleAuthKeyParser(),
+    X509CertificateParser(),
+    JavaKeystoreParser(),
+  ]);
 
   final Map<CredentialFormat, CredentialParser> _byFormat;
 

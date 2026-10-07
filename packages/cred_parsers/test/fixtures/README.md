@@ -3,7 +3,11 @@
 Test-only files generated for this repo with `openssl` and `keytool`.
 None of them is a real credential: the keys were created for these tests,
 JSON and plist values are placeholders, and every password is
-`test-password`.
+`test-password` (keystore key passwords marked below are `key-password`).
+
+The expected keystore fingerprints and expiry dates in
+`java_keystore_test.dart` were copied from `keytool -list -v -keystore <file>
+-storepass test-password` (add `-storetype JCEKS` for `.jceks`).
 
 | File | Made with |
 |---|---|
@@ -17,4 +21,9 @@ JSON and plist values are placeholders, and every password is
 | `test.mobileprovision` | `openssl cms -sign -nodetach -binary -outform DER` over a small plist |
 | `ber.mobileprovision` | `test.mobileprovision` with its outer layers re-encoded with BER indefinite lengths, as Apple writes them |
 | `test.jks`, `test.jceks` | `keytool -genkeypair -storetype JKS` / `JCEKS`, alias `upload` |
+| `keypass.jks`, `keypass.jceks` | as above, but `-keypass key-password` (key password differs from the store password) |
+| `two-keys.jks` | two `keytool -genkeypair` runs: `upload` (EC, key password `test-password`) and `release` (RSA 2048, `-keypass key-password`) |
+| `chain.jks` | `upload` key whose certificate is signed by a separate root: `-certreq`, `-gencert` from a throwaway root keystore, then `-importcert` of leaf + root (chain length 2) |
+| `trusted.jks` | `keytool -importcert -alias ca -file cert.cer` only (no private key) |
+| `secret.jceks` | `keytool -genseckey -alias api -keyalg AES` then `-genkeypair -alias signing` (the serialized secret key comes first in the file) |
 | `*.json`, `GoogleService-Info.plist` | written by hand |

@@ -13,6 +13,9 @@ Part of the DevVault pub workspace. See `docs/PLAN.md` at the repo root.
   `generic_file` result with no facts.
 - Every fact in a `ParseResult` has `source: file`, and `expiresAt` is only
   what the file states. Missing passwords come back as `secretsNeeded`.
+- Secrets are asked for by key: `store_password` and `key_password` for
+  JKS/JCEKS keystores (kept apart, so each error is reported on its own).
+  Whatever is stored in clear (aliases, certificates) is read without them.
 - `parseInIsolate` runs the same thing off the UI isolate.
 - Errors, warnings and `toString()` never quote file contents or secrets.
 
