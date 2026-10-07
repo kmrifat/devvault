@@ -1,0 +1,17 @@
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "devvault-test",
+    "storage_bucket": "devvault-test.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "android_client_info": { "package_name": "dev.devvault.test" }
+      },
+      "api_key": [{ "current_key": "TEST-NOT-A-REAL-KEY" }]
+    }
+  ],
+  "configuration_version": "1"
+}
