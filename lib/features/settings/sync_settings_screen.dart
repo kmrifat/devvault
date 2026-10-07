@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
+import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
 import '../../data/sync_setup.dart';
+import '../../services/credential_store.dart';
 import '../../shared/ui.dart';
 import 'storage_form.dart';
 
@@ -225,6 +227,16 @@ class _CurrentSetup extends ConsumerWidget {
           ),
           for (final w in warnings)
             BCText(w, type: BCTextType.bodySm, color: BCTextColor.muted),
+          if (ref.watch(credentialStoreProvider) case FallbackCredentialStore(
+            isDegraded: true,
+          ))
+            const BCText(
+              'This device has no keychain (on Linux: no Secret Service such '
+              'as GNOME Keyring or KWallet), so the access keys are kept only '
+              'until DevVault quits. Enter them here again after a restart.',
+              type: BCTextType.bodySm,
+              color: BCTextColor.muted,
+            ),
         ],
       ),
     );

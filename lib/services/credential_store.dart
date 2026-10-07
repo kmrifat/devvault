@@ -43,3 +43,51 @@ class MemoryCredentialStore implements CredentialStore {
   @override
   Future<void> delete(String key) async => values.remove(key);
 }
+
+/// The keychain, falling back to memory when there is none: on Linux
+/// without a Secret Service (no GNOME Keyring or KWallet running) every
+/// keychain call fails. Then the keys last until DevVault quits, and
+/// [isDegraded] lets the settings say so.
+class FallbackCredentialStore implements CredentialStore {
+  FallbackCredentialStore(this.primary);
+
+  final CredentialStore primary;
+  final _memory = MemoryCredentialStore();
+  bool _degraded = false;
+
+  /// True once the keychain failed: keys are kept in memory only.
+  bool get isDegraded => _degraded;
+
+  Future<T> _try<T>(
+    Future<T> Function() keychain,
+    Future<T> Function() memory,
+  ) async {
+    if (_degraded) return memory();
+    try {
+      return await keychain();
+    } on Object {
+      _degraded = true;
+      return memory();
+    }
+  }
+
+  @override
+  Future<String?> read(String key) =>
+      _try(() => primary.read(key), () => _memory.read(key));
+
+  @override
+  Future<void> write(String key, String value) =>
+      _try(() => primary.write(key, value), () => _memory.write(key, value));
+
+  @override
+  Future<void> delete(String key) async {
+    await _memory.delete(key);
+    if (!_degraded) {
+      try {
+        await primary.delete(key);
+      } on Object {
+        _degraded = true;
+      }
+    }
+  }
+}
