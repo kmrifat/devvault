@@ -18,9 +18,23 @@ final class NoVault extends VaultSession {
 
 /// A vault exists and is locked.
 final class Locked extends VaultSession {
-  const Locked(this.store);
+  const Locked(this.store, this.header);
 
   final VaultStore store;
+
+  /// The plaintext `vault.json`, or `null` if it can't be parsed (unlocking
+  /// will then report the problem).
+  final VaultHeader? header;
+
+  static Locked of(VaultStore store) {
+    VaultHeader? header;
+    try {
+      header = store.readHeaderSync();
+    } on Object {
+      header = null;
+    }
+    return Locked(store, header);
+  }
 }
 
 /// The vault is open: [index] is the decrypted contents.
@@ -49,7 +63,7 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
   @override
   VaultSession build() {
     final store = findVault(ref.read(vaultsDirProvider));
-    return store == null ? const NoVault() : Locked(store);
+    return store == null ? const NoVault() : Locked.of(store);
   }
 
   VaultCrypto get _crypto => ref.read(cryptoProvider);
@@ -123,7 +137,7 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     if (current is! Unlocked) return;
     ref.read(clipboardGuardProvider).clearNow();
     current.vault.lock();
-    state = Locked(current.vault.store);
+    state = Locked(current.vault.store, current.vault.header);
   }
 
   VaultStore get _lockedStore => switch (state) {

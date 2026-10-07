@@ -30,7 +30,7 @@ void main() {
         memLimit: KdfParams.minMemLimit,
       );
       rk.dispose();
-      locked = Locked(vault.store);
+      locked = Locked(vault.store, vault.header);
       unlocked = Unlocked(vault, VaultIndex(await vault.loadAll()));
     });
 

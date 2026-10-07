@@ -122,7 +122,9 @@ void shot(
         );
       } else {
         // First-run and lock screens: the device holds [vault], unopened.
-        final dir = await tester.runAsync(() => testSupportDir(vault, crypto));
+        final dir = await tester.runAsync(
+          () => testSupportDir(vault, crypto, realKdf),
+        );
         await tester.pumpWidget(
           testApp(
             location: route,
