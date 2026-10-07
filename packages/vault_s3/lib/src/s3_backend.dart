@@ -192,6 +192,73 @@ class S3Backend implements StorageBackend {
     _expectOk(response, key);
   }
 
+  /// Finds which conditional operations this store really enforces, using
+  /// a scratch object under [prefix] that it removes afterwards. Throws a
+  /// [StorageException] when the bucket can't be read and written at all
+  /// (wrong keys, missing bucket), which is the first thing a connection
+  /// test needs to know.
+  Future<StorageCapabilities> probe(String prefix) async {
+    final key = '${prefix.endsWith('/') ? prefix : '$prefix/'}probe.bin';
+    StorageKeys.check(key);
+    Uint8List bytes(String text) => Uint8List.fromList(text.codeUnits);
+
+    Future<bool> refused(Future<Object?> Function() attempt) async {
+      try {
+        await attempt();
+        return false;
+      } on PreconditionFailed {
+        return true;
+      }
+    }
+
+    try {
+      final first = await put(key, bytes('one'));
+
+      final create = await refused(
+        () =>
+            put(key, bytes('two'), condition: const WriteCondition.ifAbsent()),
+      );
+
+      var current = (await get(key))!.etag;
+      final staleRefused = await refused(
+        () => put(
+          key,
+          bytes('three'),
+          condition: WriteCondition.ifMatch(
+            current == first ? '"devvault-stale"' : first,
+          ),
+        ),
+      );
+      current = (await get(key))!.etag;
+      final currentAccepted = !await refused(
+        () =>
+            put(key, bytes('four'), condition: WriteCondition.ifMatch(current)),
+      );
+
+      // DELETE with a wrong If-Match, without the HEAD check delete() adds:
+      // if the object survives, the store enforces it.
+      await _send(
+        'DELETE',
+        config.url(key: key),
+        headers: {'if-match': '"devvault-stale"'},
+        logKey: key,
+      );
+      final deleteRefused = await get(key) != null;
+
+      return StorageCapabilities(
+        conditionalCreate: create,
+        conditionalUpdate: staleRefused && currentAccepted,
+        conditionalDelete: deleteRefused,
+      );
+    } finally {
+      try {
+        await delete(key);
+      } on StorageException {
+        // Best effort; a stray probe object holds no vault data.
+      }
+    }
+  }
+
   /// Sends a signed request, retrying throttling, server errors, races
   /// on conditional writes (409) and network failures.
   Future<http.Response> _send(
