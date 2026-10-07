@@ -253,3 +253,17 @@ sd_ber = indef(0x30, [sd_parts[0][2], sd_parts[1][2], eci_ber]
 out = indef(0x30, [oid, indef(0xA0, [sd_ber])])
 open(sys.argv[2], 'wb').write(out)
 ```
+
+## P4-07: OpenSSH keys and PEM bundles
+
+Test-only keys made with `ssh-keygen` and OpenSSL 3. Expected facts in
+`more_parsers_test.dart` come from `ssh-keygen -lf` and `openssl x509`.
+
+| File | Made with |
+|---|---|
+| `id_ed25519` | `ssh-keygen -t ed25519 -N '' -C devvault-test@example` |
+| `id_ecdsa` | `ssh-keygen -t ecdsa -b 384 -N '' -C devvault-ecdsa` |
+| `id_rsa_encrypted` | `ssh-keygen -t rsa -b 3072 -N test-password -C devvault-rsa` (the comment is encrypted with the key) |
+| `apns.pem` | an `Apple Push Services: dev.devvault.test` cert (`openssl req -x509`) followed by its PKCS#8 key, as `openssl pkcs12 -nodes` writes it |
+| `chain.pem` | a test CA, then an `Apple Distribution: DevVault Test (TESTTEAM01)` leaf it signed (`-set_serial 0x0DEAD5 -days 400`) |
+| `encrypted-key.pem` | the `apns.pem` cert followed by `openssl genrsa -aes256 -traditional` output (`Proc-Type: 4,ENCRYPTED`) |

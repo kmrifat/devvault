@@ -131,7 +131,7 @@ void main() {
       expect(parse('cert.pem').facts, parse('cert.cer').facts);
     });
 
-    test('a PEM bundle of several certificates is not guessed at', () {
+    test('several PEM blocks go to the PEM bundle parser instead', () {
       final pem = File('test/fixtures/cert.pem').readAsStringSync();
       final result = CredentialParsers.standard().parse(
         ParseInput(
@@ -139,8 +139,13 @@ void main() {
           bytes: Uint8List.fromList('$pem$pem'.codeUnits),
         ),
       );
-      expect(result.isGeneric, isTrue);
-      expect(result.facts, isEmpty);
+      // The same certificate twice: one leaf, read as such
+      // (see pem_bundle_test.dart for real chains).
+      expect(result.format, CredentialFormat.pemBundle);
+      expect(
+        result.facts[CertificateFields.sha256],
+        parse('cert.pem').facts[CertificateFields.sha256],
+      );
     });
   });
 }
