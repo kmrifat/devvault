@@ -432,6 +432,17 @@ void main() {
           index(tester).all.where((i) => i.rev > before[i.id]!).length == 1;
       await startImport(tester, file);
       await tester.tap(find.text('Replace'));
+      await tester.pumpAndSettle();
+      // Replace opens the replace form for that item; nothing changes yet.
+      expect(find.text('Replace file'), findsWidgets);
+      expect(find.text('Name'), findsNothing);
+      expect(replacedOne(), isFalse);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ImportDialog),
+          matching: find.widgetWithText(BCButton, 'Replace file'),
+        ),
+      );
       await settle(tester, replacedOne);
       expect(find.byType(ImportDialog), findsNothing);
       expect(index(tester).all, hasLength(2));
