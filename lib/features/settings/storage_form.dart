@@ -209,9 +209,12 @@ class StorageFormView extends StatelessWidget {
                             type: BCTextType.bodySm,
                           ),
                         ),
-                        BCSwitch(
-                          isSelected: model.pathStyle,
-                          onSelectedChange: model.setPathStyle,
+                        Semantics(
+                          label: 'Path-style addressing',
+                          child: BCSwitch(
+                            isSelected: model.pathStyle,
+                            onSelectedChange: model.setPathStyle,
+                          ),
                         ),
                       ],
                     ),

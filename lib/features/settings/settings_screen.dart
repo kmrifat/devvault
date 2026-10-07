@@ -70,15 +70,22 @@ class SettingsScreen extends ConsumerWidget {
                         onChanged: notifier.setThemeMode,
                       ),
                     ),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.bellRing),
-                      title: 'Expiry reminders',
-                      description:
-                          'At most two per item, at 09:00: when it enters '
-                          'its last 30 days, and on the day it expires.',
-                      suffix: BCSwitch(
-                        isSelected: settings.expiryReminders,
-                        onSelectedChange: notifier.setExpiryReminders,
+                    // The whole row toggles, and reads as one switch: a
+                    // big enough target on a phone, and named.
+                    MergeSemantics(
+                      child: BCListGroupItem(
+                        prefix: const Icon(LucideIcons.bellRing),
+                        title: 'Expiry reminders',
+                        description:
+                            'At most two per item, at 09:00: when it enters '
+                            'its last 30 days, and on the day it expires.',
+                        onPressed: () => notifier.setExpiryReminders(
+                          !settings.expiryReminders,
+                        ),
+                        suffix: BCSwitch(
+                          isSelected: settings.expiryReminders,
+                          onSelectedChange: notifier.setExpiryReminders,
+                        ),
                       ),
                     ),
                   ],
@@ -144,6 +151,21 @@ class SettingsScreen extends ConsumerWidget {
                         isDisabled: vault == null,
                         onPressed: () => showNewRecoveryKitDialog(context),
                         child: const Text('New kit…'),
+                      ),
+                    ),
+                    BCListGroupItem(
+                      prefix: const Icon(LucideIcons.refreshCcwDot),
+                      title: 'Vault key',
+                      description:
+                          'Suspect a leak? Rotate it: everything is '
+                          're-encrypted under a new key, with a new '
+                          'recovery key.',
+                      suffix: BCButton(
+                        size: BCButtonSize.sm,
+                        variant: BCButtonVariant.secondary,
+                        isDisabled: vault == null,
+                        onPressed: () => showRotateVaultKeyDialog(context),
+                        child: const Text('Rotate…'),
                       ),
                     ),
                   ],

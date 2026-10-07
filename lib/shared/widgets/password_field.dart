@@ -1,4 +1,5 @@
 import 'package:bc_ui/bc_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -40,41 +41,51 @@ class PasswordField extends StatefulWidget {
 class _PasswordFieldState extends State<PasswordField> {
   bool _revealed = false;
 
+  static bool get _touch => switch (defaultTargetPlatform) {
+    TargetPlatform.iOS || TargetPlatform.android => true,
+    _ => false,
+  };
+
   @override
   Widget build(BuildContext context) {
     final error = widget.error;
-    return BCTextField(
-      isInvalid: error != null,
-      isDisabled: widget.isDisabled,
-      children: [
-        BCTextFieldLabel(widget.label),
-        BCTextFieldInput(
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          obscureText: !_revealed,
-          autofocus: widget.autofocus,
-          autocorrect: false,
-          enableSuggestions: false,
-          keyboardType: TextInputType.visiblePassword,
-          textInputAction: widget.textInputAction,
-          onChanged: widget.onChanged,
-          onSubmitted: widget.onSubmitted,
-          suffix: BCButton(
-            variant: BCButtonVariant.ghost,
-            size: BCButtonSize.sm,
-            isIconOnly: true,
-            onPressed: () => setState(() => _revealed = !_revealed),
-            child: Icon(
-              _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
-              semanticLabel: _revealed ? 'Hide password' : 'Show password',
+    // bc_ui's field wrapper is tappable but unnamed for screen readers.
+    return Semantics(
+      label: widget.label,
+      child: BCTextField(
+        isInvalid: error != null,
+        isDisabled: widget.isDisabled,
+        children: [
+          BCTextFieldLabel(widget.label),
+          BCTextFieldInput(
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            obscureText: !_revealed,
+            autofocus: widget.autofocus,
+            autocorrect: false,
+            enableSuggestions: false,
+            keyboardType: TextInputType.visiblePassword,
+            textInputAction: widget.textInputAction,
+            onChanged: widget.onChanged,
+            onSubmitted: widget.onSubmitted,
+            suffix: BCButton(
+              variant: BCButtonVariant.ghost,
+              // 48 px on touch screens, the minimum comfortable target.
+              size: _touch ? BCButtonSize.md : BCButtonSize.sm,
+              isIconOnly: true,
+              onPressed: () => setState(() => _revealed = !_revealed),
+              child: Icon(
+                _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
+                semanticLabel: _revealed ? 'Hide password' : 'Show password',
+              ),
             ),
           ),
-        ),
-        if (error != null)
-          BCTextFieldError(error)
-        else if (widget.description != null)
-          BCTextFieldDescription(widget.description!),
-      ],
+          if (error != null)
+            BCTextFieldError(error)
+          else if (widget.description != null)
+            BCTextFieldDescription(widget.description!),
+        ],
+      ),
     );
   }
 }

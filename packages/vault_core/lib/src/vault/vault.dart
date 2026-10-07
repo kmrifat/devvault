@@ -190,6 +190,14 @@ class Vault {
   RecoveryKey? get pendingRecoveryKey => _pendingRecoveryKey;
   RecoveryKey? _pendingRecoveryKey;
 
+  /// Hands over [pendingRecoveryKey] once: the caller shows it and disposes
+  /// it, and it is gone from here.
+  RecoveryKey? takePendingRecoveryKey() {
+    final key = _pendingRecoveryKey;
+    _pendingRecoveryKey = null;
+    return key;
+  }
+
   /// Replaces the vault key after a suspected compromise (SPEC §9).
   ///
   /// Every item, app and tombstone is re-encrypted in place and every blob

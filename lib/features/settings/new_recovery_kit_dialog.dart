@@ -1,11 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../../data/providers.dart';
+import '../../data/sync_controller.dart';
+import '../../data/sync_setup.dart';
 import '../../data/vault_session.dart';
 import '../../services/recovery_kit.dart';
 import '../../shared/ui.dart';
 import '../create_vault/recovery_kit_card.dart';
+
+/// What the dialog does with the master password.
+enum RecoveryKeyAction {
+  /// A new recovery key only (P4-05): `vault.json` is rewritten, the old
+  /// key stops working.
+  newKit,
+
+  /// Rotate the vault key (P4-08, SPEC §9): everything is re-encrypted
+  /// under a new key, with a new recovery key.
+  rotate,
+}
 
 /// Makes a new recovery kit (P4-05). The old key can't be shown again (it
 /// was never stored), so this issues a new one and the old one stops
@@ -22,8 +37,49 @@ Future<void> showNewRecoveryKitDialog(BuildContext context) =>
           const BCDialogContent(width: 640, child: NewRecoveryKitDialog()),
     );
 
+/// Rotates the vault key (P4-08): after a suspected leak of the vault key
+/// or a recovery key. Asks for the master password, re-encrypts every
+/// item and file, shows the new recovery key once, then syncs.
+Future<void> showRotateVaultKeyDialog(BuildContext context) =>
+    BCDialog.show<void>(
+      context,
+      barrierDismissible: false,
+      builder: (_) => const BCDialogContent(
+        width: 640,
+        child: NewRecoveryKitDialog(action: RecoveryKeyAction.rotate),
+      ),
+    );
+
+/// A rotation was interrupted (a crash, a quit) and this unlock finished
+/// it: its new recovery key has never been shown, and the old one no
+/// longer works. Shows [key] once and disposes it.
+Future<void> showFinishedRotationDialog(
+  BuildContext context,
+  RecoveryKey key,
+) => BCDialog.show<void>(
+  context,
+  barrierDismissible: false,
+  builder: (_) => BCDialogContent(
+    width: 640,
+    child: NewRecoveryKitDialog(
+      action: RecoveryKeyAction.rotate,
+      finished: key,
+    ),
+  ),
+);
+
 class NewRecoveryKitDialog extends ConsumerStatefulWidget {
-  const NewRecoveryKitDialog({super.key});
+  const NewRecoveryKitDialog({
+    super.key,
+    this.action = RecoveryKeyAction.newKit,
+    this.finished,
+  });
+
+  final RecoveryKeyAction action;
+
+  /// A key already made (an interrupted rotation finished on unlock): skip
+  /// the password and show it.
+  final RecoveryKey? finished;
 
   @override
   ConsumerState<NewRecoveryKitDialog> createState() =>
@@ -37,8 +93,10 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
   bool _saved = false;
 
   /// The new key, once made. Wiped on close.
-  RecoveryKey? _key;
-  String? _keyText;
+  late RecoveryKey? _key = widget.finished;
+  late String? _keyText = widget.finished?.toDisplayString();
+
+  bool get _rotate => widget.action == RecoveryKeyAction.rotate;
 
   @override
   void dispose() {
@@ -68,7 +126,14 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
         }
         return;
       }
-      final key = await session.replaceRecoveryKey();
+      final key = _rotate
+          ? await session.rotateVaultKey(_password.text)
+          : await session.replaceRecoveryKey();
+      if (_rotate && ref.read(syncSetupProvider) != null) {
+        // Push the re-encrypted vault now; other devices pause until they
+        // adopt the new key with the master password.
+        unawaited(ref.read(syncControllerProvider.notifier).syncNow());
+      }
       if (!mounted) {
         key.dispose();
         return;
@@ -83,7 +148,10 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = "Couldn't make a new key. Your old one still works.";
+          _error = _rotate
+              ? "Couldn't finish the rotation. Unlock again with your master "
+                    'password to finish it.'
+              : "Couldn't make a new key. Your old one still works.";
         });
       }
     }
@@ -101,11 +169,16 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const BCDialogTitle('New recovery kit'),
+        BCDialogTitle(_rotate ? 'Rotate vault key' : 'New recovery kit'),
         const SizedBox(height: BCSpacing.xs),
-        const BCDialogDescription(
-          'Your recovery key can’t be shown again, so this makes a new one. '
-          'The old key stops working as soon as it’s made.',
+        BCDialogDescription(
+          _rotate
+              ? 'Re-encrypts every item and file under a new vault key, with '
+                    'a new recovery key. Do this if you think the vault key '
+                    'or a recovery key leaked. Your master password stays '
+                    'the same.'
+              : 'Your recovery key can’t be shown again, so this makes a new '
+                    'one. The old key stops working as soon as it’s made.',
         ),
         const SizedBox(height: BCSpacing.lg),
         PasswordField(
@@ -131,8 +204,13 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
                 Icon(LucideIcons.triangleAlert, size: 17, color: bc.warning),
                 Expanded(
                   child: BCText(
-                    'Other devices on this vault switch to the new key once '
-                    'they sync. Destroy any printed copy of the old one.',
+                    _rotate
+                        ? 'Other devices on this vault pause syncing until '
+                              'you unlock them with your master password. '
+                              'Your old recovery key stops working.'
+                        : 'Other devices on this vault switch to the new key '
+                              'once they sync. Destroy any printed copy of '
+                              'the old one.',
                     type: BCTextType.bodySm,
                     style: TextStyle(color: bc.warningSoftForeground),
                   ),
@@ -158,7 +236,13 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
               startContent: _busy
                   ? const BCSpinner(size: BCSpinnerSize.sm)
                   : null,
-              child: const Text('Make new key'),
+              child: Text(
+                _busy && _rotate
+                    ? 'Re-encrypting…'
+                    : _rotate
+                    ? 'Rotate key'
+                    : 'Make new key',
+              ),
             ),
           ],
         ),
@@ -175,10 +259,21 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const BCDialogTitle('Your new recovery key'),
+        BCDialogTitle(
+          widget.finished != null
+              ? 'Key rotation finished'
+              : 'Your new recovery key',
+        ),
         const SizedBox(height: BCSpacing.xs),
-        const BCDialogDescription(
-          'Shown once. Save it now: the old key no longer works.',
+        BCDialogDescription(
+          widget.finished != null
+              ? 'A vault key rotation was interrupted and has now finished. '
+                    'This is its new recovery key, shown once: the old one '
+                    'no longer works.'
+              : _rotate
+              ? 'The vault key was rotated. Shown once: save it now, the old '
+                    'recovery key no longer works.'
+              : 'Shown once. Save it now: the old key no longer works.',
         ),
         const SizedBox(height: BCSpacing.lg),
         RecoveryKitCard(
