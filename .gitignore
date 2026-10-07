@@ -1,0 +1,9 @@
+# OS / editors
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.iml
+
+# Local-only files
+*.local.json
