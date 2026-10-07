@@ -65,6 +65,23 @@ class VaultStore {
     VaultHeader.fileName,
   );
 
+  /// Device-local rotation journal. It sits next to the `<vault_id>/`
+  /// folder, not inside it, so it is never synced (SPEC §3).
+  File get _journalFile => File('${root.path}.rotation');
+
+  Future<Uint8List?> readJournal() async =>
+      await _journalFile.exists() ? _journalFile.readAsBytes() : null;
+
+  Future<void> writeJournal(Uint8List bytes) =>
+      _writeAtomically(_journalFile, bytes, '../rotation journal');
+
+  Future<void> deleteJournal() async {
+    if (await _journalFile.exists()) {
+      await _journalFile.delete();
+      onWrite?.call('-../rotation journal');
+    }
+  }
+
   /// The encrypted object at [type]/[id], or `null` if there is none.
   Future<Uint8List?> read(ObjectType type, String id) async {
     final file = _objectFile(type, id);

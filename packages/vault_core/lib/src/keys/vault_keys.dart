@@ -138,14 +138,83 @@ abstract final class VaultKeys {
     }
   }
 
+  /// A header for [vk] with fresh password and recovery wraps and a new
+  /// `vk_id`, keeping the vault id, creation time and unknown fields. Used
+  /// when the vault key itself is rotated.
+  static Future<VaultHeader> rewrapAll(
+    VaultCrypto crypto,
+    VaultHeader header,
+    SecureKey vk, {
+    required String password,
+    required RecoveryKey recoveryKey,
+  }) async {
+    final kdf = KdfParams.generate(
+      crypto,
+      opsLimit: header.kdf.opsLimit,
+      memLimit: header.kdf.memLimit,
+    );
+    final kekPassword = await kdf.deriveKey(crypto, password);
+    final kekRecovery = _recoveryKek(crypto, header.vaultId, recoveryKey);
+    try {
+      return header.copyWith(
+        kdf: kdf,
+        wrappedVkPassword: _wrap(
+          crypto,
+          header.vaultId,
+          ObjectType.vkWrapPassword,
+          kekPassword,
+          vk,
+        ),
+        wrappedVkRecovery: _wrap(
+          crypto,
+          header.vaultId,
+          ObjectType.vkWrapRecovery,
+          kekRecovery,
+          vk,
+        ),
+        vkId: vkId(crypto, vk),
+      );
+    } finally {
+      kekPassword.dispose();
+      kekRecovery.dispose();
+    }
+  }
+
+  /// A header whose recovery wrap is replaced with one for [recoveryKey].
+  static VaultHeader rewrapRecovery(
+    VaultCrypto crypto,
+    VaultHeader header,
+    SecureKey vk,
+    RecoveryKey recoveryKey,
+  ) {
+    final kek = _recoveryKek(crypto, header.vaultId, recoveryKey);
+    try {
+      return header.copyWith(
+        wrappedVkRecovery: _wrap(
+          crypto,
+          header.vaultId,
+          ObjectType.vkWrapRecovery,
+          kek,
+          vk,
+        ),
+      );
+    } finally {
+      kek.dispose();
+    }
+  }
+
   /// `hex(BLAKE2b-256(key = VK, "devvault/v1/vk-id"))`.
   static String vkId(VaultCrypto crypto, SecureKey vk) => _hex(
     crypto.keyedHash(key: vk, message: VaultCrypto.utf8Bytes(vkIdMessage)),
   );
 
   /// A random UUIDv4 in canonical lowercase form.
-  static String uuidV4(VaultCrypto crypto) {
-    final b = crypto.randomBytes(16);
+  static String uuidV4(VaultCrypto crypto) =>
+      uuidFromBytes(crypto.randomBytes(16));
+
+  /// Formats 16 bytes as a canonical UUIDv4 (version and variant bits set).
+  static String uuidFromBytes(List<int> bytes) {
+    final b = Uint8List.fromList(bytes.sublist(0, 16));
     b[6] = (b[6] & 0x0F) | 0x40;
     b[8] = (b[8] & 0x3F) | 0x80;
     final h = _hex(b);
