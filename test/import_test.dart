@@ -6,6 +6,7 @@ import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:devvault/features/import/import_dialog.dart';
 import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
@@ -456,6 +457,38 @@ void main() {
         () => find.text('Store password').evaluate().isNotEmpty,
       );
       expect(find.byType(ImportDialog), findsOneWidget);
+    });
+
+    testWidgets('dropping a file on the window imports it', (tester) async {
+      await open(tester);
+      final target = tester.widget<DropTarget>(find.byType(DropTarget));
+      final at = (localPosition: Offset.zero, globalPosition: Offset.zero);
+
+      target.onDragEntered!(
+        DropEventDetails(
+          localPosition: at.localPosition,
+          globalPosition: at.globalPosition,
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Drop to import'), findsOneWidget);
+
+      final file = fixture('google-services.json');
+      target.onDragDone!(
+        DropDoneDetails(
+          files: [
+            DropItemFile.fromData(file.bytes, path: '/Users/me/${file.name}'),
+            DropItemDirectory('/tmp/folder', const []),
+          ],
+          localPosition: at.localPosition,
+          globalPosition: at.globalPosition,
+        ),
+      );
+      await settle(tester, () => find.text('Project ID').evaluate().isNotEmpty);
+      expect(find.text('Drop to import'), findsNothing);
+      expect(find.byType(ImportDialog), findsOneWidget);
+      await tapImport(tester, () => index(tester).all.isNotEmpty);
+      expect(index(tester).all.single.typeName, 'firebase_config');
     });
 
     testWidgets('cancelling the file picker does nothing', (tester) async {
