@@ -1,0 +1,35 @@
+name: Format vectors
+
+# docs/format/vectors is the vault format contract. A second, independent
+# implementation in Go (tools/vectorcheck, x/crypto only) must verify every
+# vector and unlock the committed mini-vault.
+
+on:
+  pull_request:
+    paths:
+      - docs/format/**
+      - tools/vectorcheck/**
+      - packages/vault_core/**
+      - .github/workflows/vectors.yml
+  push:
+    branches: [main]
+    paths:
+      - docs/format/**
+      - tools/vectorcheck/**
+      - packages/vault_core/**
+  workflow_dispatch:
+
+jobs:
+  go-verifier:
+    name: Go verifier
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/vectorcheck/go.mod
+          cache-dependency-path: tools/vectorcheck/go.sum
+      - name: Verify vectors
+        working-directory: tools/vectorcheck
+        run: go vet ./... && go run . ../../docs/format/vectors
