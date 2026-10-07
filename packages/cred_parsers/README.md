@@ -16,7 +16,30 @@ Part of the DevVault pub workspace. See `docs/PLAN.md` at the repo root.
 - Secrets are asked for by key: `store_password` and `key_password` for
   JKS/JCEKS keystores (kept apart, so each error is reported on its own).
   Whatever is stored in clear (aliases, certificates) is read without them.
+- When a file describes several things and the user must pick one (a
+  multi-app `google-services.json`), the result lists them in `options`
+  (`ParseOption{id, label}`, both from the file) and `needsChoice` is true.
+  Parse again with `ParseInput.choice` set to an option's `id`; the result's
+  `chosen` says which one the facts describe. A choice that isn't in the
+  file is a warning, never a guess.
 - `parseInIsolate` runs the same thing off the UI isolate.
 - Errors, warnings and `toString()` never quote file contents or secrets.
+
+## Parsers
+
+Field keys are `static const`s on each parser class.
+
+| Parser | Formats | Secret fields |
+|---|---|---|
+| `AppleAuthKeyParser` | `.p8` | none (the key itself stays in the file) |
+| `X509CertificateParser` | `.cer`, `.crt`, single-cert PEM | none |
+| `JavaKeystoreParser` | JKS, JCEKS | none (asks for `store_password`, `key_password`) |
+| `FirebaseConfigParser` | `google-services.json`, `GoogleService-Info.plist` | none (Firebase API keys are public) |
+| `ServiceAccountParser` | GCP service-account JSON | `private_key` |
+| `OAuthClientParser` | `client_secret_*.json` (`installed` or `web`) | `client_secret` |
+
+None of the Google formats states an expiry (SPEC §6.5). `src/plist.dart` has a
+strict XML plist reader (`parseXmlPlist`); binary plists aren't read and
+import as generic files.
 
 Fixtures in `test/fixtures` are test-only material; see its README.

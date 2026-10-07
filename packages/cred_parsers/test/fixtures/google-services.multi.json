@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "firebase_url": "https://devvault-test-default-rtdb.firebaseio.com",
+    "project_id": "devvault-test",
+    "storage_bucket": "devvault-test.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:1111111111111111",
+        "android_client_info": { "package_name": "dev.devvault.app" }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "TEST-NOT-A-REAL-KEY-1" }],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:2222222222222222",
+        "android_client_info": { "package_name": "dev.devvault.app.staging" }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "TEST-NOT-A-REAL-KEY-2" }],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    }
+  ],
+  "configuration_version": "1"
+}

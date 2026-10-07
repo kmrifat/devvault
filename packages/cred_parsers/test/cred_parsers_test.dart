@@ -329,12 +329,18 @@ void main() {
   group('parseInIsolate', () {
     test('gives the same result as parse', () async {
       final parsers = CredentialParsers.standard();
-      for (final name in ['test.jks', 'cert.p12', 'google-services.json']) {
+      for (final name in [
+        'test.jks',
+        'cert.p12',
+        'google-services.json',
+        'google-services.multi.json',
+      ]) {
         final direct = parsers.parse(input(name));
         final isolated = await parsers.parseInIsolate(input(name));
         expect(isolated.type, direct.type);
         expect(isolated.format, direct.format);
         expect(isolated.warnings, direct.warnings);
+        expect(isolated.facts, direct.facts);
       }
     });
 
@@ -376,6 +382,8 @@ void main() {
       '-----BEGIN PRIVATE KEY-----'.codeUnits,
       '{"type":"service_account"'.codeUnits,
       '{"installed":{"client_id":'.codeUnits,
+      '{"web":{"client_id":"x","client_secret":'.codeUnits,
+      '{"project_info":{},"client":[{"client_info":'.codeUnits,
       'bplist00'.codeUnits,
       '<?xml version="1.0"?><plist>'.codeUnits,
       [0xEF, 0xBB, 0xBF, 0x7B],
@@ -392,6 +400,9 @@ void main() {
     ]);
     final standard = CredentialParsers.standard();
 
+    // The invariant: parse never throws, real parsers only ever report
+    // facts from the file (or fall back to a fact-free generic file), and
+    // a parser that throws always ends in a generic file with no facts.
     void check(String name, Uint8List bytes) {
       final i = ParseInput(filename: name, bytes: bytes);
       final result = standard.parse(i);
@@ -399,6 +410,13 @@ void main() {
         result.facts.values.every((f) => f.source == FieldSource.file),
         isTrue,
       );
+      // A fallback is factless. The one deliberate exception: a non-Apple
+      // certificate imports as a generic file but keeps its real facts.
+      if (result.isGeneric &&
+          result.format != CredentialFormat.x509Certificate) {
+        expect(result.facts, isEmpty);
+      }
+
       final failed = throwing.parse(i);
       expect(failed.type, ItemType.genericFile);
       expect(failed.facts, isEmpty);
