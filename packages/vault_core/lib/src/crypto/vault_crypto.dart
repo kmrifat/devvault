@@ -106,6 +106,28 @@ class VaultCrypto {
     alg: CryptoPwhashAlgorithm.argon2id13,
   );
 
+  /// [argon2id] on a separate isolate. Argon2id takes long enough at the
+  /// default parameters to freeze a UI if run on its isolate.
+  Future<SecureKey> argon2idIsolated({
+    required Uint8List password,
+    required Uint8List salt,
+    required int opsLimit,
+    required int memLimit,
+    int outLength = keyBytes,
+  }) {
+    final sodium = _sodium;
+    return sodium.runIsolated(
+      (secureKeys, keyPairs) => sodium.crypto.pwhash.callRaw(
+        outLen: outLength,
+        password: Int8List.sublistView(password),
+        salt: salt,
+        opsLimit: opsLimit,
+        memLimit: memLimit,
+        alg: CryptoPwhashAlgorithm.argon2id13,
+      ),
+    );
+  }
+
   /// HKDF-SHA256 (RFC 5869): extract with [salt], then expand with [info].
   SecureKey hkdfSha256({
     required SecureKey ikm,

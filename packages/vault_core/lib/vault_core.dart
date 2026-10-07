@@ -8,6 +8,8 @@ library;
 export 'package:sodium/sodium_sumo.dart' show SecureKey;
 
 export 'src/crypto/vault_crypto.dart';
+export 'src/format/format_error.dart';
+export 'src/format/kdf_params.dart';
 export 'src/model/item_type.dart';
 
 /// Version of the on-disk and in-bucket vault format this package writes.
