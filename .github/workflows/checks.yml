@@ -50,17 +50,21 @@ jobs:
       app: ${{ steps.filter.outputs.app }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            app:
-              - 'lib/**'
-              - 'test/**'
-              - 'assets/**'
-              - 'screenshots/**'
-              - 'pubspec.yaml'
-              - 'pubspec.lock'
+          fetch-depth: 0
+      - name: Did the app, its tests or its screenshots change?
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(lib|test|assets|screenshots)/|^pubspec\.(yaml|lock)$'; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          fi
 
   goldens:
     name: Goldens (macOS)
