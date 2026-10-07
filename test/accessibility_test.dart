@@ -67,52 +67,62 @@ void main() {
     'settings': (Routes.settings, TestVault.sample),
   };
 
+  /// Opens [route] as [layout] in [brightness], with semantics on.
+  Future<SemanticsHandle> open(
+    WidgetTester tester,
+    String route,
+    TestVault vault,
+    AppLayout layout,
+    Brightness brightness,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    tester.platformDispatcher.platformBrightnessTestValue = brightness;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    tester.view
+      ..physicalSize = layout == AppLayout.desktop
+          ? const Size(1440, 900)
+          : const Size(390, 844)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    if (vault == TestVault.sample) {
+      await pumpUnlockedApp(
+        tester,
+        location: route,
+        vault: vault,
+        layout: layout,
+      );
+    } else {
+      final dir = await tester.runAsync(() => testSupportDir(vault));
+      await tester.pumpWidget(
+        testApp(location: route, supportDir: dir!, layout: layout),
+      );
+      await tester.pumpAndSettle();
+    }
+    // Disabled controls are exempt from contrast (WCAG 1.4.3): type a
+    // password so Unlock and Continue are checked enabled.
+    final password = find.byType(EditableText);
+    if (vault != TestVault.sample && password.evaluate().isNotEmpty) {
+      await tester.enterText(password.first, 'correct horse');
+      await tester.pump();
+    }
+    return semantics;
+  }
+
   for (final layout in AppLayout.values) {
     for (final brightness in Brightness.values) {
       for (final MapEntry(key: name, value: (route, vault))
           in screens.entries) {
-        testWidgets('${layout.name} ${brightness.name} $name', (tester) async {
-          final semantics = tester.ensureSemantics();
-          tester.platformDispatcher.platformBrightnessTestValue = brightness;
-          addTearDown(
-            tester.platformDispatcher.clearPlatformBrightnessTestValue,
-          );
-          tester.view
-            ..physicalSize = layout == AppLayout.desktop
-                ? const Size(1440, 900)
-                : const Size(390, 844)
-            ..devicePixelRatio = 1;
-          addTearDown(tester.view.reset);
-          if (vault == TestVault.sample) {
-            await pumpUnlockedApp(
-              tester,
-              location: route,
-              vault: vault,
-              layout: layout,
-            );
-          } else {
-            final dir = await tester.runAsync(() => testSupportDir(vault));
-            await tester.pumpWidget(
-              testApp(location: route, supportDir: dir!, layout: layout),
-            );
-            await tester.pumpAndSettle();
-          }
-          // Disabled controls are exempt from contrast (WCAG 1.4.3): type a
-          // password so Unlock and Continue are checked enabled.
-          final password = find.byType(EditableText);
-          if (vault != TestVault.sample && password.evaluate().isNotEmpty) {
-            await tester.enterText(password.first, 'correct horse');
-            await tester.pump();
-          }
-          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-          await expectLater(
+        final label = '${layout.name} ${brightness.name} $name';
+
+        testWidgets('$label: named, big enough targets', (tester) async {
+          final semantics = await open(
             tester,
-            meetsGuideline(
-              brightness == Brightness.dark
-                  ? const _DarkContrast()
-                  : textContrastGuideline,
-            ),
+            route,
+            vault,
+            layout,
+            brightness,
           );
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
           await expectLater(
             tester,
             meetsGuideline(
@@ -123,6 +133,28 @@ void main() {
           );
           semantics.dispose();
         });
+
+        // Contrast is measured on rendered pixels, and small text
+        // anti-aliases differently per OS, so it runs with the goldens on
+        // macOS (the platform the screenshots are made on).
+        testWidgets('$label: AA text contrast', (tester) async {
+          final semantics = await open(
+            tester,
+            route,
+            vault,
+            layout,
+            brightness,
+          );
+          await expectLater(
+            tester,
+            meetsGuideline(
+              brightness == Brightness.dark
+                  ? const _DarkContrast()
+                  : textContrastGuideline,
+            ),
+          );
+          semantics.dispose();
+        }, tags: ['golden']);
       }
     }
   }
