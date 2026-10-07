@@ -5,6 +5,7 @@ import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/services/biometric_key_store.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../test_overrides.dart';
@@ -35,6 +36,9 @@ void main() {
     vault: TestVault.locked,
     realKdf: true,
     overrides: [biometricKeyStoreProvider.overrideWithValue(_Dismissed())],
+    // After a dismissed prompt the password field takes focus; when that
+    // happens depends on timing, so focus it here, the same every time.
+    interact: (tester) => tester.tap(find.byType(EditableText)),
   );
   shot('D00-recover', Routes.recover, vault: TestVault.locked);
 }
