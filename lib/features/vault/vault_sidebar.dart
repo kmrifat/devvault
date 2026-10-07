@@ -193,7 +193,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           () =>
               open ? _collapsedApps.add(appKey) : _collapsedApps.remove(appKey),
         ),
-        leading: _AppBadge(app: node.app),
+        leading: AppBadge(app: node.app),
         label: node.app?.name ?? 'No app',
         count: node.count,
         selected: _isSelected(filter, app: appKey),
@@ -514,54 +514,6 @@ class _TreeRow extends StatelessWidget {
             ),
             _Count(count, selected: selected),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// An app's initial on a colour picked from its id, so it stays the same
-/// on every device.
-class _AppBadge extends StatelessWidget {
-  const _AppBadge({required this.app});
-
-  final AppRecord? app;
-
-  static const _palette = [
-    Color(0xFFF07A3A),
-    Color(0xFF0485F7),
-    Color(0xFF8B5CF6),
-    Color(0xFF0F9F94),
-    Color(0xFF17A34A),
-    Color(0xFFE5486A),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final app = this.app;
-    if (app == null) {
-      return Icon(LucideIcons.folderOpen, size: 18, color: bc.muted);
-    }
-    final hash = app.id.codeUnits.fold(0, (h, c) => (h * 31 + c) & 0xFFFFFF);
-    final name = app.name.trim();
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: _palette[hash % _palette.length],
-        shape: BCShapes.continuous(BCRadius.md),
-      ),
-      child: SizedBox.square(
-        dimension: 20,
-        child: Center(
-          child: Text(
-            name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 11,
-              height: 1,
-              fontWeight: BCTypography.bold,
-              color: Color(0xFFFFFFFF),
-            ),
-          ),
         ),
       ),
     );

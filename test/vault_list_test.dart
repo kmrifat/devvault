@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/core/expiry.dart';
 import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
@@ -138,11 +139,14 @@ void main() {
     await tester.tap(inList(find.text('Files')));
     await tester.pumpAndSettle();
     expect(location(tester), Routes.vault(kind: 'files'));
-    expect(inList(find.text('Nothing here')), findsOneWidget);
+    expect(titles(tester), ['Upload keystore']);
+    // A file's row shows its name rather than the type.
+    expect(inList(find.text('kitchenly-upload.jks')), findsOneWidget);
 
     await tester.tap(inList(find.text('Secrets')));
     await tester.pumpAndSettle();
-    expect(titles(tester), hasLength(12));
+    expect(titles(tester), hasLength(11));
+    expect(titles(tester), isNot(contains('Upload keystore')));
   });
 
   testWidgets('tapping a row selects it and keeps the filter', (tester) async {

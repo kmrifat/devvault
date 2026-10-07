@@ -382,12 +382,6 @@ class _ItemRowState extends State<_ItemRow> {
   }
 }
 
-/// "1 day", "12 days": whole days left, rounded up.
-String daysLeft(DateTime expiresAt, DateTime now) {
-  final days = (expiresAt.difference(now).inMinutes / (24 * 60)).ceil();
-  return days == 1 ? '1 day' : '$days days';
-}
-
 /// Objects that failed to decrypt or parse. They stay on disk untouched;
 /// another device or a backup may still have a good copy.
 class _QuarantineList extends StatelessWidget {

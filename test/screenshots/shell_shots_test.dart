@@ -2,6 +2,7 @@
 library;
 
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,7 +12,8 @@ import 'harness.dart';
 void main() {
   setUpAll(loadAppFonts);
 
-  /// Selects Kitchenly › Android › Production, like the D03 frame.
+  /// Selects Kitchenly › Android › Production › Upload keystore, like the
+  /// D03 frame.
   Future<void> selectProduction(WidgetTester tester) async {
     Finder inSidebar(String text) => find.descendant(
       of: find.byType(VaultSidebar),
@@ -20,10 +22,15 @@ void main() {
     await tester.tap(inSidebar('Android'));
     await tester.pumpAndSettle();
     await tester.tap(inSidebar('Production'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(VaultListPane),
+        matching: find.text('Upload keystore'),
+      ),
+    );
   }
 
-  // The sidebar is real (P1-06); the list and detail panes are still
-  // placeholders until P1-07 and P1-08.
   shot(
     'D03-vault-shell',
     Routes.vault(),
