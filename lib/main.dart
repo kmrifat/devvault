@@ -4,13 +4,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'app/app.dart';
+import 'app/layout.dart';
 import 'app/routes.dart';
 import 'data/app_settings.dart';
-import 'app/layout.dart';
 import 'data/providers.dart';
-import 'services/share_sheet_saver.dart';
 import 'services/device_id.dart';
+import 'services/incoming_files.dart';
 import 'services/notifications.dart';
+import 'services/share_sheet_saver.dart';
 import 'services/window.dart';
 
 /// Opens the app at any route, e.g. `--dart-define=START=/vault`.
@@ -42,7 +43,10 @@ Future<void> main() async {
         cryptoProvider.overrideWithValue(crypto),
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
-        if (phone) fileSaverProvider.overrideWithValue(ShareSheetSaver()),
+        if (phone) ...[
+          fileSaverProvider.overrideWithValue(ShareSheetSaver()),
+          incomingFilesProvider.overrideWithValue(ChannelIncomingFiles()),
+        ],
       ],
       child: const DevVaultApp(initialLocation: _start),
     ),

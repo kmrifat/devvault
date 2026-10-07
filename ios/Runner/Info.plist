@@ -70,5 +70,101 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- "Open in DevVault" for credential files (P3-03). Files are copied in
+	     (not opened in place); the import dialog decides what each one is. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Credential file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.binarycastle.devvault.p8</string>
+				<string>com.binarycastle.devvault.mobileprovision</string>
+				<string>com.binarycastle.devvault.keystore</string>
+				<string>com.binarycastle.devvault.keystore-alt</string>
+				<string>com.rsa.pkcs-12</string>
+				<string>public.x509-certificate</string>
+				<string>public.json</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.binarycastle.devvault.p8</string>
+			<key>UTTypeDescription</key>
+			<string>Apple auth key</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>p8</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.binarycastle.devvault.mobileprovision</string>
+			<key>UTTypeDescription</key>
+			<string>Provisioning profile</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mobileprovision</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.binarycastle.devvault.keystore</string>
+			<key>UTTypeDescription</key>
+			<string>Java keystore</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>jks</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.binarycastle.devvault.keystore-alt</string>
+			<key>UTTypeDescription</key>
+			<string>Keystore</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>keystore</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>
