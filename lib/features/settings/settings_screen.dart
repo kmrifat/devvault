@@ -153,6 +153,21 @@ class SettingsScreen extends ConsumerWidget {
                         child: const Text('New kit…'),
                       ),
                     ),
+                    BCListGroupItem(
+                      prefix: const Icon(LucideIcons.refreshCcwDot),
+                      title: 'Vault key',
+                      description:
+                          'Suspect a leak? Rotate it: everything is '
+                          're-encrypted under a new key, with a new '
+                          'recovery key.',
+                      suffix: BCButton(
+                        size: BCButtonSize.sm,
+                        variant: BCButtonVariant.secondary,
+                        isDisabled: vault == null,
+                        onPressed: () => showRotateVaultKeyDialog(context),
+                        child: const Text('Rotate…'),
+                      ),
+                    ),
                   ],
                 ),
                 const _Section('Sync'),

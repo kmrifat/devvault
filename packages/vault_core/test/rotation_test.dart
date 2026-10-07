@@ -231,7 +231,10 @@ void main() {
           expect(recovered.pendingRecoveryKey, isNull);
         } else {
           expect(recovered.header.vkId, isNot(oldVkId));
-          final shown = recovered.pendingRecoveryKey!;
+          final shown = recovered.takePendingRecoveryKey()!;
+          // Handed over once.
+          expect(recovered.takePendingRecoveryKey(), isNull);
+          expect(recovered.pendingRecoveryKey, isNull);
           VaultKeys.unlockWithRecovery(
             crypto,
             await VaultStore(dir).readHeader(),
