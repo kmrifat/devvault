@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../data/vault_filter.dart';
 import '../data/vault_session.dart';
+import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
 import '../features/vault/vault_sidebar.dart';
 import 'routes.dart';
@@ -73,6 +74,10 @@ class _DesktopShellState extends State<DesktopShell> {
     }
     if (event.logicalKey == LogicalKeyboardKey.keyK) {
       _quickOpen();
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.keyI) {
+      showImportDialog(context);
       return true;
     }
     return false;
