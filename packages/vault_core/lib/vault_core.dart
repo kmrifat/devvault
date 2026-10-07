@@ -24,6 +24,7 @@ export 'src/sync/local_dir_backend.dart';
 export 'src/sync/memory_backend.dart';
 export 'src/sync/storage_backend.dart';
 export 'src/sync/storage_capabilities.dart';
+export 'src/sync/sync_state.dart';
 export 'src/vault/vault.dart';
 
 /// Version of the on-disk and in-bucket vault format this package writes.
