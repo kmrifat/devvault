@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'test_overrides.dart';
 
 void main() {
+  setUpAll(loadTestCrypto);
+
   BCThemeExtension tokens(ThemeData theme) =>
       theme.extension<BCThemeExtension>()!;
 
@@ -58,9 +60,10 @@ void main() {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-    await tester.pumpWidget(testApp(location: Routes.unlock));
+    final dir = await tester.runAsync(testSupportDir);
+    await tester.pumpWidget(testApp(location: Routes.unlock, supportDir: dir!));
     await tester.pumpAndSettle();
-    final context = tester.element(find.text('Unlock'));
+    final context = tester.element(find.text('Create vault'));
     expect(Theme.of(context).brightness, Brightness.dark);
   });
 }

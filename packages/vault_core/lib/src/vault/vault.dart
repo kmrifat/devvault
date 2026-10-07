@@ -44,13 +44,15 @@ class Vault {
   bool get isLocked => _vaultKey == null;
 
   /// Creates a vault in [store] and returns it unlocked, together with the
-  /// recovery key to show the user once.
+  /// recovery key to show the user once. [vaultId] lets the caller choose
+  /// the id up front (it names the vault's folder); it's random otherwise.
   static Future<(Vault, RecoveryKey)> create({
     required VaultCrypto crypto,
     required VaultStore store,
     required String password,
     required String deviceId,
     required DateTime Function() now,
+    String? vaultId,
     int opsLimit = 3,
     int memLimit = 64 * 1024 * 1024,
   }) async {
@@ -59,6 +61,7 @@ class Vault {
       crypto,
       password: password,
       now: now(),
+      vaultId: vaultId,
       opsLimit: opsLimit,
       memLimit: memLimit,
     );

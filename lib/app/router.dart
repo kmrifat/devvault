@@ -36,6 +36,8 @@ Page<void> materialPage(
 GoRouter buildRouter({
   required AppLayout layout,
   String initialLocation = Routes.unlock,
+  Listenable? refreshListenable,
+  String? Function(GoRouterState state)? redirect,
 }) {
   final desktop = layout == AppLayout.desktop;
 
@@ -198,7 +200,12 @@ GoRouter buildRouter({
         ],
       ),
     ],
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
+      // The vault session decides first: create, unlock or carry on.
+      final sessionTarget = redirect?.call(state);
+      if (sessionTarget != null) return sessionTarget;
+
       // On desktop an item is a selection in the vault's detail pane.
       final segments = state.uri.pathSegments;
       if (desktop &&

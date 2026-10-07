@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:vault_core/vault_core.dart';
 
 import 'app/app.dart';
 import 'app/routes.dart';
@@ -22,12 +23,14 @@ Future<void> main() async {
   // stay synchronous.
   final supportDir = await getApplicationSupportDirectory();
   final deviceId = await loadOrCreateDeviceId(supportDir);
+  final crypto = await VaultCrypto.init();
 
   runApp(
     ProviderScope(
       overrides: [
         appSupportDirProvider.overrideWithValue(supportDir),
         deviceIdProvider.overrideWithValue(deviceId),
+        cryptoProvider.overrideWithValue(crypto),
       ],
       child: const DevVaultApp(initialLocation: _start),
     ),
