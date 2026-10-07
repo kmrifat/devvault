@@ -295,6 +295,87 @@ void main() {
     });
   });
 
+  group('probe', () {
+    /// An in-memory S3 that enforces conditions, optionally not on DELETE.
+    Future<http.Response> Function(http.Request) fakeS3({
+      bool honoursConditionalPut = true,
+      bool honoursConditionalDelete = true,
+    }) {
+      final store = <String, (List<int>, String)>{};
+      var version = 0;
+      return (request) async {
+        final key = request.url.path;
+        final current = store[key];
+        final ifMatch = request.headers['if-match'];
+        final ifNoneMatch = request.headers['if-none-match'];
+        switch (request.method) {
+          case 'GET' || 'HEAD':
+            return current == null
+                ? error(404, 'NoSuchKey')
+                : http.Response.bytes(
+                    request.method == 'HEAD' ? [] : current.$1,
+                    200,
+                    headers: {'etag': current.$2},
+                  );
+          case 'PUT':
+            if (honoursConditionalPut) {
+              if (ifNoneMatch == '*' && current != null) {
+                return error(412, 'PreconditionFailed');
+              }
+              if (ifMatch != null && current == null) {
+                return error(404, 'NoSuchKey');
+              }
+              if (ifMatch != null && current!.$2 != ifMatch) {
+                return error(412, 'PreconditionFailed');
+              }
+            }
+            final etag = '"v${++version}"';
+            store[key] = (request.bodyBytes, etag);
+            return ok(etag: etag);
+          case 'DELETE':
+            if (honoursConditionalDelete &&
+                ifMatch != null &&
+                current?.$2 != ifMatch) {
+              return error(412, 'PreconditionFailed');
+            }
+            store.remove(key);
+            return http.Response('', 204);
+        }
+        return http.Response('', 405);
+      };
+    }
+
+    test('a store that enforces everything is race-free', () async {
+      final (s3, _) = backend(fakeS3());
+      expect(await s3.probe('v1/.probe'), StorageCapabilities.full);
+    });
+
+    test('a store that ignores If-Match on DELETE (like MinIO)', () async {
+      final (s3, _) = backend(fakeS3(honoursConditionalDelete: false));
+      final caps = await s3.probe('v1/.probe');
+      expect(caps.conditionalCreate, isTrue);
+      expect(caps.conditionalUpdate, isTrue);
+      expect(caps.conditionalDelete, isFalse);
+    });
+
+    test('a store that ignores every condition', () async {
+      final (s3, _) = backend(
+        fakeS3(honoursConditionalPut: false, honoursConditionalDelete: false),
+      );
+      final caps = await s3.probe('v1/.probe');
+      expect(caps.isRaceFree, isFalse);
+      expect(caps.warnings, hasLength(2));
+    });
+
+    test('wrong keys fail the probe with access denied', () async {
+      final (s3, _) = backend((_) async => error(403, 'InvalidAccessKeyId'));
+      await expectLater(
+        s3.probe('v1/.probe'),
+        throwsA(isA<StorageAccessDenied>()),
+      );
+    });
+  });
+
   // Runs against a real S3-compatible store when one is configured, e.g.
   // MinIO in CI (see .github/workflows/s3.yml):
   //   S3_TEST_ENDPOINT=http://127.0.0.1:9000 S3_TEST_BUCKET=devvault
@@ -324,6 +405,15 @@ void main() {
         listCount: 1005,
       );
       expect(failures, isEmpty, reason: failures.join('\n'));
+
+      final caps = await s3.probe(
+        'probe-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      // ignore: avoid_print
+      print('${env['S3_TEST_ENDPOINT']}: $caps');
+      if (env['S3_TEST_EXPECT_CAPS'] case final expected?) {
+        expect(caps.toString(), expected);
+      }
     },
     skip: endpoint == null ? 'S3_TEST_ENDPOINT not set' : false,
     timeout: const Timeout(Duration(minutes: 5)),
