@@ -116,10 +116,12 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     await _open(current.vault);
   }
 
-  /// Wipes the vault key and drops every decrypted record.
+  /// Wipes the vault key, drops every decrypted record and takes any copied
+  /// secret off the clipboard.
   void lock() {
     final current = state;
     if (current is! Unlocked) return;
+    ref.read(clipboardGuardProvider).clearNow();
     current.vault.lock();
     state = Locked(current.vault.store);
   }
