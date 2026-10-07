@@ -12,6 +12,7 @@ export 'src/parsers/apple_auth_key.dart';
 export 'src/parsers/firebase_config.dart';
 export 'src/parsers/java_keystore.dart';
 export 'src/parsers/oauth_client.dart';
+export 'src/parsers/pkcs12.dart';
 export 'src/parsers/service_account.dart';
 export 'src/parsers/x509_certificate.dart';
 export 'src/x509.dart';
