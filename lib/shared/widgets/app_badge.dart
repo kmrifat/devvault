@@ -10,13 +10,14 @@ class AppBadge extends StatelessWidget {
   final AppRecord? app;
   final double size;
 
+  /// Each deep enough for the white initial to reach WCAG AA (4.5:1).
   static const _palette = [
-    Color(0xFFF07A3A),
-    Color(0xFF0485F7),
-    Color(0xFF8B5CF6),
-    Color(0xFF0F9F94),
-    Color(0xFF17A34A),
-    Color(0xFFE5486A),
+    Color(0xFFC44F0F),
+    Color(0xFF0475D9),
+    Color(0xFF8452F5),
+    Color(0xFF0C837A),
+    Color(0xFF13863D),
+    Color(0xFFE0244D),
   ];
 
   /// The app's colour, picked from its id so it's the same on every
