@@ -40,6 +40,7 @@ void main() {
       'cert.cer': CredentialFormat.x509Certificate,
       'cert.p12': CredentialFormat.pkcs12,
       'test.mobileprovision': CredentialFormat.mobileProvision,
+      'ber.mobileprovision': CredentialFormat.mobileProvision,
       'test.jks': CredentialFormat.jks,
       'test.jceks': CredentialFormat.jceks,
       'google-services.json': CredentialFormat.googleServicesJson,
@@ -393,11 +394,14 @@ void main() {
 
     void check(String name, Uint8List bytes) {
       final i = ParseInput(filename: name, bytes: bytes);
-      for (final parsers in [standard, throwing]) {
-        final result = parsers.parse(i);
-        expect(result.type, ItemType.genericFile);
-        expect(result.facts, isEmpty);
-      }
+      final result = standard.parse(i);
+      expect(
+        result.facts.values.every((f) => f.source == FieldSource.file),
+        isTrue,
+      );
+      final failed = throwing.parse(i);
+      expect(failed.type, ItemType.genericFile);
+      expect(failed.facts, isEmpty);
     }
 
     test('random bytes under every filename', () {

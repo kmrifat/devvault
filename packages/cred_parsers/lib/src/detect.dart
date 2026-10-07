@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:vault_core/vault_core.dart' show ItemType;
 
+import 'der.dart';
+
 /// The file formats DevVault knows how to read.
 ///
 /// Detection says what a file *is*; whether a parser can read facts out of
@@ -108,47 +110,50 @@ CredentialFormat _detect(String filename, Uint8List bytes) {
   return CredentialFormat.unknown;
 }
 
-/// DER structures: CMS SignedData with a plist inside, PKCS#12 (`PFX`
+/// DER/BER structures: CMS SignedData with a plist inside, PKCS#12 (`PFX`
 /// version 3) and X.509 certificates.
 CredentialFormat? _detectDer(Uint8List bytes) {
-  final outer = _readTlv(bytes, 0);
-  if (outer == null || outer.tag != 0x30) return null;
-  final first = _readTlv(bytes, outer.contentStart);
-  if (first == null) return null;
+  try {
+    final outer = Asn1.parse(bytes, allowTrailing: true);
+    if (outer.tag != Asn1.tagSequence) return null;
+    final parts = outer.children;
+    if (parts.isEmpty) return null;
+    final first = parts[0];
 
-  // ContentInfo { contentType = signedData (1.2.840.113549.1.7.2) }
-  if (first.tag == 0x06 && _matches(bytes, first, _oidSignedData)) {
-    final head = _asciiPrefix(bytes, bytes.length);
-    return head.contains('<plist') || head.contains('bplist00')
-        ? CredentialFormat.mobileProvision
-        : null;
-  }
+    // ContentInfo { contentType = signedData, [0] content }
+    if (first.tag == Asn1.tagOid && first.oid == _oidSignedData) {
+      final text = _asciiPrefix(bytes, bytes.length);
+      return text.contains('<plist') || text.contains('bplist00')
+          ? CredentialFormat.mobileProvision
+          : null;
+    }
 
-  // PFX { version INTEGER (3), authSafe ContentInfo, ... }
-  if (first.tag == 0x02 && _matches(bytes, first, const [0x03])) {
-    final authSafe = _readTlv(bytes, first.end);
-    if (authSafe != null && authSafe.tag == 0x30) {
+    // PFX { version INTEGER (3), authSafe ContentInfo, macData? }
+    if (first.tag == Asn1.tagInteger &&
+        parts.length >= 2 &&
+        parts[1].tag == Asn1.tagSequence &&
+        first.integer == BigInt.from(3)) {
       return CredentialFormat.pkcs12;
     }
-    return null;
-  }
 
-  // Certificate { tbsCertificate SEQUENCE { [0] version?, serial, ... } }
-  if (first.tag == 0x30) {
-    final tbsFirst = _readTlv(bytes, first.contentStart);
-    if (tbsFirst != null && (tbsFirst.tag == 0xA0 || tbsFirst.tag == 0x02)) {
-      final sigAlg = _readTlv(bytes, first.end);
-      if (sigAlg != null && sigAlg.tag == 0x30) {
+    // Certificate { tbsCertificate, signatureAlgorithm, signatureValue }
+    if (first.tag == Asn1.tagSequence &&
+        parts.length == 3 &&
+        parts[1].tag == Asn1.tagSequence &&
+        parts[2].tag == Asn1.tagBitString) {
+      final tbs = first.children;
+      if (tbs.isNotEmpty &&
+          (tbs[0].isContext(0) || tbs[0].tag == Asn1.tagInteger)) {
         return CredentialFormat.x509Certificate;
       }
     }
+  } on FormatException {
+    return null;
   }
   return null;
 }
 
-const _oidSignedData = [
-  0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02, //
-];
+const _oidSignedData = '1.2.840.113549.1.7.2';
 
 CredentialFormat _detectJson(String name, Uint8List bytes) {
   if (bytes.length > _maxStructuredTextBytes) return CredentialFormat.unknown;
@@ -178,45 +183,6 @@ CredentialFormat _detectJson(String name, Uint8List bytes) {
 bool _isPlist(Uint8List bytes, String text) =>
     _startsWith(bytes, ascii.encode('bplist00')) ||
     (text.contains('<plist') && text.trimLeft().startsWith('<'));
-
-/// One DER tag-length-value header. Only single-byte tags and definite
-/// lengths are accepted, which is all the formats above use at the top.
-class _Tlv {
-  const _Tlv(this.tag, this.contentStart, this.length);
-  final int tag;
-  final int contentStart;
-  final int length;
-  int get end => contentStart + length;
-}
-
-_Tlv? _readTlv(Uint8List bytes, int offset) {
-  if (offset < 0 || offset + 2 > bytes.length) return null;
-  final tag = bytes[offset];
-  if (tag & 0x1F == 0x1F) return null;
-  var pos = offset + 1;
-  final first = bytes[pos++];
-  int length;
-  if (first < 0x80) {
-    length = first;
-  } else {
-    final count = first & 0x7F;
-    if (count == 0 || count > 4 || pos + count > bytes.length) return null;
-    length = 0;
-    for (var i = 0; i < count; i++) {
-      length = (length << 8) | bytes[pos++];
-    }
-  }
-  if (pos + length > bytes.length) return null;
-  return _Tlv(tag, pos, length);
-}
-
-bool _matches(Uint8List bytes, _Tlv tlv, List<int> content) {
-  if (tlv.length != content.length) return false;
-  for (var i = 0; i < content.length; i++) {
-    if (bytes[tlv.contentStart + i] != content[i]) return false;
-  }
-  return true;
-}
 
 bool _startsWith(Uint8List bytes, List<int> prefix) {
   if (bytes.length < prefix.length) return false;
