@@ -166,9 +166,14 @@ class _CreateVaultScreenState extends ConsumerState<CreateVaultScreen> {
                   type: BCTextType.bodySm,
                   color: BCTextColor.muted,
                 ),
-                BCLinkButton(
-                  onPressed: _busy ? null : () => context.go(Routes.joinVault),
-                  child: const Text('Join from your bucket'),
+                Semantics(
+                  link: true,
+                  child: BCLinkButton(
+                    onPressed: _busy
+                        ? null
+                        : () => context.go(Routes.joinVault),
+                    child: const Text('Join from your bucket'),
+                  ),
                 ),
               ],
             ),

@@ -90,6 +90,12 @@ void main() {
       expect(keys.keys, isEmpty);
     });
 
+    test('rotating the vault key deletes the stored key', () async {
+      await session().enableBiometricUnlock(reason: 'r');
+      (await session().rotateVaultKey(testPassword)).dispose();
+      expect(keys.keys, isEmpty);
+    });
+
     test('a key the platform invalidated is reported as gone', () async {
       await session().enableBiometricUnlock(reason: 'r');
       session().lock();

@@ -7,12 +7,32 @@ abstract final class AppTheme {
   /// bc_ui's own accent, written out so a brand change is one edit here.
   static const Color accent = Color(0xFF0485F7);
 
+  /// The same blue, darkened just enough for WCAG AA (4.5:1) in light mode:
+  /// as text on the light background, on its own soft tint (the selected
+  /// sidebar row) and for white button labels on it. `accent` itself is
+  /// 2.8–3.7:1 there (P4-08).
+  static const Color accentLight = Color(0xFF035DB0);
+
   static const BCThemeOverrides _overrides = BCThemeOverrides(accent: accent);
 
   static ThemeData light() {
-    final theme = BCTheme.light(overrides: _overrides);
+    final theme = BCTheme.light(
+      overrides: const BCThemeOverrides(accent: accentLight),
+    );
+    final bc = theme.extension<BCThemeExtension>()!;
+    // bc_ui 0.7.0's light muted and soft-status text sit just under 4.5:1
+    // on its own backgrounds (muted 4.43, warning 3.61, danger 3.80). These
+    // are the nearest shades of the same hues that pass.
     return theme.copyWith(
-      extensions: [...theme.extensions.values, AppColors.light],
+      extensions: [
+        bc.copyWith(
+          muted: const Color(0xFF686871),
+          accentSoftForeground: const Color(0xFF0760B0),
+          warningSoftForeground: const Color(0xFF885F27),
+          dangerSoftForeground: const Color(0xFFB62E2F),
+        ),
+        AppColors.light,
+      ],
     );
   }
 

@@ -7,6 +7,7 @@ import '../data/expiry_alerts.dart';
 import '../data/providers.dart';
 import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
+import '../features/settings/new_recovery_kit_dialog.dart';
 import 'auto_lock.dart';
 import 'incoming_imports.dart';
 import 'layout.dart';
@@ -52,7 +53,10 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
   @override
   void initState() {
     super.initState();
-    ref.listenManual(vaultSessionProvider, (_, _) => _sessionChanges.value++);
+    ref.listenManual(vaultSessionProvider, (previous, next) {
+      _sessionChanges.value++;
+      if (previous is! Unlocked && next is Unlocked) _offerFinishedRotation();
+    });
     ref.listenManual(
       pendingRecoveryKeyProvider,
       (_, _) => _sessionChanges.value++,
@@ -66,6 +70,23 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
     ref.listenManual(syncControllerProvider, (_, _) {});
     // Keeps expiry reminders in step with the vault from here on.
     ref.read(expiryAlertsProvider);
+  }
+
+  /// An interrupted key rotation is finished by a password unlock (SPEC
+  /// §9); its new recovery key has never been shown. Show it once.
+  void _offerFinishedRotation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = ref
+          .read(vaultSessionProvider.notifier)
+          .takePendingRecoveryKey();
+      if (key == null) return;
+      final context = _router.routerDelegate.navigatorKey.currentContext;
+      if (context == null) {
+        key.dispose();
+        return;
+      }
+      showFinishedRotationDialog(context, key);
+    });
   }
 
   @override
