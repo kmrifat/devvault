@@ -12,6 +12,7 @@ import '../services/file_export.dart';
 import '../services/file_import.dart';
 import '../services/file_saver.dart';
 import '../services/folder_revealer.dart';
+import '../services/incoming_files.dart';
 import '../services/notifications.dart';
 import '../services/recovery_kit.dart';
 
@@ -159,4 +160,10 @@ final alertDebounceProvider = Provider<Duration>(
 /// The system print dialog (recovery kit).
 final documentPrinterProvider = Provider<DocumentPrinter>(
   (ref) => const SystemDocumentPrinter(),
+);
+
+/// Files other apps hand to DevVault on phones ("Open in"). main() swaps in
+/// the platform channel there; desktop and tests get none.
+final incomingFilesProvider = Provider<IncomingFiles>(
+  (ref) => const NoIncomingFiles(),
 );

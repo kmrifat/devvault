@@ -30,6 +30,41 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- "Open with DevVault" and "Share to DevVault" for credential
+                 files (P3-03). Many arrive as application/octet-stream
+                 (.p8, .jks, .mobileprovision); the import dialog decides what
+                 a file is, never the type it came with. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:mimeType="application/x-pkcs12"/>
+                <data android:mimeType="application/x-pem-file"/>
+                <data android:mimeType="application/pkix-cert"/>
+                <data android:mimeType="application/x-x509-ca-cert"/>
+                <data android:mimeType="application/x-x509-user-cert"/>
+                <data android:mimeType="application/pkcs8"/>
+                <data android:mimeType="application/json"/>
+                <data android:mimeType="application/octet-stream"/>
+                <data android:mimeType="application/x-java-keystore"/>
+                <data android:mimeType="application/x-apple-aspen-mobileprovision"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <action android:name="android.intent.action.SEND_MULTIPLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/x-pkcs12"/>
+                <data android:mimeType="application/x-pem-file"/>
+                <data android:mimeType="application/pkix-cert"/>
+                <data android:mimeType="application/x-x509-ca-cert"/>
+                <data android:mimeType="application/x-x509-user-cert"/>
+                <data android:mimeType="application/pkcs8"/>
+                <data android:mimeType="application/json"/>
+                <data android:mimeType="application/octet-stream"/>
+                <data android:mimeType="application/x-java-keystore"/>
+                <data android:mimeType="application/x-apple-aspen-mobileprovision"/>
+            </intent-filter>
         </activity>
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
