@@ -27,6 +27,12 @@ The expected keystore fingerprints and expiry dates in
 | `two-certs.p12` | `-nokeys` with the leaf and `cert.pem`, which are unrelated: no leaf can be picked |
 | `test.mobileprovision` | `openssl cms -sign -nodetach -binary -outform DER` over a small plist |
 | `ber.mobileprovision` | `test.mobileprovision` with its outer layers re-encoded with BER indefinite lengths, as Apple writes them |
+| `development.mobileprovision` | profile below: `ProvisionedDevices` + `get-task-allow` true (Development) |
+| `adhoc.mobileprovision` | `ProvisionedDevices`, `get-task-allow` false (Ad Hoc) |
+| `appstore.mobileprovision` | no devices, `get-task-allow` false (App Store) |
+| `enterprise.mobileprovision` | `ProvisionsAllDevices` true (Enterprise / In-House) |
+| `wildcard.mobileprovision` | Development, App ID `TESTTEAM01.*` |
+| `development-ber.mobileprovision` | `development.mobileprovision` re-encoded as Apple writes it: indefinite lengths and a constructed OCTET STRING of 1000-byte chunks |
 | `test.jks`, `test.jceks` | `keytool -genkeypair -storetype JKS` / `JCEKS`, alias `upload` |
 | `keypass.jks`, `keypass.jceks` | as above, but `-keypass key-password` (key password differs from the store password) |
 | `two-keys.jks` | two `keytool -genkeypair` runs: `upload` (EC, key password `test-password`) and `release` (RSA 2048, `-keypass key-password`) |
@@ -85,3 +91,165 @@ The expected values in `pkcs12_test.dart` are from `openssl pkcs12 -info`
 (with `-legacy` for `legacy.p12`) and
 `openssl x509 -noout -subject -issuer -serial -dates -fingerprint -sha256`
 (and `-sha1`).
+
+## Provisioning profiles
+
+The `.mobileprovision` fixtures other than `test`/`ber` are CMS
+SignedData over a placeholder plist, signed with a throwaway P-256 key
+and self-signed certificate that weren't kept (the parser never looks at
+the signature). The plist mimics what the developer portal writes; every
+value is a placeholder, and the device ids are made up. The one
+`DeveloperCertificates` entry is `apple_development.cer`, so its SHA-1 is
+`openssl x509 -inform DER -in apple_development.cer -noout -fingerprint -sha1`.
+Made with OpenSSL 3.6, from this directory:
+
+```sh
+#!/bin/bash
+# Generates the provisioning-profile fixtures. Run from test/fixtures.
+set -euo pipefail
+OPENSSL=${OPENSSL:-openssl}
+work=$(mktemp -d)
+$OPENSSL req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+  -subj "/CN=DevVault Test Profile Signer/O=DevVault Tests" -days 365 \
+  -keyout "$work/signer.key" -out "$work/signer.crt" 2>/dev/null
+cert=$(base64 < apple_development.cer | tr -d '\n')
+
+# profile <out> <name> <uuid> <app-id> <get-task-allow> <devices: yes|no> <all-devices: yes|no>
+profile() {
+  local devices="" all=""
+  [ "$6" = yes ] && devices='	<key>ProvisionedDevices</key>
+	<array>
+		<string>00008030-000000000000001E</string>
+		<string>00008110-00000000000000AB</string>
+		<string>0000000000000000000000000000000000000003</string>
+	</array>'
+  [ "$7" = yes ] && all='	<key>ProvisionsAllDevices</key>
+	<true/>'
+  cat > "$work/$1.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AppIDName</key>
+	<string>DevVault Test App</string>
+	<key>ApplicationIdentifierPrefix</key>
+	<array>
+	<string>TESTTEAM01</string>
+	</array>
+	<key>CreationDate</key>
+	<date>2026-10-07T00:00:00Z</date>
+	<key>Platform</key>
+	<array>
+		<string>iOS</string>
+		<string>xrOS</string>
+		<string>visionOS</string>
+	</array>
+	<key>IsXcodeManaged</key>
+	<false/>
+	<key>DeveloperCertificates</key>
+	<array>
+		<data>$cert</data>
+	</array>
+	<key>Entitlements</key>
+	<dict>
+		<key>application-identifier</key>
+		<string>$4</string>
+		<key>keychain-access-groups</key>
+		<array>
+			<string>TESTTEAM01.*</string>
+		</array>
+		<key>get-task-allow</key>
+		<$5/>
+		<key>com.apple.developer.team-identifier</key>
+		<string>TESTTEAM01</string>
+	</dict>
+	<key>ExpirationDate</key>
+	<date>2027-10-07T00:00:00Z</date>
+	<key>Name</key>
+	<string>$2</string>
+$devices
+$all
+	<key>TeamIdentifier</key>
+	<array>
+		<string>TESTTEAM01</string>
+	</array>
+	<key>TeamName</key>
+	<string>DevVault Tests</string>
+	<key>TimeToLive</key>
+	<integer>365</integer>
+	<key>UUID</key>
+	<string>$3</string>
+	<key>Version</key>
+	<integer>1</integer>
+</dict>
+</plist>
+PLIST
+  $OPENSSL cms -sign -nodetach -binary -outform DER -md sha256 \
+    -signer "$work/signer.crt" -inkey "$work/signer.key" \
+    -in "$work/$1.plist" -out "$1"
+}
+
+profile development.mobileprovision "DevVault Test Development" \
+  00000000-0000-4000-8000-000000000001 TESTTEAM01.com.example.devvault true yes no
+profile adhoc.mobileprovision "DevVault Test Ad Hoc" \
+  00000000-0000-4000-8000-000000000002 TESTTEAM01.com.example.devvault false yes no
+profile appstore.mobileprovision "DevVault Test App Store" \
+  00000000-0000-4000-8000-000000000003 TESTTEAM01.com.example.devvault false no no
+profile enterprise.mobileprovision "DevVault Test In House" \
+  00000000-0000-4000-8000-000000000004 TESTTEAM01.com.example.devvault false no yes
+profile wildcard.mobileprovision "DevVault Test Wildcard" \
+  00000000-0000-4000-8000-000000000005 'TESTTEAM01.*' true yes no
+rm -rf "$work"
+```
+
+`development-ber.mobileprovision` is `python3 ber.py development.mobileprovision
+development-ber.mobileprovision` with this `ber.py`; `openssl cms -verify
+-noverify -inform DER` gives the same plist for both files:
+
+```python
+"""Re-encodes a DER CMS profile with BER indefinite lengths, as Apple
+writes them: ContentInfo, [0], SignedData, encapContentInfo and its [0]
+get indefinite lengths, and eContent becomes a constructed OCTET STRING
+of 1000-byte chunks. Everything else is copied unchanged.
+
+usage: python3 ber.py in.mobileprovision out.mobileprovision"""
+import sys
+
+def read(b, i):
+    tag = b[i]; n = b[i + 1]; i += 2
+    if n & 0x80:
+        k = n & 0x7F; n = int.from_bytes(b[i:i + k], 'big'); i += k
+    return tag, b[i:i + n], i + n
+
+def children(b):
+    out, i = [], 0
+    while i < len(b):
+        tag, content, end = read(b, i)
+        out.append((tag, content, b[i:end])); i = end
+    return out
+
+def der_len(n):
+    if n < 0x80: return bytes([n])
+    k = (n.bit_length() + 7) // 8
+    return bytes([0x80 | k]) + n.to_bytes(k, 'big')
+
+def indef(tag, parts):
+    return bytes([tag, 0x80]) + b''.join(parts) + b'\0\0'
+
+data = open(sys.argv[1], 'rb').read()
+_, ci, _ = read(data, 0)
+(oid_t, _, oid), (_, wrapper, _) = children(ci)
+(_, sd, _), = children(wrapper)
+sd_parts = children(sd)
+_, eci, _ = sd_parts[2]
+(_, _, e_oid), (_, e_wrap, _) = children(eci)
+(_, plist, _), = children(e_wrap)
+chunks = [b'\x04' + der_len(len(c)) + c
+          for c in (plist[i:i + 1000] for i in range(0, len(plist), 1000))]
+econtent = indef(0x24, chunks)
+eci_ber = indef(0x30, [e_oid, indef(0xA0, [econtent])])
+sd_ber = indef(0x30, [sd_parts[0][2], sd_parts[1][2], eci_ber]
+               + [p[2] for p in sd_parts[3:]])
+out = indef(0x30, [oid, indef(0xA0, [sd_ber])])
+open(sys.argv[2], 'wb').write(out)
+```
