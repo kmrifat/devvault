@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../services/clipboard_guard.dart';
+import '../services/file_saver.dart';
 
 // Every service the app depends on, in one place. Values that need I/O are
 // loaded in main() before the first frame and handed in with overrides, so
@@ -47,3 +48,6 @@ final clipboardGuardProvider = Provider<ClipboardGuard>((ref) {
   ref.onDispose(guard.dispose);
   return guard;
 });
+
+/// Save dialogs (recovery kit, exported files).
+final fileSaverProvider = Provider<FileSaver>((ref) => const SystemFileSaver());

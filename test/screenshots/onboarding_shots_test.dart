@@ -2,6 +2,7 @@
 library;
 
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/data/vault_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -39,5 +40,37 @@ void main() {
     device: ShotDevice.mobile,
     vault: TestVault.none,
     realKdf: true, // show the real Argon2id defaults
+  );
+
+  // D02: create a vault the way D01 does, then hold its recovery key.
+  Future<void> createVault(WidgetTester tester) async {
+    final c = appContainer(tester);
+    await tester.runAsync(() async {
+      final rk = await c
+          .read(vaultSessionProvider.notifier)
+          .create('correct horse battery staple');
+      c.read(pendingRecoveryKeyProvider.notifier).hold(rk);
+    });
+  }
+
+  shot(
+    'D02-recovery-kit',
+    Routes.create,
+    vault: TestVault.none,
+    interact: createVault,
+  );
+  shot(
+    'D02-recovery-kit-light',
+    Routes.create,
+    vault: TestVault.none,
+    brightness: Brightness.light,
+    interact: createVault,
+  );
+  shot(
+    'B-recovery-kit',
+    Routes.create,
+    device: ShotDevice.mobile,
+    vault: TestVault.none,
+    interact: createVault,
   );
 }

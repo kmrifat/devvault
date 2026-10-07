@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/create_vault/create_vault_screen.dart';
+import '../features/create_vault/recovery_kit_screen.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
 import 'mobile_shell.dart';
@@ -80,14 +81,7 @@ GoRouter buildRouter({
         ),
       ),
       page(Routes.create, (_) => const CreateVaultScreen()),
-      page(
-        Routes.createRecoveryKit,
-        (_) => const PlaceholderScreen(
-          title: 'Recovery kit',
-          frame: 'D02',
-          icon: LucideIcons.keyRound,
-        ),
-      ),
+      page(Routes.createRecoveryKit, (_) => const RecoveryKitScreen()),
       page(
         Routes.recover,
         (_) => const PlaceholderScreen(
