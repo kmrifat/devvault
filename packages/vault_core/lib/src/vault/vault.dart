@@ -530,6 +530,40 @@ class Vault {
     );
   }
 
+  /// Opens [envelope] as the record at [type]/[id] (sync: a pulled object
+  /// or a merge base). Returns null when it doesn't decrypt or doesn't
+  /// belong in that slot, the same test [loadAll] uses for quarantine.
+  SyncedRecord? openRecord(ObjectType type, String id, Uint8List envelope) {
+    final slot = _slot(type, id);
+    try {
+      final record = decodeRecord(
+        type,
+        Envelope.open(_crypto, slot: slot, key: _key, envelope: envelope),
+      );
+      return record.id == id ? record : null;
+    } on DecryptionFailed {
+      return null;
+    } on VaultFormatException {
+      return null;
+    }
+  }
+
+  /// Moves this device's clock past a record another device wrote, so
+  /// local edits after a sync order after it.
+  void observe(Hlc rev) => _clock = _clock.receive(rev, _now());
+
+  /// Takes `vault.json` as another device wrote it (a password change
+  /// there). Only the key wraps and KDF settings may differ: the vault id
+  /// and the vault key fingerprint must match, or it throws
+  /// [VaultKeyMismatch] and nothing is written.
+  Future<void> adoptHeader(VaultHeader remote) async {
+    if (remote.vaultId != vaultId || remote.vkId != _header.vkId) {
+      throw const VaultKeyMismatch();
+    }
+    await store.writeHeader(remote);
+    _header = remote;
+  }
+
   /// Reads one item, or `null` if it doesn't exist. Throws if it exists
   /// but can't be opened.
   Future<Item?> readItem(String id) async {
