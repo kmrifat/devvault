@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'app/app.dart';
 import 'app/routes.dart';
+import 'data/providers.dart';
+import 'services/device_id.dart';
+import 'services/window.dart';
 
 /// Opens the app at any route, e.g. `--dart-define=START=/vault`.
 const String _start = String.fromEnvironment(
@@ -9,4 +14,22 @@ const String _start = String.fromEnvironment(
   defaultValue: Routes.unlock,
 );
 
-void main() => runApp(const DevVaultApp(initialLocation: _start));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initWindow();
+
+  // Load everything that needs I/O before the first frame, so providers can
+  // stay synchronous.
+  final supportDir = await getApplicationSupportDirectory();
+  final deviceId = await loadOrCreateDeviceId(supportDir);
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        appSupportDirProvider.overrideWithValue(supportDir),
+        deviceIdProvider.overrideWithValue(deviceId),
+      ],
+      child: const DevVaultApp(initialLocation: _start),
+    ),
+  );
+}
