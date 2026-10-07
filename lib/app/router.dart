@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
+import '../features/unlock/unlock_screen.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
 import 'mobile_shell.dart';
@@ -72,14 +73,7 @@ GoRouter buildRouter({
     errorPageBuilder: (_, s) => materialPage(s, const _NotFoundScreen()),
     routes: [
       // Lock screens and first run
-      page(
-        Routes.unlock,
-        (_) => const PlaceholderScreen(
-          title: 'Unlock',
-          frame: 'D00 / B1',
-          icon: LucideIcons.lock,
-        ),
-      ),
+      page(Routes.unlock, (_) => const UnlockScreen()),
       page(Routes.create, (_) => const CreateVaultScreen()),
       page(Routes.createRecoveryKit, (_) => const RecoveryKitScreen()),
       page(

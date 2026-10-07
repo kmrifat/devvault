@@ -59,6 +59,10 @@ class VaultStore {
   Future<VaultHeader> readHeader() async =>
       VaultHeader.parse(await _headerFile.readAsString());
 
+  /// [readHeader] without awaiting; for code that has to stay synchronous.
+  VaultHeader readHeaderSync() =>
+      VaultHeader.parse(_headerFile.readAsStringSync());
+
   Future<void> writeHeader(VaultHeader header) => _writeAtomically(
     _headerFile,
     utf8.encode(header.toJsonString()),

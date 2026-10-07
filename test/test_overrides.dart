@@ -37,6 +37,7 @@ enum TestVault {
 Future<Directory> testSupportDir([
   TestVault vault = TestVault.none,
   VaultCrypto? crypto,
+  bool realKdf = false,
 ]) async {
   final dir = Directory.systemTemp.createTempSync('devvault_test_');
   addTearDown(() {
@@ -52,8 +53,8 @@ Future<Directory> testSupportDir([
       deviceId: testDeviceId,
       now: () => testNow,
       vaultId: id,
-      opsLimit: KdfParams.minOpsLimit,
-      memLimit: KdfParams.minMemLimit,
+      opsLimit: realKdf ? KdfParams.defaultOpsLimit : KdfParams.minOpsLimit,
+      memLimit: realKdf ? KdfParams.defaultMemLimit : KdfParams.minMemLimit,
     );
     created.lock();
     recoveryKey.dispose();
