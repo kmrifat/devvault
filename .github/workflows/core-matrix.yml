@@ -1,8 +1,9 @@
 name: Vault core
 
-# vault_core is the format contract. Its tests run on every desktop OS so a
-# platform difference (line endings, file renames, native crypto loading)
-# shows up before it reaches a user's vault.
+# vault_core is the format contract. On main its tests run on every desktop
+# OS, so a platform difference (file renames, libsodium compiling) shows up
+# before it reaches a user's vault. PRs run Linux only (macOS and Windows
+# minutes cost 10x and 2x on a private repo).
 
 on:
   pull_request:
@@ -27,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ github.event_name == 'pull_request' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "macos-latest", "windows-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
