@@ -6,6 +6,7 @@ import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/services/clipboard_guard.dart';
 import 'package:devvault/services/file_saver.dart';
+import 'package:devvault/services/recovery_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -14,7 +15,12 @@ import 'clipboard_guard_test.dart' show FakeClipboard;
 import 'test_overrides.dart';
 
 class FakeFileSaver implements FileSaver {
+  /// What was saved, as text (a PDF reads as Latin-1).
   final saved = <String, String>{};
+
+  /// The buffers handed over, by reference: wiped after a PDF is saved.
+  final buffers = <String, Uint8List>{};
+  final mimeTypes = <String, String>{};
 
   @override
   Future<bool> save({
@@ -22,7 +28,25 @@ class FakeFileSaver implements FileSaver {
     required Uint8List bytes,
     String mimeType = 'application/octet-stream',
   }) async {
-    saved[fileName] = utf8.decode(bytes);
+    saved[fileName] = mimeType == 'application/pdf'
+        ? latin1.decode(bytes)
+        : utf8.decode(bytes);
+    buffers[fileName] = bytes;
+    mimeTypes[fileName] = mimeType;
+    return true;
+  }
+}
+
+class FakePrinter implements DocumentPrinter {
+  String? printed;
+  String? name;
+  Uint8List? buffer;
+
+  @override
+  Future<bool> printPdf(Uint8List bytes, {required String name}) async {
+    printed = latin1.decode(bytes);
+    this.name = name;
+    buffer = bytes;
     return true;
   }
 }
@@ -32,6 +56,7 @@ void main() {
 
   late FakeClipboard clipboard;
   late FakeFileSaver saver;
+  late FakePrinter printer;
   late String keyText;
 
   /// Creates a vault the way D01 does and lands on the recovery kit.
@@ -42,6 +67,7 @@ void main() {
     addTearDown(tester.view.reset);
     clipboard = FakeClipboard();
     saver = FakeFileSaver();
+    printer = FakePrinter();
     final dir = await tester.runAsync(testSupportDir);
     await tester.pumpWidget(
       testApp(
@@ -52,6 +78,7 @@ void main() {
             ClipboardGuard(clipboard: clipboard),
           ),
           fileSaverProvider.overrideWithValue(saver),
+          documentPrinterProvider.overrideWithValue(printer),
         ],
       ),
     );
@@ -104,7 +131,7 @@ void main() {
 
   testWidgets('saves a text kit with the key and the vault id', (tester) async {
     await openKit(tester);
-    await tester.tap(find.text('Save as text file'));
+    await tester.tap(find.text('Save as text'));
     await tester.pumpAndSettle();
     final kit = saver.saved['DevVault Recovery Key.txt']!;
     expect(kit, contains(keyText));
@@ -112,5 +139,54 @@ void main() {
         (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
     expect(kit, contains(vault.vaultId));
     expect(kit, contains("Don't store it inside DevVault"));
+  });
+
+  /// PDF work (font loading, rendering) is real async work.
+  Future<void> settle(WidgetTester tester, bool Function() done) async {
+    for (var i = 0; i < 1000 && !done(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    expect(done(), isTrue, reason: 'never finished');
+    await tester.pumpAndSettle();
+  }
+
+  bool isPdf(String? text) =>
+      text != null &&
+      text.startsWith('%PDF-') &&
+      text.trimRight().endsWith('%%EOF');
+
+  testWidgets('saves a one-page PDF, then wipes its bytes', (tester) async {
+    await openKit(tester);
+    await tester.tap(find.text('Save PDF'));
+    await settle(
+      tester,
+      () => saver.saved.containsKey('DevVault Recovery Key.pdf'),
+    );
+    final pdf = saver.saved['DevVault Recovery Key.pdf'];
+    expect(isPdf(pdf), isTrue);
+    expect(saver.mimeTypes['DevVault Recovery Key.pdf'], 'application/pdf');
+    // One page: the page tree counts a single page.
+    expect(RegExp(r'/Type\s*/Pages\b').hasMatch(pdf!), isTrue);
+    expect(RegExp(r'/Count\s*1\b').hasMatch(pdf), isTrue);
+    expect(RegExp(r'/Count\s*([2-9]|\d\d)').hasMatch(pdf), isFalse);
+    // Nothing kept: the buffer handed to the save dialog is zeroed after.
+    expect(
+      saver.buffers['DevVault Recovery Key.pdf']!.every((b) => b == 0),
+      isTrue,
+    );
+    expect(find.text('Recovery kit saved as PDF'), findsOneWidget);
+  });
+
+  testWidgets('prints the PDF through the system dialog', (tester) async {
+    await openKit(tester);
+    await tester.tap(find.text('Print'));
+    await settle(tester, () => printer.printed != null);
+    expect(isPdf(printer.printed), isTrue);
+    expect(printer.name, 'DevVault Recovery Key');
+    expect(printer.buffer!.every((b) => b == 0), isTrue);
+    expect(saver.saved, isEmpty);
   });
 }

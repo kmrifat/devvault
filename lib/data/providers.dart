@@ -13,6 +13,7 @@ import '../services/file_import.dart';
 import '../services/file_saver.dart';
 import '../services/folder_revealer.dart';
 import '../services/notifications.dart';
+import '../services/recovery_kit.dart';
 
 // Every service the app depends on, in one place. Values that need I/O are
 // loaded in main() before the first frame and handed in with overrides, so
@@ -153,4 +154,9 @@ final alertLedgerFileProvider = Provider<AlertLedgerFile>(
 /// rescheduling.
 final alertDebounceProvider = Provider<Duration>(
   (ref) => const Duration(seconds: 2),
+);
+
+/// The system print dialog (recovery kit).
+final documentPrinterProvider = Provider<DocumentPrinter>(
+  (ref) => const SystemDocumentPrinter(),
 );

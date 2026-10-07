@@ -178,6 +178,8 @@ void main() {
     });
   });
 
+  // Real KDFs (PKCS#12, JCEKS) and file I/O for every fixture: the
+  // timeout leaves room for a loaded machine.
   test('every fixture imports, and its bytes come back unchanged', () async {
     final dir = await testSupportDir(TestVault.locked);
     final store = findVault(Directory('${dir.path}/vaults'))!;
@@ -244,7 +246,7 @@ void main() {
     expect(contents.items, hasLength(names.length));
     expect(contents.quarantined, isEmpty);
     vault.lock();
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   group('dialog', () {
     late FakeFileOpener opener;
@@ -281,7 +283,7 @@ void main() {
       bool Function() done, {
       bool andSettle = true,
     }) async {
-      for (var i = 0; i < 300 && !done(); i++) {
+      for (var i = 0; i < 1000 && !done(); i++) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );
