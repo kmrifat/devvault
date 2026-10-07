@@ -8,6 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'test_overrides.dart';
 
 void main() {
+  setUpAll(loadTestCrypto);
+
+  /// Opens [location] with an unlocked vault.
   Future<void> open(
     WidgetTester tester,
     AppLayout layout,
@@ -19,20 +22,16 @@ void main() {
           : const Size(390 * 3, 844 * 3)
       ..devicePixelRatio = layout == AppLayout.desktop ? 1 : 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(testApp(location: location, layout: layout));
-    await tester.pumpAndSettle();
+    await pumpUnlockedApp(tester, location: location, layout: layout);
   }
 
   String location(WidgetTester tester) =>
       GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
           .toString();
 
-  /// Every route the app has, with the title its placeholder shows.
+  /// Every route reachable with an open vault, with the title its
+  /// placeholder shows. Lock screens are covered by session_routing_test.
   const screens = {
-    Routes.unlock: 'Unlock',
-    Routes.create: 'Create vault',
-    Routes.createRecoveryKit: 'Recovery kit',
-    Routes.recover: 'Recover with recovery key',
     Routes.pair: 'Pair a device',
     Routes.expiry: 'Expiry',
     Routes.settings: 'Settings',

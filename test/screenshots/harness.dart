@@ -20,7 +20,6 @@ import 'package:devvault/app/app.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,6 +29,7 @@ import '../test_overrides.dart';
 /// so screenshots show real glyphs instead of the test font's boxes.
 Future<void> loadAppFonts() async {
   TestWidgetsFlutterBinding.ensureInitialized();
+  await loadTestCrypto();
   final manifest = json.decode(
     await rootBundle.loadString('FontManifest.json'),
   ) as List<dynamic>;
@@ -98,13 +98,13 @@ void shot(
     // tearDowns run.
     debugDisableShadows = false;
     try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [...testOverrides(), ...overrides],
-          child: DevVaultApp(initialLocation: route, layout: device.layout),
-        ),
+      await pumpUnlockedApp(
+        tester,
+        location: route,
+        layout: device.layout,
+        overrides: overrides,
+        settle: () => _settle(tester),
       );
-      await _settle(tester);
       if (interact != null) {
         await interact(tester);
         await _settle(tester);
