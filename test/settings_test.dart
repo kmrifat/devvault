@@ -142,6 +142,8 @@ void main() {
           (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
       expect(find.text(vault.vaultId), findsOneWidget);
       expect(find.textContaining('Argon2id 8 MiB, 1 pass'), findsOneWidget);
+      await tester.ensureVisible(find.text('Show'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
       expect(revealer.revealed, [vault.store.root.path]);
