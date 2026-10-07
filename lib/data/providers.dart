@@ -57,3 +57,18 @@ final fileSaverProvider = Provider<FileSaver>((ref) => const SystemFileSaver());
 final fileExportProvider = Provider<FileExport>(
   (ref) => FileExport(ref.watch(fileSaverProvider)),
 );
+
+/// How long the vault stays open without any input before it locks itself;
+/// null never locks on idle. Settings (P1-23) changes and keeps it.
+class AutoLockSetting extends Notifier<Duration?> {
+  static const defaultAfter = Duration(minutes: 5);
+
+  @override
+  Duration? build() => defaultAfter;
+
+  void set(Duration? after) => state = after;
+}
+
+final autoLockProvider = NotifierProvider<AutoLockSetting, Duration?>(
+  AutoLockSetting.new,
+);
