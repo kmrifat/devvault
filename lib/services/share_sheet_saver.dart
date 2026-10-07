@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:share_plus/share_plus.dart';
 
 import 'file_saver.dart';
+import 'external_ui.dart';
 
 /// Opens the share sheet with one file and says whether the user picked
 /// a destination. Abstract so tests don't open a sheet.
@@ -36,9 +37,11 @@ class ShareSheetSaver implements FileSaver {
     String fileName,
     String mimeType,
   ) async {
-    final result = await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(path, mimeType: mimeType, name: fileName)],
+    final result = await ExternalUi.run(
+      () => SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(path, mimeType: mimeType, name: fileName)],
+        ),
       ),
     );
     // "unavailable": shared, but the platform can't say where to.

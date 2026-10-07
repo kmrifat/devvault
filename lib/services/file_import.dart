@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 
 import '../features/import/import_draft.dart';
+import 'external_ui.dart';
 
 /// Lets the user choose files to import (an open dialog on desktop, the
 /// system file browser on phones). Abstract so tests don't open dialogs.
@@ -14,7 +15,9 @@ class SystemFileOpener implements FileOpener {
 
   @override
   Future<List<PickedFile>> pick() async {
-    final files = await FilePicker.pickFiles(dialogTitle: 'Import files');
+    final files = await ExternalUi.run(
+      () => FilePicker.pickFiles(dialogTitle: 'Import files'),
+    );
     return [
       for (final file in files)
         PickedFile(name: file.name, bytes: await file.readAsBytes()),

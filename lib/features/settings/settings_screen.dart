@@ -90,10 +90,12 @@ class SettingsScreen extends ConsumerWidget {
                     BCListGroupItem(
                       prefix: const Icon(LucideIcons.timer),
                       title: 'Lock after',
-                      description:
-                          'Without input. '
-                          '${defaultTargetPlatform == TargetPlatform.macOS ? '⌘L' : 'Ctrl+L'} '
-                          'locks right away.',
+                      description: ref.watch(lockInBackgroundProvider)
+                          ? 'Without input, and as soon as DevVault goes to '
+                                'the background.'
+                          : 'Without input. '
+                                '${defaultTargetPlatform == TargetPlatform.macOS ? '⌘L' : 'Ctrl+L'} '
+                                'locks right away.',
                       suffix: _Picker<Duration?>(
                         label: 'Lock after',
                         value: settings.autoLockAfter,

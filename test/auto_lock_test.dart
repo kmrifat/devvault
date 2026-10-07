@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:devvault/app/auto_lock.dart';
@@ -7,6 +8,7 @@ import 'package:devvault/data/app_settings.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/services/clipboard_guard.dart';
+import 'package:devvault/services/external_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,7 +24,7 @@ void main() {
   late DateTime now;
   late FakeClipboard clipboard;
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {bool phone = false}) async {
     tester.view
       ..physicalSize = const Size(1440, 900)
       ..devicePixelRatio = 1;
@@ -39,9 +41,24 @@ void main() {
         clipboardGuardProvider.overrideWithValue(
           ClipboardGuard(clipboard: clipboard),
         ),
+        lockInBackgroundProvider.overrideWithValue(phone),
       ],
     );
   }
+
+  /// Steps the app lifecycle through to [to], as the platform reports it.
+  Future<void> lifecycle(
+    WidgetTester tester,
+    List<AppLifecycleState> to,
+  ) async {
+    for (final state in to) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pumpAndSettle();
+  }
+
+  const toBackground = [AppLifecycleState.inactive, AppLifecycleState.hidden];
+  const toFront = [AppLifecycleState.inactive, AppLifecycleState.resumed];
 
   VaultSession session(WidgetTester tester) =>
       appContainer(tester).read(vaultSessionProvider);
@@ -167,5 +184,66 @@ void main() {
 
   test('defaults to 5 minutes', () {
     expect(const AppSettings().autoLockAfter, const Duration(minutes: 5));
+  });
+
+  group('in the background', () {
+    tearDown(() {
+      // Leave the binding in front for the next test.
+      for (final state in toFront) {
+        TestWidgetsFlutterBinding.instance.handleAppLifecycleStateChanged(
+          state,
+        );
+      }
+    });
+
+    testWidgets('a phone locks as soon as the app is hidden', (tester) async {
+      await open(tester, phone: true);
+      await lifecycle(tester, [AppLifecycleState.inactive]);
+      expect(
+        session(tester),
+        isA<Unlocked>(),
+        reason: 'inactive is Face ID or the app switcher, not background',
+      );
+      await lifecycle(tester, [AppLifecycleState.hidden]);
+      expect(session(tester), isA<Locked>());
+      await lifecycle(tester, toFront);
+      expect(location(tester), startsWith(Routes.unlock));
+    });
+
+    testWidgets('not while DevVault\'s own picker is in front', (tester) async {
+      await open(tester, phone: true);
+      final picker = Completer<void>();
+      final picking = ExternalUi.run(() => picker.future);
+      await lifecycle(tester, toBackground);
+      expect(session(tester), isA<Unlocked>());
+
+      // The picker returns, but the user went elsewhere meanwhile.
+      picker.complete();
+      await picking;
+      await tester.pumpAndSettle();
+      expect(session(tester), isA<Locked>());
+    });
+
+    testWidgets('a picker that returns to the app keeps it open', (
+      tester,
+    ) async {
+      await open(tester, phone: true);
+      final picker = Completer<void>();
+      final picking = ExternalUi.run(() => picker.future);
+      await lifecycle(tester, toBackground);
+      await lifecycle(tester, toFront);
+      picker.complete();
+      await picking;
+      await tester.pumpAndSettle();
+      expect(session(tester), isA<Unlocked>());
+    });
+
+    testWidgets('desktop keeps the vault open in the background', (
+      tester,
+    ) async {
+      await open(tester);
+      await lifecycle(tester, toBackground);
+      expect(session(tester), isA<Unlocked>());
+    });
   });
 }

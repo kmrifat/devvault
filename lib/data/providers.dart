@@ -53,10 +53,21 @@ final vaultsDirProvider = Provider<Directory>(
 final kdfOpsLimitProvider = Provider<int>((ref) => KdfParams.defaultOpsLimit);
 final kdfMemLimitProvider = Provider<int>((ref) => KdfParams.defaultMemLimit);
 
+/// Whether the vault locks as soon as the app goes to the background.
+/// main() turns it on for phones (P3-06).
+final lockInBackgroundProvider = Provider<bool>((ref) => false);
+
+/// The system clipboard. main() swaps in [ChannelSensitiveClipboard] on
+/// phones.
+final clipboardAccessProvider = Provider<ClipboardAccess>(
+  (ref) => const SystemClipboard(),
+);
+
 /// Copies secrets and clears them again (default after 30 seconds, and on
 /// lock).
 final clipboardGuardProvider = Provider<ClipboardGuard>((ref) {
   final guard = ClipboardGuard(
+    clipboard: ref.read(clipboardAccessProvider),
     clearAfter: ref.read(settingsProvider).clipboardClearAfter,
   );
   // Follows the setting without dropping a clear that's already pending.

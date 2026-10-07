@@ -56,4 +56,30 @@ void main() {
     await guard.clearNow();
     expect(clipboard.text, 'later copy', reason: 'nothing of ours left');
   });
+
+  testWidgets('marks the copy as a secret where the clipboard can', (
+    tester,
+  ) async {
+    final secret = _SecretClipboard();
+    final guard = ClipboardGuard(
+      clipboard: secret,
+      clearAfter: const Duration(seconds: 10),
+    );
+    addTearDown(guard.dispose);
+    await guard.copySecret('hunter2');
+    expect(secret.text, 'hunter2');
+    expect(secret.expiresIn, const Duration(seconds: 10));
+    await tester.pump(const Duration(seconds: 10));
+    expect(secret.text, '', reason: 'still cleared by DevVault itself');
+  });
+}
+
+class _SecretClipboard extends FakeClipboard implements SecretClipboardAccess {
+  Duration? expiresIn;
+
+  @override
+  Future<void> writeSecret(String text, {required Duration expiresIn}) async {
+    this.text = text;
+    this.expiresIn = expiresIn;
+  }
 }

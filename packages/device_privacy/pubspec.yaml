@@ -1,0 +1,25 @@
+name: device_privacy
+description: "DevVault's mobile privacy (P3-06): app switcher cover and FLAG_SECURE, sensitive clipboard."
+publish_to: 'none'
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.4
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.binarycastle.device_privacy
+        pluginClass: DevicePrivacyPlugin
+      ios:
+        pluginClass: DevicePrivacyPlugin
