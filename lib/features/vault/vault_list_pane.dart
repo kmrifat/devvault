@@ -46,6 +46,15 @@ class VaultListPane extends ConsumerWidget {
             apps: index.apps,
             count: quarantine ? index.quarantined.length : matching.length,
           ),
+          if (_selectedApp(filter, index) case final app?) ...[
+            const SizedBox(height: 10),
+            _AppDetails(
+              app: app,
+              itemCount: index.items.values
+                  .where((i) => i.appId == app.id)
+                  .length,
+            ),
+          ],
           if (!quarantine) ...[
             const SizedBox(height: 14),
             BCTabs<VaultKind>(
@@ -80,6 +89,80 @@ class VaultListPane extends ConsumerWidget {
           const _DropZone(),
         ],
       ),
+    );
+  }
+}
+
+/// The app the sidebar selected, when it selected just an app.
+AppRecord? _selectedApp(VaultFilter filter, VaultIndex index) =>
+    filter.platform == null &&
+        filter.env == null &&
+        filter.tag == null &&
+        filter.view == null
+    ? index.apps[filter.app]
+    : null;
+
+/// The selected app's store identifiers, with Edit and Delete.
+class _AppDetails extends ConsumerWidget {
+  const _AppDetails({required this.app, required this.itemCount});
+
+  final AppRecord app;
+  final int itemCount;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bc = context.bcTheme;
+    final ids = [...app.bundleIds, ...app.packageNames];
+    return Row(
+      spacing: BCSpacing.xs,
+      children: [
+        Expanded(
+          child: ids.isEmpty
+              ? const BCText(
+                  'No bundle IDs or package names',
+                  type: BCTextType.bodyXs,
+                  color: BCTextColor.muted,
+                )
+              : MonoText(
+                  ids.join(' · '),
+                  middleEllipsis: true,
+                  style: TextStyle(
+                    fontSize: BCTypography.sizeXs,
+                    color: bc.muted,
+                  ),
+                ),
+        ),
+        BCButton(
+          size: BCButtonSize.sm,
+          variant: BCButtonVariant.ghost,
+          onPressed: () => editApp(context, app),
+          startContent: const Icon(LucideIcons.pencil, size: 14),
+          child: const Text('Edit app'),
+        ),
+        BCMenu(
+          alignment: BCOverlayAlignment.end,
+          trigger: (context, controller) => BCButton(
+            size: BCButtonSize.sm,
+            variant: BCButtonVariant.ghost,
+            isIconOnly: true,
+            onPressed: controller.toggle,
+            child: const Icon(
+              LucideIcons.ellipsis,
+              size: 16,
+              semanticLabel: 'App actions',
+            ),
+          ),
+          children: [
+            BCMenuItem(
+              title: 'Delete app…',
+              icon: const Icon(LucideIcons.trash2),
+              variant: BCMenuItemVariant.danger,
+              onSelected: () =>
+                  deleteApp(context, ref, app, itemCount: itemCount),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
