@@ -26,4 +26,5 @@ void main() {
     vault: TestVault.locked,
     realKdf: true,
   );
+  shot('D00-recover', Routes.recover, vault: TestVault.locked);
 }

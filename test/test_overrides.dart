@@ -22,6 +22,9 @@ VaultCrypto get testCrypto =>
     _crypto ?? (throw StateError('Call setUpAll(loadTestCrypto) first'));
 Future<void> loadTestCrypto() async => _crypto ??= await VaultCrypto.init();
 
+/// The recovery key of the vault the last [testSupportDir] call created.
+String? lastTestRecoveryKey;
+
 /// What the device holds when a test starts.
 enum TestVault {
   /// First launch: no vault yet.
@@ -57,6 +60,7 @@ Future<Directory> testSupportDir([
       memLimit: realKdf ? KdfParams.defaultMemLimit : KdfParams.minMemLimit,
     );
     created.lock();
+    lastTestRecoveryKey = recoveryKey.toDisplayString();
     recoveryKey.dispose();
   }
   return dir;

@@ -74,6 +74,27 @@ void main() {
       expect(go(unlocked, '/unlock?from=%2Funlock'), Routes.vault());
     });
 
+    test('after a recovery-key unlock, a new password comes first', () {
+      expect(
+        sessionRedirect(
+          unlocked,
+          Uri.parse(Routes.vault()),
+          recoveryKitPending: false,
+          passwordResetPending: true,
+        ),
+        Routes.recover,
+      );
+      expect(
+        sessionRedirect(
+          unlocked,
+          Uri.parse(Routes.recover),
+          recoveryKitPending: false,
+          passwordResetPending: true,
+        ),
+        isNull,
+      );
+    });
+
     test('a fresh recovery key must be seen before anything else', () {
       expect(
         go(unlocked, Routes.vault(), kitPending: true),

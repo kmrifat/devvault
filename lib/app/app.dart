@@ -40,6 +40,7 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       ref.read(vaultSessionProvider),
       state.uri,
       recoveryKitPending: ref.read(pendingRecoveryKeyProvider) != null,
+      passwordResetPending: ref.read(passwordResetPendingProvider),
     ),
   );
 
@@ -49,6 +50,10 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
     ref.listenManual(vaultSessionProvider, (_, _) => _sessionChanges.value++);
     ref.listenManual(
       pendingRecoveryKeyProvider,
+      (_, _) => _sessionChanges.value++,
+    );
+    ref.listenManual(
+      passwordResetPendingProvider,
       (_, _) => _sessionChanges.value++,
     );
   }
