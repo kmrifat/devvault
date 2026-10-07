@@ -1,0 +1,82 @@
+name: S3 backend
+
+# vault_s3 against a real S3 implementation: MinIO, running the same
+# conformance suite as the in-memory and folder backends
+# (checkStorageConformance), including ListObjectsV2 paging.
+#
+# MinIO no longer publishes community images or binaries, so the pinned
+# release is built from source with `go install` and cached by version.
+
+on:
+  pull_request:
+    paths:
+      - packages/vault_s3/**
+      - packages/vault_core/lib/src/sync/**
+      - .github/workflows/s3.yml
+  push:
+    branches: [main]
+    paths:
+      - packages/vault_s3/**
+      - packages/vault_core/lib/src/sync/**
+  workflow_dispatch:
+
+concurrency:
+  group: s3-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MINIO_VERSION: RELEASE.2025-09-07T16-13-09Z
+
+jobs:
+  minio:
+    name: vault_s3 against MinIO
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      S3_TEST_ENDPOINT: http://127.0.0.1:9000
+      S3_TEST_BUCKET: devvault
+      S3_TEST_ACCESS_KEY: devvault
+      S3_TEST_SECRET_KEY: devvault-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache MinIO
+        id: minio-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/minio-bin
+          key: minio-${{ env.MINIO_VERSION }}-${{ runner.os }}
+      - uses: actions/setup-go@v5
+        if: steps.minio-cache.outputs.cache-hit != 'true'
+        with:
+          go-version: '1.24'
+          cache: false
+      - name: Build MinIO
+        if: steps.minio-cache.outputs.cache-hit != 'true'
+        run: GOBIN=$HOME/minio-bin go install github.com/minio/minio@$MINIO_VERSION
+      - name: Start MinIO
+        run: |
+          mkdir -p /tmp/minio-data
+          MINIO_ROOT_USER="$S3_TEST_ACCESS_KEY" MINIO_ROOT_PASSWORD="$S3_TEST_SECRET_KEY" \
+            nohup ~/minio-bin/minio server /tmp/minio-data --address 127.0.0.1:9000 \
+            > /tmp/minio.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf "$S3_TEST_ENDPOINT/minio/health/ready" && break
+            sleep 1
+          done
+          ~/minio-bin/minio --version
+          # Create the bucket with curl's own SigV4 (mc isn't installed).
+          curl -sf --aws-sigv4 "aws:amz:us-east-1:s3" \
+            --user "$S3_TEST_ACCESS_KEY:$S3_TEST_SECRET_KEY" \
+            -X PUT "$S3_TEST_ENDPOINT/$S3_TEST_BUCKET"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Test
+        working-directory: packages/vault_s3
+        run: dart test
+      - name: MinIO log
+        if: failure()
+        run: tail -50 /tmp/minio.log

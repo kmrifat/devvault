@@ -5,6 +5,7 @@
 /// server.
 library;
 
+export 'src/s3_backend.dart';
 export 'src/sigv4.dart';
 
 /// Region to sign with when the provider has no real regions (Cloudflare R2).

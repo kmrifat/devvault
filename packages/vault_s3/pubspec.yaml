@@ -9,7 +9,10 @@ environment:
 
 dependencies:
   crypto: ^3.0.7
+  http: ^1.6.0
   meta: ^1.19.0
+  vault_core:
+    path: ../vault_core
 
 dev_dependencies:
   lints: ^6.0.0
