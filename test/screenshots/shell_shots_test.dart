@@ -54,11 +54,12 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Edit'));
     },
   );
-  shot('B2-vault-shell', Routes.vault(), device: ShotDevice.mobile);
+  shot('B2-vault', Routes.vault(), device: ShotDevice.mobile, sample: true);
   shot(
-    'B2-vault-shell-light',
+    'B2-vault-light',
     Routes.vault(),
     device: ShotDevice.mobile,
+    sample: true,
     brightness: Brightness.light,
   );
 }
