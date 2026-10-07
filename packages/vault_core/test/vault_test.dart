@@ -111,6 +111,17 @@ void main() {
     expect(second.createdAt, first.createdAt);
   });
 
+  test('newApp + putApp saves an app that loads back', () async {
+    final (vault, _) = await create();
+    final app = await vault.putApp(
+      vault.newApp(name: 'Kitchenly', bundleIds: ['com.kitchenly.app']),
+    );
+    final loaded = (await vault.loadAll()).apps[app.id]!;
+    expect(loaded.name, 'Kitchenly');
+    expect(loaded.bundleIds, ['com.kitchenly.app']);
+    expect(loaded.deviceId, vault.deviceId);
+  });
+
   test('revs keep growing after unlocking on a later run', () async {
     final (vault, _) = await create();
     final first = await addKeystore(vault);

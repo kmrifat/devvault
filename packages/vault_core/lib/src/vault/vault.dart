@@ -365,6 +365,25 @@ class Vault {
     );
   }
 
+  /// A new app, stamped but not yet saved; pass it to [putApp].
+  AppRecord newApp({
+    required String name,
+    List<String> bundleIds = const [],
+    List<String> packageNames = const [],
+  }) {
+    final now = _now();
+    return AppRecord(
+      id: newId(),
+      name: name,
+      bundleIds: bundleIds,
+      packageNames: packageNames,
+      createdAt: now,
+      updatedAt: now,
+      rev: _clock,
+      deviceId: deviceId,
+    );
+  }
+
   /// Saves [item], stamping a new `rev`, this device and the update time.
   Future<Item> putItem(Item item) async {
     if (item.isReadOnly) {

@@ -101,7 +101,7 @@ GoRouter buildRouter({
 
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => desktop
-            ? DesktopShell(navigationShell: shell)
+            ? DesktopShell(navigationShell: shell, uri: state.uri)
             : MobileShell(navigationShell: shell),
         branches: [
           StatefulShellBranch(

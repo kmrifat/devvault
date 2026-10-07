@@ -1,6 +1,7 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -69,7 +70,7 @@ void main() {
       tester,
     ) async {
       await open(tester, AppLayout.desktop, Routes.vault());
-      expect(find.byType(BCNavDrawer), findsOneWidget);
+      expect(find.byType(VaultSidebar), findsOneWidget);
       expect(find.byType(BCBottomNav), findsNothing);
       expect(find.text('Items'), findsOneWidget);
       expect(find.text('No item selected'), findsOneWidget);
@@ -79,7 +80,7 @@ void main() {
       await open(tester, AppLayout.desktop, Routes.item('abc'));
       expect(location(tester), Routes.vault(item: 'abc'));
       expect(find.text('Item abc'), findsOneWidget);
-      expect(find.byType(BCNavDrawer), findsOneWidget);
+      expect(find.byType(VaultSidebar), findsOneWidget);
     });
 
     testWidgets('sidebar switches branches', (tester) async {
@@ -87,9 +88,15 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
       expect(location(tester), Routes.settings);
-      await tester.tap(find.text('Expiry'));
+      await tester.tap(find.text('Expiring soon'));
       await tester.pumpAndSettle();
       expect(location(tester), Routes.expiry);
+      await tester.tap(find.text('Expired'));
+      await tester.pumpAndSettle();
+      expect(location(tester), Routes.expiryShowing(expired: true));
+      await tester.tap(find.text('All items'));
+      await tester.pumpAndSettle();
+      expect(location(tester), Routes.vault());
     });
   });
 
@@ -97,7 +104,7 @@ void main() {
     testWidgets('shows the bottom nav, not the sidebar', (tester) async {
       await open(tester, AppLayout.mobile, Routes.vault());
       expect(find.byType(BCBottomNav), findsOneWidget);
-      expect(find.byType(BCNavDrawer), findsNothing);
+      expect(find.byType(VaultSidebar), findsNothing);
       expect(
         find.descendant(
           of: find.byType(BCEmptyState),

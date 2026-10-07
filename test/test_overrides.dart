@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_core/vault_core.dart';
 
+import 'sample_vault.dart';
+
 /// The fixed "now" every test sees: the day the project started.
 final testNow = DateTime.utc(2026, 10, 7, 9);
 
@@ -32,6 +34,10 @@ enum TestVault {
 
   /// A vault exists, locked, with password [testPassword].
   locked,
+
+  /// Like [locked], filled with the design frames' credentials
+  /// ([seedSampleVault]).
+  sample,
 }
 
 /// A throwaway app support folder, optionally with a vault in it.
@@ -46,7 +52,7 @@ Future<Directory> testSupportDir([
   addTearDown(() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
-  if (vault == TestVault.locked) {
+  if (vault != TestVault.none) {
     final c = crypto ?? testCrypto;
     final id = VaultKeys.uuidV4(c);
     final (created, recoveryKey) = await Vault.create(
@@ -59,6 +65,7 @@ Future<Directory> testSupportDir([
       opsLimit: realKdf ? KdfParams.defaultOpsLimit : KdfParams.minOpsLimit,
       memLimit: realKdf ? KdfParams.defaultMemLimit : KdfParams.minMemLimit,
     );
+    if (vault == TestVault.sample) await seedSampleVault(created, testNow);
     created.lock();
     lastTestRecoveryKey = recoveryKey.toDisplayString();
     recoveryKey.dispose();
@@ -107,18 +114,17 @@ ProviderContainer appContainer(WidgetTester tester) =>
 
 /// Opens the app at [location] with an unlocked vault: the app starts
 /// locked, bounces to unlock, and the test unlocks it the way the unlock
-/// screen would.
+/// screen would. The vault is empty unless [vault] is [TestVault.sample].
 Future<void> pumpUnlockedApp(
   WidgetTester tester, {
   required String location,
+  TestVault vault = TestVault.locked,
   AppLayout? layout,
   List<Override> overrides = const [],
   VaultCrypto? crypto,
   Future<void> Function()? settle,
 }) async {
-  final dir = await tester.runAsync(
-    () => testSupportDir(TestVault.locked, crypto),
-  );
+  final dir = await tester.runAsync(() => testSupportDir(vault, crypto));
   await tester.pumpWidget(
     testApp(
       location: location,
