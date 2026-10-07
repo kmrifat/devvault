@@ -33,6 +33,8 @@ Field keys are `static const`s on each parser class.
 |---|---|---|
 | `AppleAuthKeyParser` | `.p8` | none (the key itself stays in the file) |
 | `X509CertificateParser` | `.cer`, `.crt`, single-cert PEM | none |
+| `PemBundleParser` | several PEM blocks: a chain, or a cert with its key (APNs `.pem`) | none (keys are noticed, never decoded) |
+| `SshPrivateKeyParser` | OpenSSH private keys | none (the key itself stays in the file) |
 | `Pkcs12Parser` | `.p12`, `.pfx` | none (asks for `password`) |
 | `ProvisioningProfileParser` | `.mobileprovision`, `.provisionprofile` (CMS signature not verified) | none |
 | `JavaKeystoreParser` | JKS, JCEKS | none (asks for `store_password`, `key_password`) |

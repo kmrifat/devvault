@@ -334,6 +334,7 @@ Blobs are left for garbage collection.
 | `firebase_config` | `google-services.json`, `GoogleService-Info.plist` | none |
 | `gcp_service_account` | service-account `.json` | none in file; user may set one |
 | `oauth_client` | `client_secret_*.json` | none |
+| `ssh_key` | OpenSSH private key (`id_ed25519`, `id_rsa` …) | none (OpenSSH keys don't expire) |
 | `generic_file` | anything | user only |
 | `generic_secret` | none (typed in) | user only |
 

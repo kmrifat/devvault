@@ -22,6 +22,7 @@ class TypeIconTile extends StatelessWidget {
     ItemType.firebaseConfig => LucideIcons.flame,
     ItemType.gcpServiceAccount => LucideIcons.bot,
     ItemType.oauthClient => LucideIcons.shieldUser,
+    ItemType.sshKey => LucideIcons.squareTerminal,
     ItemType.genericFile => LucideIcons.fileText,
     ItemType.genericSecret => LucideIcons.asterisk,
   };
@@ -38,6 +39,7 @@ class TypeIconTile extends StatelessWidget {
       ItemType.androidKeystore => (bc.successSoft, bc.successSoftForeground),
       ItemType.firebaseConfig => (bc.warningSoft, bc.warningSoftForeground),
       ItemType.oauthClient => (app.tealSoft, app.teal),
+      ItemType.sshKey => (bc.defaultColor, bc.foreground),
       ItemType.genericFile ||
       ItemType.genericSecret => (bc.defaultColor, bc.muted),
     };

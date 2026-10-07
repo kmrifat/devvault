@@ -38,6 +38,10 @@ abstract final class ItemTemplates {
       (key: 'client_id', secret: false),
       (key: 'client_secret', secret: true),
     ],
+    ItemType.sshKey => [
+      (key: 'fingerprint', secret: false),
+      (key: 'passphrase', secret: true),
+    ],
     ItemType.genericSecret => [(key: 'value', secret: true)],
     ItemType.genericFile => [],
   };
