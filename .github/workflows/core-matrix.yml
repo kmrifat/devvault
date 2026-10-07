@@ -1,0 +1,41 @@
+name: Vault core
+
+# vault_core is the format contract. Its tests run on every desktop OS so a
+# platform difference (line endings, file renames, native crypto loading)
+# shows up before it reaches a user's vault.
+
+on:
+  pull_request:
+    paths:
+      - packages/vault_core/**
+      - .github/workflows/core-matrix.yml
+  push:
+    branches: [main]
+    paths:
+      - packages/vault_core/**
+  workflow_dispatch:
+
+concurrency:
+  group: core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: vault_core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Test
+        working-directory: packages/vault_core
+        run: dart test

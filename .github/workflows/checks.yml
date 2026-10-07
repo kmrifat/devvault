@@ -1,0 +1,91 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  analyze-test:
+    name: Analyze + test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Install libsodium
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev
+      - run: flutter pub get
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed lib test packages
+      - run: flutter analyze --no-fatal-infos
+      - name: App tests (goldens run on macOS)
+        run: flutter test --exclude-tags golden
+      - name: Package tests
+        run: |
+          for p in packages/*/; do
+            echo "::group::$p"
+            (cd "$p" && dart analyze && dart test)
+            echo "::endgroup::"
+          done
+
+  goldens:
+    name: Goldens (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test --tags golden
+      - name: Upload golden failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: test/screenshots/failures/
+
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: windows-latest
+            target: windows
+          - os: macos-latest
+            target: macos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgtk-3-dev libsodium-dev libsecret-1-dev
+      - run: flutter pub get
+      - run: flutter build ${{ matrix.target }} --debug
