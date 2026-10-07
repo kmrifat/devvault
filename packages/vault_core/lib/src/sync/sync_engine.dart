@@ -148,7 +148,14 @@ class SyncEngine {
     for (final key in state.remote.keys.toList()) {
       if (remote.containsKey(key) || key == _header) continue;
       final slot = _slotOf(key);
-      if (slot == null || slot.$1 == ObjectType.blob) {
+      if (slot == null) {
+        state.remote.remove(key);
+        continue;
+      }
+      if (slot.$1 == ObjectType.blob) {
+        // Collected by blob GC on another device (nothing referenced it
+        // for 30 days): drop it here too rather than upload it again.
+        await vault.store.delete(ObjectType.blob, slot.$2);
         state.remote.remove(key);
         continue;
       }

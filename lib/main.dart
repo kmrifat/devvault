@@ -8,9 +8,10 @@ import 'app/layout.dart';
 import 'app/routes.dart';
 import 'data/app_settings.dart';
 import 'data/providers.dart';
-import 'services/incoming_files.dart';
 import 'services/device_id.dart';
+import 'services/incoming_files.dart';
 import 'services/notifications.dart';
+import 'services/share_sheet_saver.dart';
 import 'services/window.dart';
 
 /// Opens the app at any route, e.g. `--dart-define=START=/vault`.
@@ -30,6 +31,9 @@ Future<void> main() async {
   final crypto = await VaultCrypto.init();
   final settings = AppSettings.load(supportDir);
   final alerts = await LocalAlertScheduler.init();
+  // Phones export through the share sheet; clear any copy a crash left.
+  final phone = AppLayout.current == AppLayout.mobile;
+  if (phone) ShareSheetSaver.sweep();
 
   runApp(
     ProviderScope(
@@ -39,8 +43,10 @@ Future<void> main() async {
         cryptoProvider.overrideWithValue(crypto),
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
-        if (AppLayout.current == AppLayout.mobile)
+        if (phone) ...[
+          fileSaverProvider.overrideWithValue(ShareSheetSaver()),
           incomingFilesProvider.overrideWithValue(ChannelIncomingFiles()),
+        ],
       ],
       child: const DevVaultApp(initialLocation: _start),
     ),

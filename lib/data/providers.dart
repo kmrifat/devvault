@@ -135,9 +135,10 @@ final credentialParsersProvider = Provider<CredentialParsers>(
   (ref) => CredentialParsers.standard(),
 );
 
-/// Storage access keys, in the OS keychain under `s3:<vault_id>`.
+/// Storage access keys, in the OS keychain under `s3:<vault_id>`; in
+/// memory for the session when this device has no keychain.
 final credentialStoreProvider = Provider<CredentialStore>(
-  (ref) => const SystemCredentialStore(),
+  (ref) => FallbackCredentialStore(const SystemCredentialStore()),
 );
 
 /// The OS's notification service. main() swaps in the real one; tests and

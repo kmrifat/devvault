@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/routes.dart';
+import '../../core/shortcuts.dart';
 import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
 import '../../data/sync_setup.dart';
@@ -81,7 +82,7 @@ class _SyncStatusChipState extends ConsumerState<SyncStatusChip> {
             ? 'Sync on${label == null ? '' : ' · $label'}'
             : 'Synced${label == null ? '' : ' · $label'}${since(lastSync)}',
         sync,
-        'Sync now (⌘R)',
+        'Sync now (${shortcutLabel('R')})',
       ),
       SyncOffline(:final lastSync) => (
         BCChipColor.warning,

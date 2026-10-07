@@ -2,11 +2,15 @@
 library;
 
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
+import 'package:devvault/data/vault_session.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
+import '../test_overrides.dart';
 import 'harness.dart';
 
 void main() {
@@ -61,5 +65,21 @@ void main() {
     device: ShotDevice.mobile,
     sample: true,
     brightness: Brightness.light,
+  );
+
+  shot(
+    'B3-item',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      final session =
+          appContainer(tester).read(vaultSessionProvider) as Unlocked;
+      final keystore = session.index.all.firstWhere(
+        (i) => i.title == 'Upload keystore',
+      );
+      GoRouter.of(tester.element(find.byType(MobileVaultScreen)))
+          .push(Routes.item(keystore.id));
+    },
   );
 }

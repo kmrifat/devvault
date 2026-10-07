@@ -124,7 +124,8 @@ void main() {
       GoRouter.of(tester.element(find.byType(Scaffold).first))
           .push(Routes.item('abc'));
       await tester.pumpAndSettle();
-      final title = find.text('Item abc');
+      // A missing item still opens its screen, which says so.
+      final title = find.text('This item isn’t in the vault');
       expect(title, findsOneWidget);
       expect(
         ModalRoute.of(tester.element(title))!.settings,
