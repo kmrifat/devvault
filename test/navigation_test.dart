@@ -1,6 +1,8 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/features/expiry/expiry_screen.dart';
+import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +35,7 @@ void main() {
 
   /// Every route reachable with an open vault, with the title its
   /// placeholder shows. Lock screens are covered by session_routing_test.
-  const screens = {Routes.pair: 'Pair a device', Routes.expiry: 'Expiry'};
+  const screens = {Routes.pair: 'Pair a device'};
 
   for (final layout in AppLayout.values) {
     group('${layout.name} layout', () {
@@ -49,6 +51,18 @@ void main() {
           expect(route.settings, isA<MaterialPage<void>>());
         });
       }
+
+      testWidgets('/expiry opens the expiry dashboard in a MaterialPage', (
+        tester,
+      ) async {
+        await open(tester, layout, Routes.expiry);
+        final screen = find.byType(ExpiryScreen);
+        expect(screen, findsOneWidget);
+        expect(
+          ModalRoute.of(tester.element(screen))!.settings,
+          isA<MaterialPage<void>>(),
+        );
+      });
 
       testWidgets('unknown paths show the not-found screen', (tester) async {
         await open(tester, layout, '/nope');
@@ -101,13 +115,8 @@ void main() {
       await open(tester, AppLayout.mobile, Routes.vault());
       expect(find.byType(BCBottomNav), findsOneWidget);
       expect(find.byType(VaultSidebar), findsNothing);
-      expect(
-        find.descendant(
-          of: find.byType(BCEmptyState),
-          matching: find.text('Vault'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(MobileVaultScreen), findsOneWidget);
+      expect(find.text('Your vault is empty'), findsOneWidget);
     });
 
     testWidgets('an item is pushed as its own screen', (tester) async {
@@ -115,7 +124,8 @@ void main() {
       GoRouter.of(tester.element(find.byType(Scaffold).first))
           .push(Routes.item('abc'));
       await tester.pumpAndSettle();
-      final title = find.text('Item abc');
+      // A missing item still opens its screen, which says so.
+      final title = find.text('This item isn’t in the vault');
       expect(title, findsOneWidget);
       expect(
         ModalRoute.of(tester.element(title))!.settings,

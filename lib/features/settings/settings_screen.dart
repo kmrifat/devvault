@@ -10,6 +10,7 @@ import '../../data/vault_session.dart';
 import '../../services/folder_revealer.dart';
 import '../../shared/ui.dart';
 import 'change_password_dialog.dart';
+import 'new_recovery_kit_dialog.dart';
 
 /// Settings: appearance, when the vault locks and how long copied secrets
 /// stay on the clipboard, the master password, and facts about this vault.
@@ -66,6 +67,17 @@ class SettingsScreen extends ConsumerWidget {
                         onChanged: notifier.setThemeMode,
                       ),
                     ),
+                    BCListGroupItem(
+                      prefix: const Icon(LucideIcons.bellRing),
+                      title: 'Expiry reminders',
+                      description:
+                          'At most two per item, at 09:00: when it enters '
+                          'its last 30 days, and on the day it expires.',
+                      suffix: BCSwitch(
+                        isSelected: settings.expiryReminders,
+                        onSelectedChange: notifier.setExpiryReminders,
+                      ),
+                    ),
                   ],
                 ),
                 const _Section('Security'),
@@ -114,6 +126,20 @@ class SettingsScreen extends ConsumerWidget {
                         isDisabled: vault == null,
                         onPressed: () => showChangePasswordDialog(context),
                         child: const Text('Change…'),
+                      ),
+                    ),
+                    BCListGroupItem(
+                      prefix: const Icon(LucideIcons.lifeBuoy),
+                      title: 'Recovery kit',
+                      description:
+                          'Lost it? Make a new key as a PDF, printout or '
+                          'text file. The old key stops working.',
+                      suffix: BCButton(
+                        size: BCButtonSize.sm,
+                        variant: BCButtonVariant.secondary,
+                        isDisabled: vault == null,
+                        onPressed: () => showNewRecoveryKitDialog(context),
+                        child: const Text('New kit…'),
                       ),
                     ),
                   ],
