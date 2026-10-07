@@ -1,0 +1,12 @@
+name: vault_s3
+description: "S3-compatible storage backend for DevVault sync (SigV4, conditional writes). Pure Dart."
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.4
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

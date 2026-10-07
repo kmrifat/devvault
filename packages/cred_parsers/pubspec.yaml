@@ -1,0 +1,12 @@
+name: cred_parsers
+description: "Parsers that read facts out of developer credential files (.p8, .p12, .mobileprovision, .jks, Firebase/GCP/OAuth JSON). Pure Dart."
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.4
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
