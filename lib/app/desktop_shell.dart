@@ -6,11 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../data/sync_controller.dart';
 import '../data/vault_filter.dart';
 import '../data/vault_session.dart';
 import '../features/import/drop_import.dart';
 import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
+import '../features/sync/sync_status_chip.dart';
 import '../features/vault/vault_sidebar.dart';
 import 'routes.dart';
 import 'theme.dart';
@@ -21,8 +23,9 @@ import 'theme.dart';
 /// The shell branches are Vault, Expiry and Settings, in that order; the
 /// sidebar links into them by location rather than branch index.
 ///
-/// Keyboard: ⌘F (Ctrl+F) focuses search, ⌘K (Ctrl+K) opens quick-open.
-class DesktopShell extends StatefulWidget {
+/// Keyboard: ⌘F (Ctrl+F) focuses search, ⌘K (Ctrl+K) opens quick-open,
+/// ⌘I imports, ⌘R syncs now.
+class DesktopShell extends ConsumerStatefulWidget {
   const DesktopShell({
     super.key,
     required this.navigationShell,
@@ -37,10 +40,10 @@ class DesktopShell extends StatefulWidget {
   static const double sidebarWidth = VaultSidebar.width;
 
   @override
-  State<DesktopShell> createState() => _DesktopShellState();
+  ConsumerState<DesktopShell> createState() => _DesktopShellState();
 }
 
-class _DesktopShellState extends State<DesktopShell> {
+class _DesktopShellState extends ConsumerState<DesktopShell> {
   final _searchFocus = FocusNode(debugLabel: 'vault search');
   bool _quickOpenShowing = false;
 
@@ -79,6 +82,11 @@ class _DesktopShellState extends State<DesktopShell> {
     }
     if (event.logicalKey == LogicalKeyboardKey.keyI) {
       showImportDialog(context);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.keyR &&
+        ref.read(syncControllerProvider) is! SyncOff) {
+      ref.read(syncControllerProvider.notifier).syncNow();
       return true;
     }
     return false;
@@ -239,6 +247,7 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
                   ),
                 ),
               ),
+              const SyncStatusChip(),
               Tooltip(
                 message: defaultTargetPlatform == TargetPlatform.macOS
                     ? 'Lock now (⌘L)'

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/providers.dart';
+import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
 import 'auto_lock.dart';
 import 'layout.dart';
@@ -58,6 +59,9 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       passwordResetPendingProvider,
       (_, _) => _sessionChanges.value++,
     );
+    // Keeps sync's triggers alive for the whole app, not just while the
+    // status chip is on screen.
+    ref.listenManual(syncControllerProvider, (_, _) {});
   }
 
   @override

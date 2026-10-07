@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -140,10 +141,29 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
   }
 
   /// Sets a new master password. Writes `vault.json` only.
-  Future<void> changePassword(String newPassword) async {
+  Future<void> changePassword(String newPassword) => exclusive(() async {
     final current = state;
     if (current is! Unlocked) throw StateError('The vault is locked');
     await current.vault.changePassword(newPassword);
+  });
+
+  Future<void>? _writing;
+
+  /// Runs [action] once no other write is running, so an edit and a sync
+  /// never touch the vault files at the same time. When nothing is running
+  /// it starts at once, in the caller's zone.
+  Future<T> exclusive<T>(Future<T> Function() action) async {
+    for (var running = _writing; running != null; running = _writing) {
+      await running;
+    }
+    final done = Completer<void>();
+    _writing = done.future;
+    try {
+      return await action();
+    } finally {
+      _writing = null;
+      done.complete();
+    }
   }
 
   Vault get _vault => switch (state) {
@@ -156,34 +176,34 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
       _vault.newItem(type: type, title: title);
 
   /// Saves [item] and refreshes the index. Returns it as stored.
-  Future<Item> saveItem(Item item) async {
+  Future<Item> saveItem(Item item) => exclusive(() async {
     final saved = await _vault.putItem(item);
     await reload();
     return saved;
-  }
+  });
 
   /// Deletes the item [id] (a tombstone, so other devices delete it too)
   /// and refreshes the index.
-  Future<void> deleteItem(String id) async {
+  Future<void> deleteItem(String id) => exclusive(() async {
     await _vault.delete(id, TombstoneKind.item);
     await reload();
-  }
+  });
 
   /// A new, unsaved app (fresh id, this device).
   AppRecord newApp(String name) => _vault.newApp(name: name);
 
   /// Saves [app] and refreshes the index. Returns it as stored.
-  Future<AppRecord> saveApp(AppRecord app) async {
+  Future<AppRecord> saveApp(AppRecord app) => exclusive(() async {
     final saved = await _vault.putApp(app);
     await reload();
     return saved;
-  }
+  });
 
   /// Deletes the app [id]. Its items stay, grouped under "No app".
-  Future<void> deleteApp(String id) async {
+  Future<void> deleteApp(String id) => exclusive(() async {
     await _vault.delete(id, TombstoneKind.app);
     await reload();
-  }
+  });
 
   /// Re-reads the vault after a write, so the index matches the disk.
   Future<void> reload() async {
