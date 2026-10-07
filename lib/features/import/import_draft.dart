@@ -48,7 +48,12 @@ enum KeyPurpose {
 /// Facts from the file are never editable here, and nothing the user types
 /// is ever stored as coming from the file.
 class ImportDraft {
-  ImportDraft(this.file, this.result) : title = _titleFrom(file.name);
+  ImportDraft(this.file, this.result, {this.replacing})
+    : title = replacing?.title ?? _titleFrom(file.name);
+
+  /// The item whose file this one replaces (P4-04), or null for a new
+  /// item. It keeps its id, name, tags, place and the user's own fields.
+  final Item? replacing;
 
   /// Field key for [purpose].
   static const purposeKey = 'purpose';
@@ -88,8 +93,24 @@ class ImportDraft {
     return dot > 0 ? base.substring(0, dot) : base;
   }
 
-  /// The fields this type needs that the file didn't provide.
+  /// The fields this type needs that neither the file nor, when
+  /// replacing, the item already has.
   List<RequiredField> get requiredFields => [
+    for (final field in _requiredByType)
+      if (replacing?.fields[field.key]?.source != FieldSource.user) field,
+  ];
+
+  /// Whether [replacing] can take this file: the same kind of credential.
+  /// Swapping a keystore for a provisioning profile isn't a replacement.
+  bool get fitsReplaced {
+    final target = replacing;
+    if (target == null) return true;
+    return target.type == type ||
+        (target.type == null && type == ItemType.genericFile);
+  }
+
+  /// The fields this type needs that the file didn't provide.
+  List<RequiredField> get _requiredByType => [
     if (type == ItemType.appleAuthKey) ...[
       if (!result.facts.containsKey(AppleAuthKeyParser.keyId))
         RequiredField(
@@ -136,10 +157,9 @@ class ImportDraft {
   Map<String, ItemField> get fields => {
     ...result.facts,
     for (final field in requiredFields)
-      field.key: ItemField(
-        value: userFields[field.key]!.trim(),
-        source: FieldSource.user,
-      ),
+      if ((userFields[field.key] ?? '').trim() case final value
+          when value.isNotEmpty)
+        field.key: ItemField(value: value, source: FieldSource.user),
     if (asksPurpose && purpose != null)
       purposeKey: ItemField(value: purpose!.label, source: FieldSource.user),
     if (keepSecrets)

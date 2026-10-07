@@ -10,6 +10,7 @@ class AppSettings {
     this.themeMode = ThemeMode.system,
     this.autoLockAfter = defaultAutoLock,
     this.clipboardClearAfter = defaultClipboardClear,
+    this.expiryReminders = true,
   });
 
   static const defaultAutoLock = Duration(minutes: 5);
@@ -40,20 +41,26 @@ class AppSettings {
   /// How long a copied secret stays on the clipboard.
   final Duration clipboardClearAfter;
 
+  /// Whether expiry reminders are scheduled (P4-03): at most two per item.
+  final bool expiryReminders;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     Duration? Function()? autoLockAfter,
     Duration? clipboardClearAfter,
+    bool? expiryReminders,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     autoLockAfter: autoLockAfter == null ? this.autoLockAfter : autoLockAfter(),
     clipboardClearAfter: clipboardClearAfter ?? this.clipboardClearAfter,
+    expiryReminders: expiryReminders ?? this.expiryReminders,
   );
 
   Map<String, Object?> toJson() => {
     'theme': themeMode.name,
     'auto_lock_seconds': autoLockAfter?.inSeconds,
     'clipboard_clear_seconds': clipboardClearAfter.inSeconds,
+    'expiry_reminders': expiryReminders,
   };
 
   /// Reads what it recognises and keeps the default for the rest, so a
@@ -77,6 +84,7 @@ class AppSettings {
       clipboardClearAfter: clipboardChoices.contains(clipboard)
           ? clipboard!
           : defaultClipboardClear,
+      expiryReminders: json['expiry_reminders'] != false,
     );
   }
 
@@ -111,9 +119,14 @@ class AppSettings {
       other is AppSettings &&
       other.themeMode == themeMode &&
       other.autoLockAfter == autoLockAfter &&
-      other.clipboardClearAfter == clipboardClearAfter;
+      other.clipboardClearAfter == clipboardClearAfter &&
+      other.expiryReminders == expiryReminders;
 
   @override
-  int get hashCode =>
-      Object.hash(themeMode, autoLockAfter, clipboardClearAfter);
+  int get hashCode => Object.hash(
+    themeMode,
+    autoLockAfter,
+    clipboardClearAfter,
+    expiryReminders,
+  );
 }

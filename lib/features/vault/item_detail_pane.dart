@@ -200,6 +200,12 @@ class _Header extends ConsumerWidget {
             ),
           ),
           children: [
+            if (!item.isReadOnly && item.attachments.isNotEmpty)
+              BCMenuItem(
+                title: 'Replace file…',
+                icon: const Icon(LucideIcons.fileUp),
+                onSelected: () => replaceFile(context, item),
+              ),
             BCMenuItem(
               title: 'Delete item…',
               icon: const Icon(LucideIcons.trash2),
