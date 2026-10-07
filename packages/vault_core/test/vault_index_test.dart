@@ -230,5 +230,18 @@ void main() {
     // ignore: avoid_print
     print('load + index of 1000 items: ${watch.elapsedMilliseconds} ms');
     expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
+
+    // P1-20: a search over 1,000 items answers within a frame (16 ms).
+    // Best of a few runs, so a busy CI machine doesn't fail it.
+    final runs = <Duration>[];
+    for (var i = 0; i < 5; i++) {
+      final search = Stopwatch()..start();
+      idx.filter(query: 'item 9 ios', platform: 'ios');
+      runs.add(search.elapsed);
+    }
+    runs.sort();
+    // ignore: avoid_print
+    print('search over 1000 items: ${runs.first.inMicroseconds} µs');
+    expect(runs.first, lessThan(const Duration(milliseconds: 16)));
   });
 }
