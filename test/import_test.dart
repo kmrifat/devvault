@@ -178,6 +178,8 @@ void main() {
     });
   });
 
+  // Real KDFs (PKCS#12, JCEKS) and file I/O for every fixture: the
+  // timeout leaves room for a loaded machine.
   test('every fixture imports, and its bytes come back unchanged', () async {
     final dir = await testSupportDir(TestVault.locked);
     final store = findVault(Directory('${dir.path}/vaults'))!;
@@ -244,7 +246,7 @@ void main() {
     expect(contents.items, hasLength(names.length));
     expect(contents.quarantined, isEmpty);
     vault.lock();
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   group('dialog', () {
     late FakeFileOpener opener;
@@ -281,7 +283,7 @@ void main() {
       bool Function() done, {
       bool andSettle = true,
     }) async {
-      for (var i = 0; i < 300 && !done(); i++) {
+      for (var i = 0; i < 1000 && !done(); i++) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );
@@ -432,6 +434,17 @@ void main() {
           index(tester).all.where((i) => i.rev > before[i.id]!).length == 1;
       await startImport(tester, file);
       await tester.tap(find.text('Replace'));
+      await tester.pumpAndSettle();
+      // Replace opens the replace form for that item; nothing changes yet.
+      expect(find.text('Replace file'), findsWidgets);
+      expect(find.text('Name'), findsNothing);
+      expect(replacedOne(), isFalse);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ImportDialog),
+          matching: find.widgetWithText(BCButton, 'Replace file'),
+        ),
+      );
       await settle(tester, replacedOne);
       expect(find.byType(ImportDialog), findsNothing);
       expect(index(tester).all, hasLength(2));

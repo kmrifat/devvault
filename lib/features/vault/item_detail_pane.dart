@@ -17,10 +17,14 @@ import 'vault_actions.dart';
 /// expiry with where it came from, its fields (secrets masked until
 /// revealed), its files, and when it was created and changed.
 class ItemDetailPane extends ConsumerWidget {
-  const ItemDetailPane({super.key, required this.itemId});
+  const ItemDetailPane({super.key, required this.itemId, this.compact = false});
 
   /// The selected item, or null when nothing is selected.
   final String? itemId;
+
+  /// Phone layout (B3): the header stacks, field names sit above their
+  /// values, and the margins are narrower.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,12 +56,18 @@ class ItemDetailPane extends ConsumerWidget {
     return SingleChildScrollView(
       // Keyed by item, so revealed secrets are hidden again on the next one.
       key: ValueKey(item.id),
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 20),
+      padding: compact
+          ? const EdgeInsets.fromLTRB(16, 8, 16, 32)
+          : const EdgeInsets.fromLTRB(32, 24, 32, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 18,
         children: [
-          _Header(item: item, app: session.index.apps[item.appId]),
+          _Header(
+            item: item,
+            app: session.index.apps[item.appId],
+            compact: compact,
+          ),
           if (item.isReadOnly)
             const _Notice(
               icon: LucideIcons.lock,
@@ -80,7 +90,8 @@ class ItemDetailPane extends ConsumerWidget {
               ),
             ),
           _ExpiryCard(item: item, now: now),
-          if (item.fields.isNotEmpty) _Fields(fields: item.fields),
+          if (item.fields.isNotEmpty)
+            _Fields(fields: item.fields, compact: compact),
           if (item.attachments.isNotEmpty)
             _Files(item: item, attachments: item.attachments),
           if (item.notes case final notes? when notes.trim().isNotEmpty)
@@ -93,10 +104,11 @@ class ItemDetailPane extends ConsumerWidget {
 }
 
 class _Header extends ConsumerWidget {
-  const _Header({required this.item, required this.app});
+  const _Header({required this.item, required this.app, required this.compact});
 
   final Item item;
   final AppRecord? app;
+  final bool compact;
 
   static BCChipColor _typeColor(ItemType? type) => switch (type) {
     ItemType.androidKeystore => BCChipColor.success,
@@ -117,105 +129,142 @@ class _Header extends ConsumerWidget {
     ].join(' · ');
     final file = item.attachments.firstOrNull;
 
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 8,
+      children: [
+        Text(
+          item.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 24,
+            height: 1.2,
+            fontWeight: BCTypography.semiBold,
+            color: bc.foreground,
+          ),
+        ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            BCChip(
+              size: BCChipSize.sm,
+              variant: BCChipVariant.soft,
+              color: _typeColor(type),
+              child: Text(type?.label ?? item.typeName),
+            ),
+            if (place.isNotEmpty)
+              BCChip(
+                size: BCChipSize.sm,
+                variant: BCChipVariant.secondary,
+                color: BCChipColor.defaultColor,
+                startContent: app == null
+                    ? null
+                    : DecoratedBox(
+                        decoration: ShapeDecoration(
+                          color: AppBadge.colorFor(app),
+                          shape: BCShapes.continuous(3),
+                        ),
+                        child: const SizedBox.square(dimension: 10),
+                      ),
+                child: Text(place),
+              ),
+            for (final tag in item.tags)
+              BCChip(
+                size: BCChipSize.sm,
+                variant: BCChipVariant.tertiary,
+                color: BCChipColor.defaultColor,
+                child: Text('#$tag'),
+              ),
+          ],
+        ),
+      ],
+    );
+
+    final actions = <Widget>[
+      if (file != null)
+        BCButton(
+          size: BCButtonSize.sm,
+          onPressed: () => exportFile(context, ref, item, file),
+          startContent: const Icon(LucideIcons.share, size: 15),
+          child: const Text('Export'),
+        ),
+      if (!item.isReadOnly)
+        BCButton(
+          size: BCButtonSize.sm,
+          variant: BCButtonVariant.secondary,
+          isIconOnly: true,
+          onPressed: () => editItem(context, item),
+          child: const Icon(
+            LucideIcons.pencil,
+            size: 16,
+            semanticLabel: 'Edit',
+          ),
+        ),
+      BCMenu(
+        alignment: BCOverlayAlignment.end,
+        trigger: (context, controller) => BCButton(
+          size: BCButtonSize.sm,
+          variant: BCButtonVariant.secondary,
+          isIconOnly: true,
+          onPressed: controller.toggle,
+          child: const Icon(
+            LucideIcons.ellipsis,
+            size: 16,
+            semanticLabel: 'More actions',
+          ),
+        ),
+        children: [
+          if (!item.isReadOnly && item.attachments.isNotEmpty)
+            BCMenuItem(
+              title: 'Replace file…',
+              icon: const Icon(LucideIcons.fileUp),
+              onSelected: () => replaceFile(context, item),
+            ),
+          BCMenuItem(
+            title: 'Delete item…',
+            icon: const Icon(LucideIcons.trash2),
+            variant: BCMenuItemVariant.danger,
+            onSelected: () => deleteItem(context, ref, item),
+          ),
+        ],
+      ),
+    ];
+
+    final tile = TypeIconTile(
+      type: type ?? ItemType.genericFile,
+      size: compact ? 48 : 56,
+    );
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 14,
+        children: [
+          Row(
+            spacing: 14,
+            children: [
+              tile,
+              Expanded(child: details),
+            ],
+          ),
+          Row(
+            spacing: 8,
+            children: [
+              if (actions.length > 2) Expanded(child: actions.first),
+              if (actions.length <= 2) const Spacer(),
+              ...actions.skip(actions.length > 2 ? 1 : 0),
+            ],
+          ),
+        ],
+      );
+    }
     return Row(
       spacing: 16,
       children: [
-        TypeIconTile(type: type ?? ItemType.genericFile, size: 56),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 8,
-            children: [
-              Text(
-                item.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 24,
-                  height: 1.2,
-                  fontWeight: BCTypography.semiBold,
-                  color: bc.foreground,
-                ),
-              ),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  BCChip(
-                    size: BCChipSize.sm,
-                    variant: BCChipVariant.soft,
-                    color: _typeColor(type),
-                    child: Text(type?.label ?? item.typeName),
-                  ),
-                  if (place.isNotEmpty)
-                    BCChip(
-                      size: BCChipSize.sm,
-                      variant: BCChipVariant.secondary,
-                      color: BCChipColor.defaultColor,
-                      startContent: app == null
-                          ? null
-                          : DecoratedBox(
-                              decoration: ShapeDecoration(
-                                color: AppBadge.colorFor(app),
-                                shape: BCShapes.continuous(3),
-                              ),
-                              child: const SizedBox.square(dimension: 10),
-                            ),
-                      child: Text(place),
-                    ),
-                  for (final tag in item.tags)
-                    BCChip(
-                      size: BCChipSize.sm,
-                      variant: BCChipVariant.tertiary,
-                      color: BCChipColor.defaultColor,
-                      child: Text('#$tag'),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (file != null)
-          BCButton(
-            size: BCButtonSize.sm,
-            onPressed: () => exportFile(context, ref, item, file),
-            startContent: const Icon(LucideIcons.share, size: 15),
-            child: const Text('Export'),
-          ),
-        if (!item.isReadOnly)
-          BCButton(
-            size: BCButtonSize.sm,
-            variant: BCButtonVariant.secondary,
-            isIconOnly: true,
-            onPressed: () => editItem(context, item),
-            child: const Icon(
-              LucideIcons.pencil,
-              size: 16,
-              semanticLabel: 'Edit',
-            ),
-          ),
-        BCMenu(
-          alignment: BCOverlayAlignment.end,
-          trigger: (context, controller) => BCButton(
-            size: BCButtonSize.sm,
-            variant: BCButtonVariant.secondary,
-            isIconOnly: true,
-            onPressed: controller.toggle,
-            child: const Icon(
-              LucideIcons.ellipsis,
-              size: 16,
-              semanticLabel: 'More actions',
-            ),
-          ),
-          children: [
-            BCMenuItem(
-              title: 'Delete item…',
-              icon: const Icon(LucideIcons.trash2),
-              variant: BCMenuItemVariant.danger,
-              onSelected: () => deleteItem(context, ref, item),
-            ),
-          ],
-        ),
+        tile,
+        Expanded(child: details),
+        ...actions,
       ],
     );
   }
@@ -333,9 +382,10 @@ class _ExpiryCard extends StatelessWidget {
 /// The item's fields: a dot for where each came from (accent: the file,
 /// plain: typed in), the value in mono, secrets masked.
 class _Fields extends StatelessWidget {
-  const _Fields({required this.fields});
+  const _Fields({required this.fields, required this.compact});
 
   final Map<String, ItemField> fields;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +400,11 @@ class _Fields extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 16),
                 child: Divider(height: 1, thickness: 1, color: bc.separator),
               ),
-            _FieldRow(label: Format.fieldLabel(key), field: value),
+            _FieldRow(
+              label: Format.fieldLabel(key),
+              field: value,
+              compact: compact,
+            ),
           ],
         ],
       ),
@@ -359,10 +413,17 @@ class _Fields extends StatelessWidget {
 }
 
 class _FieldRow extends ConsumerStatefulWidget {
-  const _FieldRow({required this.label, required this.field});
+  const _FieldRow({
+    required this.label,
+    required this.field,
+    required this.compact,
+  });
 
   final String label;
   final ItemField field;
+
+  /// The name above the value rather than beside it (phones).
+  final bool compact;
 
   @override
   ConsumerState<_FieldRow> createState() => _FieldRowState();
@@ -415,78 +476,86 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
     final fromFile = field.source == FieldSource.file;
     final masked = field.secret && !_revealed;
 
+    final name = Row(
+      mainAxisSize: widget.compact ? MainAxisSize.min : MainAxisSize.max,
+      spacing: 8,
+      children: [
+        Tooltip(
+          message: fromFile ? 'From the file' : 'Entered by you',
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: fromFile ? bc.accent : bc.foreground,
+              shape: BoxShape.circle,
+            ),
+            child: const SizedBox.square(dimension: 6),
+          ),
+        ),
+        Flexible(
+          child: BCText(
+            widget.label,
+            type: BCTextType.bodySm,
+            color: BCTextColor.muted,
+            maxLines: 2,
+          ),
+        ),
+      ],
+    );
+    final value = Expanded(
+      child: masked
+          ? Semantics(
+              label: '${widget.label}, hidden',
+              excludeSemantics: true,
+              child: Text(
+                SecretRow.mask,
+                style: TextStyle(color: bc.foreground, letterSpacing: 2),
+              ),
+            )
+          : SelectableText(field.value, style: AppText.mono(context)),
+    );
+    final buttons = [
+      if (field.secret)
+        _IconAction(
+          icon: _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
+          label: _revealed ? 'Hide ${widget.label}' : 'Reveal ${widget.label}',
+          onPressed: () => setState(() => _revealed = !_revealed),
+        ),
+      if (_copied)
+        const BCChip(
+          size: BCChipSize.sm,
+          variant: BCChipVariant.soft,
+          color: BCChipColor.success,
+          startContent: Icon(LucideIcons.check, size: 12),
+          child: Text('Copied'),
+        )
+      else
+        _IconAction(
+          icon: LucideIcons.copy,
+          label: 'Copy ${widget.label}',
+          onPressed: _copy,
+        ),
+    ];
+
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 52),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          spacing: 16,
-          children: [
-            SizedBox(
-              width: 140,
-              child: Row(
-                spacing: 8,
+        child: widget.compact
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 2,
                 children: [
-                  Tooltip(
-                    message: fromFile ? 'From the file' : 'Entered by you',
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: fromFile ? bc.accent : bc.foreground,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const SizedBox.square(dimension: 6),
-                    ),
-                  ),
-                  Expanded(
-                    child: BCText(
-                      widget.label,
-                      type: BCTextType.bodySm,
-                      color: BCTextColor.muted,
-                      maxLines: 2,
-                    ),
-                  ),
+                  name,
+                  Row(spacing: 8, children: [value, ...buttons]),
+                ],
+              )
+            : Row(
+                spacing: 16,
+                children: [
+                  SizedBox(width: 140, child: name),
+                  value,
+                  ...buttons,
                 ],
               ),
-            ),
-            Expanded(
-              child: masked
-                  ? Semantics(
-                      label: '${widget.label}, hidden',
-                      excludeSemantics: true,
-                      child: Text(
-                        SecretRow.mask,
-                        style: TextStyle(
-                          color: bc.foreground,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    )
-                  : SelectableText(field.value, style: AppText.mono(context)),
-            ),
-            if (field.secret)
-              _IconAction(
-                icon: _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
-                label: _revealed
-                    ? 'Hide ${widget.label}'
-                    : 'Reveal ${widget.label}',
-                onPressed: () => setState(() => _revealed = !_revealed),
-              ),
-            if (_copied)
-              const BCChip(
-                size: BCChipSize.sm,
-                variant: BCChipVariant.soft,
-                color: BCChipColor.success,
-                startContent: Icon(LucideIcons.check, size: 12),
-                child: Text('Copied'),
-              )
-            else
-              _IconAction(
-                icon: LucideIcons.copy,
-                label: 'Copy ${widget.label}',
-                onPressed: _copy,
-              ),
-          ],
-        ),
       ),
     );
   }

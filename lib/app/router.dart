@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../features/expiry/expiry_screen.dart';
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/join_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
@@ -11,6 +12,8 @@ import '../features/settings/sync_settings_screen.dart';
 import '../features/unlock/recover_screen.dart';
 import '../features/unlock/unlock_screen.dart';
 import '../features/vault/item_detail_pane.dart';
+import '../features/vault/item_screen.dart';
+import '../features/vault/mobile_vault_screen.dart';
 import '../features/vault/vault_list_pane.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
@@ -98,11 +101,7 @@ GoRouter buildRouter({
       // desktop.
       page(
         '/vault/item/:id',
-        (s) => PlaceholderScreen(
-          title: 'Item ${s.pathParameters['id']}',
-          frame: 'B3',
-          icon: LucideIcons.fileKey2,
-        ),
+        (s) => ItemScreen(itemId: s.pathParameters['id']!),
       ),
 
       StatefulShellRoute.indexedStack(
@@ -121,11 +120,7 @@ GoRouter buildRouter({
                           itemId: s.uri.queryParameters['item'],
                         ),
                       )
-                    : const PlaceholderScreen(
-                        title: 'Vault',
-                        frame: 'B2',
-                        icon: LucideIcons.layers,
-                      ),
+                    : MobileVaultScreen(uri: s.uri),
               ),
             ],
           ),
@@ -133,11 +128,7 @@ GoRouter buildRouter({
             routes: [
               tab(
                 Routes.expiry,
-                (_) => const PlaceholderScreen(
-                  title: 'Expiry',
-                  frame: 'D06',
-                  icon: LucideIcons.clockAlert,
-                ),
+                (s) => ExpiryScreen(uri: s.uri, desktop: desktop),
               ),
             ],
           ),
