@@ -414,10 +414,15 @@ void main() {
         result.facts.values.every((f) => f.source == FieldSource.file),
         isTrue,
       );
-      // A fallback is factless. The one deliberate exception: a non-Apple
-      // certificate imports as a generic file but keeps its real facts.
+      // A fallback is factless. The deliberate exception: a non-Apple
+      // certificate (alone, in a PEM bundle or a .p12) imports as a
+      // generic file but keeps its real facts.
       if (result.isGeneric &&
-          result.format != CredentialFormat.x509Certificate) {
+          !const {
+            CredentialFormat.x509Certificate,
+            CredentialFormat.pemBundle,
+            CredentialFormat.pkcs12,
+          }.contains(result.format)) {
         expect(result.facts, isEmpty);
       }
 
