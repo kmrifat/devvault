@@ -6,6 +6,7 @@ import 'package:vault_core/vault_core.dart';
 
 import '../../core/format.dart';
 import '../../core/item_templates.dart';
+import '../../data/expiry_alerts.dart';
 import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
@@ -23,6 +24,7 @@ Future<void> showImportDialog(
   final picked = files ?? await container.read(fileOpenerProvider).pick();
   String? lastId;
   var imported = 0;
+  var replaced = 0;
   for (final file in picked) {
     if (!context.mounted) return;
     final outcome = await BCDialog.show<ImportOutcome>(
@@ -35,32 +37,72 @@ Future<void> showImportDialog(
     );
     if (outcome == null) continue;
     lastId = outcome.itemId;
-    if (outcome.imported) imported++;
+    if (outcome.replaced) {
+      replaced++;
+    } else if (outcome.imported) {
+      imported++;
+    }
   }
   if (lastId == null || !context.mounted) return;
   context.go(const VaultFilter().location(item: lastId));
-  if (imported > 0) {
+  if (imported + replaced > 0) {
     BCToast.show(
       context,
       BCToastData(
-        title: imported == 1 ? 'File imported' : '$imported files imported',
+        title: imported == 0
+            ? (replaced == 1 ? 'File replaced' : '$replaced files replaced')
+            : imported == 1
+            ? 'File imported'
+            : '$imported files imported',
         variant: BCToastVariant.success,
       ),
     );
   }
 }
 
-/// How the dialog closed: the item to show, and whether a file was saved
-/// (as opposed to opening an existing copy).
-typedef ImportOutcome = ({String itemId, bool imported});
+/// Replaces [item]'s file with one the user picks (P4-04): the item keeps
+/// its id, name, tags, place and the fields the user typed; the file, what
+/// it says and its expiry are the new file's, and its expiry reminders
+/// start over.
+Future<void> showReplaceFileDialog(BuildContext context, Item item) async {
+  final container = ProviderScope.containerOf(context);
+  final picked = await container.read(fileOpenerProvider).pick();
+  if (picked.isEmpty || !context.mounted) return;
+  final outcome = await BCDialog.show<ImportOutcome>(
+    context,
+    builder: (_) => BCDialogContent(
+      width: 640,
+      showCloseButton: true,
+      child: ImportDialog(file: picked.first, replacing: item),
+    ),
+  );
+  if (outcome == null || !outcome.replaced || !context.mounted) return;
+  BCToast.show(
+    context,
+    BCToastData(
+      title: 'File replaced',
+      description: '“${item.title}” has its new file and expiry.',
+      variant: BCToastVariant.success,
+    ),
+  );
+}
+
+/// How the dialog closed: the item to show, whether a file was saved (as
+/// opposed to opening an existing copy), and whether it replaced an item's
+/// file.
+typedef ImportOutcome = ({String itemId, bool imported, bool replaced});
 
 /// The import form for one file: what the file says (read-only, "From
 /// file"), any password or choice it needs, what only the user knows, and
 /// where the item belongs.
 class ImportDialog extends ConsumerStatefulWidget {
-  const ImportDialog({super.key, required this.file});
+  const ImportDialog({super.key, required this.file, this.replacing});
 
   final PickedFile file;
+
+  /// The item whose file [file] replaces, when that's what the user asked
+  /// for (P4-04). Null to import a new item.
+  final Item? replacing;
 
   @override
   ConsumerState<ImportDialog> createState() => _ImportDialogState();
@@ -76,6 +118,10 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
   bool _busy = true;
   bool _ignoreDuplicates = false;
   String? _error;
+
+  /// Set from the start ([ImportDialog.replacing]) or when the user picks
+  /// Replace on a duplicate.
+  late Item? _replacing = widget.replacing;
 
   bool get _tooLarge => widget.file.bytes.length > Vault.maxAttachmentBytes;
 
@@ -126,7 +172,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
     setState(() {
       _busy = false;
       if (draft == null) {
-        _draft = ImportDraft(widget.file, result);
+        _draft = ImportDraft(widget.file, result, replacing: _replacing);
         _title.text = _draft!.title;
       } else {
         draft.result = result;
@@ -144,19 +190,35 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
 
   List<Item> get _duplicates {
     final session = ref.read(vaultSessionProvider);
-    if (session is! Unlocked || _ignoreDuplicates) return const [];
+    if (session is! Unlocked || _ignoreDuplicates || _replacing != null) {
+      return const [];
+    }
     return ImportDraft.duplicatesOf(_sha256, session.index.items.values);
   }
 
-  Future<void> _import({Item? replacing}) async {
+  /// Replace on a duplicate: the same form as Replace file, for that item,
+  /// so anything it still needs is asked for in plain sight.
+  void _replaceInstead(Item target) {
+    final old = _draft!;
+    setState(() {
+      _replacing = target;
+      _draft = ImportDraft(widget.file, old.result, replacing: target)
+        ..choice = old.choice
+        ..keepSecrets = old.keepSecrets
+        ..secrets.addAll(old.secrets);
+      _title.text = target.title;
+      _errors = const {};
+    });
+  }
+
+  Future<void> _import() async {
     final draft = _draft!;
-    draft.title = _title.text;
+    final replacing = _replacing;
+    draft.title = replacing?.title ?? _title.text;
     for (final field in draft.requiredFields) {
       draft.userFields[field.key] = _field(field.key).text;
     }
-    final errors = replacing == null
-        ? draft.validate()
-        : const <String, String>{};
+    final errors = draft.validate();
     setState(() {
       _errors = errors;
       _error = null;
@@ -176,8 +238,14 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           ? draft.toItem(notifier.newItem, attachment)
           : draft.replace(replacing, attachment);
       final saved = await notifier.saveItem(item);
+      // A new file: its reminders start over, so the warning clears.
+      if (replacing != null) {
+        ref.read(expiryAlertsProvider.notifier).reset(saved.id);
+      }
       if (mounted) {
-        Navigator.of(context).pop((itemId: saved.id, imported: true));
+        Navigator.of(
+          context,
+        ).pop((itemId: saved.id, imported: true, replaced: replacing != null));
       }
     } on Object {
       if (mounted) {
@@ -196,7 +264,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const BCDialogTitle('Import file'),
+        BCDialogTitle(_replacing == null ? 'Import file' : 'Replace file'),
         const SizedBox(height: BCSpacing.lg),
         _FileHeader(
           name: widget.file.name,
@@ -225,7 +293,19 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
   List<Widget> _body(BuildContext context, ImportDraft draft) {
     final result = draft.result;
     final duplicates = _duplicates;
+    final replacing = _replacing;
     return [
+      if (replacing != null) ...[
+        _Notice(
+          icon: LucideIcons.fileUp,
+          text:
+              'Replaces the file of “${replacing.title}”. Its name, tags, '
+              'place and the fields you entered stay; what the file says '
+              'and its expiry come from this file, and its reminders start '
+              'over.',
+        ),
+        const SizedBox(height: BCSpacing.md),
+      ],
       if (_error case final error?) ...[
         _Notice(icon: LucideIcons.circleAlert, danger: true, text: error),
         const SizedBox(height: BCSpacing.sm),
@@ -238,11 +318,21 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
         _Duplicate(
           existing: duplicates.first,
           busy: _busy,
-          onOpen: () =>
-              Navigator.of(context)
-                  .pop((itemId: duplicates.first.id, imported: false)),
-          onReplace: () => _import(replacing: duplicates.first),
+          onOpen: () => Navigator.of(context).pop((
+            itemId: duplicates.first.id,
+            imported: false,
+            replaced: false,
+          )),
+          onReplace: () => _replaceInstead(duplicates.first),
           onImportAnyway: () => setState(() => _ignoreDuplicates = true),
+        ),
+        const SizedBox(height: BCSpacing.lg),
+        _Actions(onCancel: () => Navigator.of(context).pop()),
+      ] else if (widget.replacing case final target?
+          when target.attachments.any((a) => a.sha256 == _sha256)) ...[
+        _Notice(
+          icon: LucideIcons.copy,
+          text: 'This is the file “${target.title}” already has.',
         ),
         const SizedBox(height: BCSpacing.lg),
         _Actions(onCancel: () => Navigator.of(context).pop()),
@@ -285,10 +375,26 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
         ),
         const SizedBox(height: BCSpacing.lg),
         _Actions(onCancel: () => Navigator.of(context).pop()),
+      ] else if (!draft.fitsReplaced) ...[
+        _Notice(
+          icon: LucideIcons.circleAlert,
+          danger: true,
+          text:
+              'This is ${_article(draft.type.label)} ${draft.type.label}, '
+              'but “${_replacing!.title}” is '
+              '${_article(_replacing!.type?.label ?? 'item')} '
+              '${_replacing!.type?.label ?? 'item'}. Choose a file of the '
+              'same kind, or import this one as a new item.',
+        ),
+        const SizedBox(height: BCSpacing.lg),
+        _Actions(onCancel: () => Navigator.of(context).pop()),
       ] else
         ..._form(context, draft),
     ];
   }
+
+  static String _article(String word) =>
+      RegExp('^[AEIOU]').hasMatch(word) ? 'an' : 'a';
 
   List<Widget> _form(BuildContext context, ImportDraft draft) {
     final result = draft.result;
@@ -298,6 +404,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
             (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
           ))
         : <AppRecord>[];
+    final replacing = _replacing;
     return [
       if (result.facts.isNotEmpty || result.expiresAt != null) ...[
         _Facts(facts: result.facts, expiresAt: result.expiresAt),
@@ -323,7 +430,8 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
         ),
         const SizedBox(height: BCSpacing.md),
       ],
-      if (draft.asksPurpose) ...[
+      if (draft.asksPurpose &&
+          replacing?.fields[ImportDraft.purposeKey] == null) ...[
         const _Label('Used for'),
         // One choice, or none. Not a BCToggleButtonGroup: in bc_ui 0.7.0
         // its buttons centre their label in all the width the Wrap allows,
@@ -346,55 +454,57 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
         ),
         const SizedBox(height: BCSpacing.md),
       ],
-      BCTextField(
-        isRequired: true,
-        isInvalid: _errors.containsKey('title'),
-        children: [
-          const BCTextFieldLabel('Name'),
-          BCTextFieldInput(controller: _title),
-          if (_errors['title'] case final error?) BCTextFieldError(error),
-        ],
-      ),
-      const SizedBox(height: BCSpacing.md),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: BCSpacing.sm,
-        children: [
-          Expanded(
-            child: _Choice(
-              label: 'App',
-              none: 'No app',
-              value: draft.appId,
-              options: {for (final app in apps) app.id: app.name},
-              onChanged: (v) => setState(() => draft.appId = v),
+      if (replacing == null) ...[
+        BCTextField(
+          isRequired: true,
+          isInvalid: _errors.containsKey('title'),
+          children: [
+            const BCTextFieldLabel('Name'),
+            BCTextFieldInput(controller: _title),
+            if (_errors['title'] case final error?) BCTextFieldError(error),
+          ],
+        ),
+        const SizedBox(height: BCSpacing.md),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: BCSpacing.sm,
+          children: [
+            Expanded(
+              child: _Choice(
+                label: 'App',
+                none: 'No app',
+                value: draft.appId,
+                options: {for (final app in apps) app.id: app.name},
+                onChanged: (v) => setState(() => draft.appId = v),
+              ),
             ),
-          ),
-          Expanded(
-            child: _Choice(
-              label: 'Platform',
-              none: 'None',
-              value: draft.platform,
-              options: {
-                for (final p in ItemTemplates.platforms)
-                  p: VaultLabels.platform(p),
-              },
-              onChanged: (v) => setState(() => draft.platform = v),
+            Expanded(
+              child: _Choice(
+                label: 'Platform',
+                none: 'None',
+                value: draft.platform,
+                options: {
+                  for (final p in ItemTemplates.platforms)
+                    p: VaultLabels.platform(p),
+                },
+                onChanged: (v) => setState(() => draft.platform = v),
+              ),
             ),
-          ),
-          Expanded(
-            child: _Choice(
-              label: 'Environment',
-              none: 'None',
-              value: draft.environment,
-              options: {
-                for (final e in ItemTemplates.environments)
-                  e: VaultLabels.environment(e),
-              },
-              onChanged: (v) => setState(() => draft.environment = v),
+            Expanded(
+              child: _Choice(
+                label: 'Environment',
+                none: 'None',
+                value: draft.environment,
+                options: {
+                  for (final e in ItemTemplates.environments)
+                    e: VaultLabels.environment(e),
+                },
+                onChanged: (v) => setState(() => draft.environment = v),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
       if (draft.secrets.isNotEmpty) ...[
         const SizedBox(height: BCSpacing.md),
         BCControlField(
@@ -411,7 +521,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       const SizedBox(height: BCSpacing.lg),
       _Actions(
         busy: _busy,
-        primary: 'Import',
+        primary: replacing == null ? 'Import' : 'Replace file',
         onPrimary: _import,
         onCancel: () => Navigator.of(context).pop(),
       ),

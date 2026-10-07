@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../features/expiry/expiry_screen.dart';
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/join_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
@@ -133,11 +134,7 @@ GoRouter buildRouter({
             routes: [
               tab(
                 Routes.expiry,
-                (_) => const PlaceholderScreen(
-                  title: 'Expiry',
-                  frame: 'D06',
-                  icon: LucideIcons.clockAlert,
-                ),
+                (s) => ExpiryScreen(uri: s.uri, desktop: desktop),
               ),
             ],
           ),
