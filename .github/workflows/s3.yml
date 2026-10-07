@@ -1,0 +1,57 @@
+name: S3 backend
+
+# vault_s3 against a real S3 implementation: MinIO in a container, running
+# the same conformance suite as the in-memory and folder backends
+# (checkStorageConformance), including ListObjectsV2 paging.
+
+on:
+  pull_request:
+    paths:
+      - packages/vault_s3/**
+      - packages/vault_core/lib/src/sync/**
+      - .github/workflows/s3.yml
+  push:
+    branches: [main]
+    paths:
+      - packages/vault_s3/**
+      - packages/vault_core/lib/src/sync/**
+  workflow_dispatch:
+
+concurrency:
+  group: s3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  minio:
+    name: vault_s3 against MinIO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S3_TEST_ENDPOINT: http://127.0.0.1:9000
+      S3_TEST_BUCKET: devvault
+      S3_TEST_ACCESS_KEY: devvault
+      S3_TEST_SECRET_KEY: devvault-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 127.0.0.1:9000:9000 \
+            -e MINIO_ROOT_USER="$S3_TEST_ACCESS_KEY" \
+            -e MINIO_ROOT_PASSWORD="$S3_TEST_SECRET_KEY" \
+            minio/minio server /data
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:9000/minio/health/ready && break
+            sleep 1
+          done
+          docker exec minio sh -c \
+            "mc alias set local http://127.0.0.1:9000 $S3_TEST_ACCESS_KEY $S3_TEST_SECRET_KEY && mc mb local/$S3_TEST_BUCKET"
+          docker exec minio minio --version
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Test
+        working-directory: packages/vault_s3
+        run: dart test
