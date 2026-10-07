@@ -7,6 +7,7 @@ import 'package:vault_core/vault_core.dart';
 
 import '../core/pairing.dart';
 import '../services/clipboard_guard.dart';
+import '../services/biometric_key_store.dart';
 import '../services/credential_store.dart';
 import 'app_settings.dart';
 import '../services/file_export.dart';
@@ -140,6 +141,12 @@ final credentialParsersProvider = Provider<CredentialParsers>(
 /// memory for the session when this device has no keychain.
 final credentialStoreProvider = Provider<CredentialStore>(
   (ref) => FallbackCredentialStore(const SystemCredentialStore()),
+);
+
+/// The vault key kept behind Face ID, Touch ID or a fingerprint (SPEC §9.1).
+/// main() swaps in the native store on iOS, Android and macOS.
+final biometricKeyStoreProvider = Provider<BiometricKeyStore>(
+  (ref) => const NoBiometricKeyStore(),
 );
 
 /// The OS's notification service. main() swaps in the real one; tests and

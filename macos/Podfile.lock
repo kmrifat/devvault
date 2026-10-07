@@ -1,4 +1,7 @@
 PODS:
+  - biometric_key (0.1.0):
+    - Flutter
+    - FlutterMacOS
   - desktop_drop (0.0.1):
     - FlutterMacOS
   - file_picker_darwin (1.0.0):
@@ -25,6 +28,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
+  - biometric_key (from `Flutter/ephemeral/.symlinks/plugins/biometric_key/darwin`)
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - file_picker_darwin (from `Flutter/ephemeral/.symlinks/plugins/file_picker_darwin/darwin`)
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
@@ -38,6 +42,8 @@ DEPENDENCIES:
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
 
 EXTERNAL SOURCES:
+  biometric_key:
+    :path: Flutter/ephemeral/.symlinks/plugins/biometric_key/darwin
   desktop_drop:
     :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
   file_picker_darwin:
@@ -62,6 +68,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
+  biometric_key: 148bb06919c71c21f208e544e921839aa19b635a
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   file_picker_darwin: 4c2b9a50ea44cb3b071381ea0cf48591bdd80251
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0

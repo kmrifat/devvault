@@ -1,0 +1,29 @@
+name: biometric_key
+description: "DevVault's device-bound vault key (SPEC §9.1): Keychain behind Face ID / Touch ID, Android Keystore behind a fingerprint."
+publish_to: 'none'
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.4
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.binarycastle.biometric_key
+        pluginClass: BiometricKeyPlugin
+      ios:
+        pluginClass: BiometricKeyPlugin
+        sharedDarwinSource: true
+      macos:
+        pluginClass: BiometricKeyPlugin
+        sharedDarwinSource: true

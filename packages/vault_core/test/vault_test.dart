@@ -228,6 +228,47 @@ void main() {
     });
   });
 
+  group('device-bound unlock', () {
+    Future<Vault> unlockWithKey(Uint8List bytes) => Vault.unlockWithKey(
+      crypto: crypto,
+      store: store(),
+      vaultKey: crypto.keyFromBytes(bytes),
+      deviceId: device,
+      now: now,
+    );
+
+    test('the raw vault key opens the vault', () async {
+      final (vault, recovery) = await create();
+      recovery.dispose();
+      final item = await addKeystore(vault);
+      final bytes = vault.withVaultKeyBytes(Uint8List.fromList);
+      vault.lock();
+
+      final reopened = await unlockWithKey(bytes);
+      expect((await reopened.readItem(item.id))?.title, 'Upload keystore');
+    });
+
+    test('a key from before a rotation is refused', () async {
+      final (vault, recovery) = await create();
+      recovery.dispose();
+      final old = vault.withVaultKeyBytes(Uint8List.fromList);
+      (await vault.rotateVaultKey(password)).dispose();
+      vault.lock();
+
+      await expectLater(unlockWithKey(old), throwsA(isA<VaultKeyMismatch>()));
+    });
+
+    test('any other key is refused', () async {
+      final (vault, recovery) = await create();
+      recovery.dispose();
+      vault.lock();
+      await expectLater(
+        unlockWithKey(crypto.randomBytes(VaultCrypto.keyBytes)),
+        throwsA(isA<VaultKeyMismatch>()),
+      );
+    });
+  });
+
   test('attachments over 25 MiB are refused', () async {
     final (vault, _) = await create();
     await expectLater(

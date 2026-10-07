@@ -45,7 +45,8 @@ jobs:
         run: |
           for p in packages/*/; do
             echo "::group::$p"
-            (cd "$p" && dart analyze && dart test)
+            # Plugin packages (biometric_key) are native code with no Dart tests.
+            (cd "$p" && dart analyze && if [ -d test ]; then dart test; fi)
             echo "::endgroup::"
           done
 

@@ -18,7 +18,8 @@ local disk and in the user's S3-compatible bucket.
 **Protects against:**
 - the storage provider;
 - a leaked bucket, or stolen S3 credentials;
-- a stolen, locked device.
+- a stolen, locked device (with a device-bound unlock, §9.1, this rests on
+  the platform's secure hardware and biometrics).
 
 Without the master password or the recovery key, no item, field, file name or
 file content can be read.
@@ -439,6 +440,30 @@ shown    = 14 groups of 4 joined by "-", e.g. K7QF-2M9X-RT4C-…
 - A local write MUST be atomic: write a temporary file in the same folder,
   flush it to disk, then rename it over the target.
 - A reader MUST never see a partly written object.
+
+### 9.1 Device-bound unlock
+
+A client MAY keep the raw VK on a device so that Face ID, Touch ID or a
+fingerprint can open the vault without the master password. This is a
+device-local convenience. It changes nothing in the vault or the bucket.
+
+- The VK MUST be held only by the platform's hardware-backed key store, and
+  only behind a biometric check that is invalidated when the enrolled
+  biometrics change:
+  - Apple: a Keychain item with `.biometryCurrentSet`, `ThisDeviceOnly`.
+  - Android: a Keystore key with per-use `BIOMETRIC_STRONG` authentication
+    and `setInvalidatedByBiometricEnrollment(true)`. The key wraps the VK.
+- The stored VK MUST NOT be synced or backed up. Turning it on needs an
+  unlocked vault.
+- Before use, the client MUST check the VK against `vk_id` (§4.4). A
+  mismatch means the key was rotated; the stored VK is deleted and the master
+  password is asked for.
+- The stored VK MUST be deleted when:
+  - the password is changed or reset;
+  - the VK is rotated;
+  - the user turns the feature off.
+- An interrupted rotation is not resumed by a device-bound unlock. Resuming
+  needs the password.
 
 ---
 
