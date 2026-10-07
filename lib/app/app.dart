@@ -8,6 +8,7 @@ import '../data/providers.dart';
 import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
 import 'auto_lock.dart';
+import 'incoming_imports.dart';
 import 'layout.dart';
 import 'router.dart';
 import 'routes.dart';
@@ -83,8 +84,9 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       darkTheme: AppTheme.dark(),
       themeMode: ref.watch(settingsProvider.select((s) => s.themeMode)),
       routerConfig: _router,
-      builder: (context, child) =>
-          AutoLock(child: BCToastProvider(child: child!)),
+      builder: (context, child) => AutoLock(
+        child: BCToastProvider(child: IncomingImports(child: child!)),
+      ),
     );
   }
 }

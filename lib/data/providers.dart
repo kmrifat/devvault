@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
+import '../core/pairing.dart';
 import '../services/clipboard_guard.dart';
 import '../services/biometric_key_store.dart';
 import '../services/credential_store.dart';
@@ -13,6 +14,7 @@ import '../services/file_export.dart';
 import '../services/file_import.dart';
 import '../services/file_saver.dart';
 import '../services/folder_revealer.dart';
+import '../services/incoming_files.dart';
 import '../services/notifications.dart';
 import '../services/recovery_kit.dart';
 
@@ -168,3 +170,13 @@ final alertDebounceProvider = Provider<Duration>(
 final documentPrinterProvider = Provider<DocumentPrinter>(
   (ref) => const SystemDocumentPrinter(),
 );
+
+/// Files other apps hand to DevVault on phones ("Open in"). main() swaps in
+/// the platform channel there; desktop and tests get none.
+final incomingFilesProvider = Provider<IncomingFiles>(
+  (ref) => const NoIncomingFiles(),
+);
+
+/// Argon2id cost for pairing codes (P4-06). Tests lower it.
+final pairingOpsLimitProvider = Provider<int>((ref) => Pairing.opsLimit);
+final pairingMemLimitProvider = Provider<int>((ref) => Pairing.memLimit);

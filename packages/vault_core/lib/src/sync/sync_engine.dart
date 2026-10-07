@@ -428,14 +428,19 @@ class SyncEngine {
     for (final type in [..._recordTypes, ObjectType.blob]) {
       for (final id in await vault.store.list(type)) {
         final key = '${type.folder}/$id.enc';
-        present.add(key);
-        if (type == ObjectType.blob) {
-          if (!state.remote.containsKey(key)) {
-            changes.add((key, (await vault.store.read(type, id))!));
-          }
+        if (type == ObjectType.blob && state.remote.containsKey(key)) {
+          present.add(key);
           continue;
         }
-        final bytes = (await vault.store.read(type, id))!;
+        // Gone since the listing (a delete or blob GC racing this sync):
+        // treat it as absent, as the next listing would.
+        final bytes = await vault.store.read(type, id);
+        if (bytes == null) continue;
+        present.add(key);
+        if (type == ObjectType.blob) {
+          changes.add((key, bytes));
+          continue;
+        }
         if (!_same(bytes, await stateStore.base(key))) {
           changes.add((key, bytes));
         }
