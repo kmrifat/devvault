@@ -1,0 +1,37 @@
+{
+  "password": "correct horse battery staple",
+  "recovery_key_text": "WRCA-CEQD-1KGN-0A8W-90Z5-PHBN-HT0F-5KZG-56Z9-GTSA-35SR-DRD9-NTPG-DNTG",
+  "vault_id": "a55c5c77-c234-4bf9-be93-8ab9630587ff",
+  "vk_id": "5b45bd88fa4a2bdb18890324cc6e37b154c3af857db51e7fca57436253564433",
+  "items": {
+    "76fa0ffd-43de-439e-846b-e7d158e91090": {
+      "type": "apple_auth_key",
+      "title": "APNs key",
+      "fields": {
+        "key_id": "7X2K9QH4LM",
+        "team_id": "A1B2C3D4E5"
+      },
+      "attachments": [
+        {
+          "blob_id": "7cb42ebb-bba0-4572-92a4-5de1d1637b18",
+          "filename": "AuthKey_7X2K9QH4LM.p8",
+          "sha256": "516af90063c5c39e193833c304585f7cee900ec4d1a55aea661c84e879e6ce8c"
+        }
+      ]
+    },
+    "a9efa222-787e-4e1d-9b44-5ed40b992278": {
+      "type": "generic_secret",
+      "title": "Sentry DSN",
+      "fields": {
+        "value": "https://abc@o1.ingest.sentry.io/1"
+      },
+      "attachments": []
+    }
+  },
+  "apps": {
+    "faf3ad88-4000-4edb-a4a8-03ba341039cb": "Kitchenly"
+  },
+  "tombstones": [
+    "2e3b73da-cb72-43ff-8d2a-5d02e47b4cac"
+  ]
+}

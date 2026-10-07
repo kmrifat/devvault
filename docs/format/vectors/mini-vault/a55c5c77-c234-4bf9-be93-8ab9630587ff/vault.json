@@ -1,0 +1,16 @@
+{
+  "created_at": "2026-10-07T09:01:00Z",
+  "format": "devvault",
+  "format_version": 1,
+  "kdf": {
+    "alg": "argon2id13",
+    "mem_limit": 67108864,
+    "ops_limit": 3,
+    "salt": "t/CkkwV1E9xvwQ5KDTNsjA=="
+  },
+  "vault_id": "a55c5c77-c234-4bf9-be93-8ab9630587ff",
+  "vault_type": "personal",
+  "vk_id": "5b45bd88fa4a2bdb18890324cc6e37b154c3af857db51e7fca57436253564433",
+  "wrapped_vk_password": "RFZMVAEFccf5QLbdfxuBIjhxaWeMAtq06WtvJ3i81SJjysGV3QMDSJ8DWgJ3WuAp9JLQtvmxcfSj3G31diutaiaHY2PHUSFE7g71QvqD",
+  "wrapped_vk_recovery": "RFZMVAEGk3xR1R7NwMiKoPYO4R0JYh4AvM1zEUCTmfRfHRNmIdf9656RUSUCdsGf03YGD24mZ8nWwZqtxDdDSZJF3OgJ/W08W+/hzOOY"
+}
