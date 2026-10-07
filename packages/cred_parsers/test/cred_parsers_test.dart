@@ -39,6 +39,10 @@ void main() {
       'cert.pem': CredentialFormat.x509Certificate,
       'cert.cer': CredentialFormat.x509Certificate,
       'cert.p12': CredentialFormat.pkcs12,
+      'legacy.p12': CredentialFormat.pkcs12,
+      '3des.p12': CredentialFormat.pkcs12,
+      'chain.p12': CredentialFormat.pkcs12,
+      'nomac.p12': CredentialFormat.pkcs12,
       'test.mobileprovision': CredentialFormat.mobileProvision,
       'ber.mobileprovision': CredentialFormat.mobileProvision,
       'test.jks': CredentialFormat.jks,
@@ -452,6 +456,7 @@ void main() {
           check(name, copy);
         }
       }
-    });
+      // Every intact .p12 runs the MAC's key derivation, so this is slow.
+    }, timeout: const Timeout.factor(4));
   });
 }

@@ -18,6 +18,13 @@ The expected keystore fingerprints and expiry dates in
 | `apple_development.cer` | `openssl req -x509 -subj "/UID=TESTUID001/CN=Apple Development: DevVault Test (TESTTEAM01)/OU=TESTTEAM01/O=DevVault Tests/C=US" -days 365 -outform DER` |
 | `developer_id_oid.cer` | `openssl req -x509 -subj "/CN=DevVault Test Signer/OU=TESTTEAM01/O=DevVault Tests" -addext "1.2.840.113635.100.6.1.13=ASN1:NULL" -days 36500 -outform DER` (Apple marker extension only; GeneralizedTime notAfter) |
 | `cert.p12` | `openssl pkcs12 -export` (OpenSSL 3 defaults: PBES2/AES) |
+| `legacy.p12` | `openssl pkcs12 -export -legacy` (RC2-40 certificates, 3DES key, HMAC-SHA1) of the Apple-style leaf below |
+| `3des.p12` | 3DES certificates and key, HMAC-SHA1 (as Keychain exports), same leaf |
+| `empty-password.p12` | OpenSSL 3 defaults with an empty password, same leaf |
+| `nomac.p12` | `-nomac -certpbe AES-256-CBC`: no MAC, so the password is only checked by decrypting; same leaf |
+| `chain.p12` | the leaf, its key and the test CA, OpenSSL 3 defaults |
+| `chain-nokey.p12` | `-nokeys` with the leaf and the test CA: no `localKeyId`, so the leaf is found by issuer |
+| `two-certs.p12` | `-nokeys` with the leaf and `cert.pem`, which are unrelated: no leaf can be picked |
 | `test.mobileprovision` | `openssl cms -sign -nodetach -binary -outform DER` over a small plist |
 | `ber.mobileprovision` | `test.mobileprovision` with its outer layers re-encoded with BER indefinite lengths, as Apple writes them |
 | `test.jks`, `test.jceks` | `keytool -genkeypair -storetype JKS` / `JCEKS`, alias `upload` |
@@ -37,3 +44,44 @@ The Google config fixtures cover:
 - `service-account.json`: a GCP service-account key.
 - `client_secret_…-test…json` / `client_secret_…-web…json`: OAuth
   `installed` and `web` clients.
+
+## PKCS#12 leaf and test CA
+
+The `.p12` fixtures other than `cert.p12` hold one Apple-style leaf
+certificate signed by a throwaway test CA; neither private key was kept
+outside the `.p12` files. Made with OpenSSL 3.6:
+
+```sh
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ca.key
+openssl req -x509 -new -key ca.key -subj "/CN=DevVault Test CA/O=DevVault Tests" \
+  -not_before 20261001000000Z -not_after 20361001000000Z -out ca.crt
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out leaf.key
+openssl req -new -key leaf.key -out leaf.csr \
+  -subj "/UID=TESTTEAM01/CN=Apple Development: DevVault Test (TESTTEAM01)/OU=TESTTEAM01/O=DevVault Tests/C=US"
+printf '%s\n' 'basicConstraints=critical,CA:FALSE' \
+  'keyUsage=critical,digitalSignature' \
+  'extendedKeyUsage=critical,codeSigning' \
+  '1.2.840.113635.100.6.1.12=critical,DER:05:00' > leaf.ext
+openssl x509 -req -in leaf.csr -CA ca.crt -CAkey ca.key -set_serial 0x1A2B3C4D5E6F \
+  -not_before 20261007000000Z -not_after 20271007000000Z -extfile leaf.ext -out leaf.crt
+
+openssl pkcs12 -export -legacy -inkey leaf.key -in leaf.crt -name "DevVault Test" \
+  -passout pass:test-password -out legacy.p12
+openssl pkcs12 -export -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1 \
+  -inkey leaf.key -in leaf.crt -name "DevVault Test" -passout pass:test-password -out 3des.p12
+openssl pkcs12 -export -inkey leaf.key -in leaf.crt -name "DevVault Test" \
+  -passout pass: -out empty-password.p12
+openssl pkcs12 -export -nomac -certpbe AES-256-CBC -inkey leaf.key -in leaf.crt \
+  -name "DevVault Test" -passout pass:test-password -out nomac.p12
+openssl pkcs12 -export -inkey leaf.key -in leaf.crt -certfile ca.crt -name "DevVault Test" \
+  -passout pass:test-password -out chain.p12
+openssl pkcs12 -export -nokeys -in leaf.crt -certfile ca.crt \
+  -passout pass:test-password -out chain-nokey.p12
+cat leaf.crt cert.pem > two.pem
+openssl pkcs12 -export -nokeys -in two.pem -passout pass:test-password -out two-certs.p12
+```
+
+The expected values in `pkcs12_test.dart` are from `openssl pkcs12 -info`
+(with `-legacy` for `legacy.p12`) and
+`openssl x509 -noout -subject -issuer -serial -dates -fingerprint -sha256`
+(and `-sha1`).

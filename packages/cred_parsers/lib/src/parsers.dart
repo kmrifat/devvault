@@ -6,6 +6,7 @@ import 'parsers/apple_auth_key.dart';
 import 'parsers/firebase_config.dart';
 import 'parsers/java_keystore.dart';
 import 'parsers/oauth_client.dart';
+import 'parsers/pkcs12.dart';
 import 'parsers/service_account.dart';
 import 'parsers/x509_certificate.dart';
 
@@ -43,6 +44,7 @@ class CredentialParsers {
     FirebaseConfigParser(),
     ServiceAccountParser(),
     OAuthClientParser(),
+    Pkcs12Parser(),
   ]);
 
   final Map<CredentialFormat, CredentialParser> _byFormat;
