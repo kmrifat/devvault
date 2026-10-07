@@ -394,12 +394,38 @@ shown    = 14 groups of 4 joined by "-", e.g. K7QF-2M9X-RT4C-…
 | Change password / reset after recovery | `vault.json` only |
 | Add or edit an item | `items/<id>.enc`, plus a new blob when a file is added or replaced |
 | Delete an item | `tombstones/<id>.enc`, and `items/<id>.enc` is removed |
-| Rotate the vault key | every item, app and tombstone re-encrypted in place, every blob re-encrypted under a **new** id, `vault.json` written **last** |
+| Replace the recovery key | `vault.json` only |
+| Rotate the vault key | journal (device-local), every blob re-encrypted under a **derived new** id, every item, app and tombstone re-encrypted in place, `vault.json` written **last**, then the journal and old blobs deleted |
 
 **Rotation rules:**
-- Rotation is resumable: a device-local journal records progress.
-- A crash at any point leaves a vault that still opens with the old VK until
-  `vault.json` is replaced.
+- Rotation needs the master password. It creates a new VK **and a new
+  recovery key**: after a suspected compromise the old recovery key must stop
+  working.
+- Before touching any object, the client writes a device-local journal next
+  to (not inside) the `<vault_id>/` folder, holding the new VK and new
+  recovery key:
+  ```
+  journal = nonce(24) || XChaCha20-Poly1305(new_vk || new_recovery_key,
+            AAD = "devvault/v1/rotation-journal|" vault_id "|" old vk_id,
+            key = old VK)
+  ```
+- **Blobs** are re-encrypted under derived ids:
+  `new_id = UUIDv4 bits over BLAKE2b-256(key = new VK,
+  "devvault/v1/rotated-blob|" old_id)`. A resumed rotation finds the blobs it
+  already wrote.
+- **Records:** each item, app and tombstone is opened with the old VK (or
+  skipped if the new VK already opens it), item attachments are pointed at
+  the derived blob ids, and the record is re-encrypted in place.
+- `vault.json` is written last: new KDF salt, both wraps for the new VK, a
+  new `vk_id`. Then the journal and the old blobs are deleted.
+- **Resuming:** a password unlock that finds a journal it can open finishes
+  the rotation and offers the new recovery key to the user. A journal that
+  the current VK can't open belongs to a rotation that already replaced
+  `vault.json`, and is deleted.
+- **Crash safety:**
+  - a crash before the journal lands leaves the vault untouched;
+  - a crash at any later point is finished on the next unlock.
+- A recovery key can also be replaced on its own (`vault.json` only).
 
 **Local writes:**
 - A local write MUST be atomic: write a temporary file in the same folder,

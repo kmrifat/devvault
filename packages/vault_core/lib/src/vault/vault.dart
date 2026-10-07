@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:sodium/sodium_sumo.dart';
@@ -86,7 +87,7 @@ class Vault {
     await store.open();
     final header = await store.readHeader();
     final vk = await VaultKeys.unlockWithPassword(crypto, header, password);
-    return Vault._(
+    final vault = Vault._(
       crypto: crypto,
       store: store,
       header: header,
@@ -94,6 +95,8 @@ class Vault {
       deviceId: deviceId,
       now: now,
     );
+    await vault._resumeRotation(password);
+    return vault;
   }
 
   /// Opens the vault with the recovery key. Follow with [changePassword]
@@ -135,6 +138,206 @@ class Vault {
   void lock() {
     _vaultKey?.dispose();
     _vaultKey = null;
+  }
+
+  /// Set when unlocking finished a rotation that was interrupted: the new
+  /// recovery key, which the user has not seen yet.
+  RecoveryKey? get pendingRecoveryKey => _pendingRecoveryKey;
+  RecoveryKey? _pendingRecoveryKey;
+
+  /// Replaces the vault key after a suspected compromise (SPEC §9).
+  ///
+  /// Every item, app and tombstone is re-encrypted in place and every blob
+  /// under a new id; `vault.json` is written last, with a new recovery key,
+  /// which is returned for the user to save. Old blobs are then removed.
+  ///
+  /// The new key is kept in a device-local journal sealed with the old key
+  /// until `vault.json` is replaced, so a crash at any point either leaves a
+  /// vault that opens with the old key or is finished on the next unlock.
+  Future<RecoveryKey> rotateVaultKey(String password) async {
+    // Prove the password before touching anything.
+    (await VaultKeys.unlockWithPassword(_crypto, _header, password)).dispose();
+    final newKey = _crypto.randomKey();
+    final newRecoveryKey = RecoveryKey.generate(_crypto);
+    await store.writeJournal(_sealJournal(newKey, newRecoveryKey));
+    await _finishRotation(password, newKey, newRecoveryKey);
+    return newRecoveryKey;
+  }
+
+  /// Replaces the recovery key (for example when the old one was lost).
+  /// Writes `vault.json` only.
+  Future<RecoveryKey> replaceRecoveryKey() async {
+    final recoveryKey = RecoveryKey.generate(_crypto);
+    final updated = VaultKeys.rewrapRecovery(
+      _crypto,
+      _header,
+      _key,
+      recoveryKey,
+    );
+    await store.writeHeader(updated);
+    _header = updated;
+    return recoveryKey;
+  }
+
+  static const String _journalInfo = 'devvault/v1/rotation-journal';
+
+  Uint8List _journalAad() =>
+      VaultCrypto.utf8Bytes('$_journalInfo|$vaultId|${_header.vkId}');
+
+  Uint8List _sealJournal(SecureKey newKey, RecoveryKey newRecoveryKey) {
+    final plaintext = Uint8List(64);
+    newKey.runUnlockedSync((b) => plaintext.setAll(0, b));
+    newRecoveryKey.key.runUnlockedSync((b) => plaintext.setAll(32, b));
+    final nonce = _crypto.randomBytes(VaultCrypto.nonceBytes);
+    final sealed = _crypto.aeadEncrypt(
+      message: plaintext,
+      additionalData: _journalAad(),
+      nonce: nonce,
+      key: _key,
+    );
+    plaintext.fillRange(0, 64, 0);
+    return Uint8List.fromList([...nonce, ...sealed]);
+  }
+
+  Future<void> _resumeRotation(String password) async {
+    final journal = await store.readJournal();
+    if (journal == null) return;
+    final Uint8List plaintext;
+    try {
+      plaintext = _crypto.aeadDecrypt(
+        cipherText: Uint8List.sublistView(journal, VaultCrypto.nonceBytes),
+        additionalData: _journalAad(),
+        nonce: Uint8List.sublistView(journal, 0, VaultCrypto.nonceBytes),
+        key: _key,
+      );
+    } on DecryptionFailed {
+      // Sealed with a key this header no longer uses: the rotation already
+      // replaced vault.json and only the clean-up was interrupted.
+      await store.deleteJournal();
+      return;
+    }
+    final newKey = _crypto.keyFromBytes(
+      Uint8List.sublistView(plaintext, 0, 32),
+    );
+    final newRecoveryKey = RecoveryKey.fromKey(
+      _crypto.keyFromBytes(Uint8List.sublistView(plaintext, 32, 64)),
+    );
+    plaintext.fillRange(0, plaintext.length, 0);
+    await _finishRotation(password, newKey, newRecoveryKey);
+    _pendingRecoveryKey = newRecoveryKey;
+  }
+
+  /// The id an old blob gets under the new key. Derived, not random, so a
+  /// resumed rotation finds the blobs it already wrote.
+  String _rotatedBlobId(SecureKey newKey, String oldId) =>
+      VaultKeys.uuidFromBytes(
+        _crypto.keyedHash(
+          key: newKey,
+          message: VaultCrypto.utf8Bytes('devvault/v1/rotated-blob|$oldId'),
+        ),
+      );
+
+  Future<void> _finishRotation(
+    String password,
+    SecureKey newKey,
+    RecoveryKey newRecoveryKey,
+  ) async {
+    final oldKey = _key;
+
+    // Opens an object with the old key, or reports that it's already been
+    // moved to the new one, or that neither key opens it (left alone and
+    // quarantined later).
+    (Uint8List, bool)? openEither(ObjectSlot slot, Uint8List envelope) {
+      for (final (key, isOld) in [(oldKey, true), (newKey, false)]) {
+        try {
+          return (
+            Envelope.open(_crypto, slot: slot, key: key, envelope: envelope),
+            isOld,
+          );
+        } on DecryptionFailed {
+          continue;
+        }
+      }
+      return null;
+    }
+
+    // 1. Blobs: re-encrypt each old blob under its derived new id.
+    final retiredBlobs = <String>[];
+    for (final id in await store.list(ObjectType.blob)) {
+      final envelope = (await store.read(ObjectType.blob, id))!;
+      final opened = openEither(_slot(ObjectType.blob, id), envelope);
+      if (opened == null || !opened.$2) continue; // corrupt, or already new
+      final newId = _rotatedBlobId(newKey, id);
+      if (await store.read(ObjectType.blob, newId) == null) {
+        await store.write(
+          ObjectType.blob,
+          newId,
+          Envelope.seal(
+            _crypto,
+            slot: _slot(ObjectType.blob, newId),
+            key: newKey,
+            plaintext: opened.$1,
+          ),
+        );
+      }
+      retiredBlobs.add(id);
+    }
+
+    // 2. Records: re-encrypt in place; items point at the new blob ids.
+    for (final type in const [
+      ObjectType.item,
+      ObjectType.app,
+      ObjectType.tombstone,
+    ]) {
+      for (final id in await store.list(type)) {
+        final slot = _slot(type, id);
+        final envelope = (await store.read(type, id))!;
+        final opened = openEither(slot, envelope);
+        if (opened == null || !opened.$2) continue;
+        var plaintext = opened.$1;
+        if (type == ObjectType.item) {
+          final item = Item.fromJson(jsonDecode(utf8.decode(plaintext)));
+          final moved = item.copyWith(
+            attachments: [
+              for (final a in item.attachments)
+                Attachment(
+                  blobId: _rotatedBlobId(newKey, a.blobId),
+                  filename: a.filename,
+                  mime: a.mime,
+                  size: a.size,
+                  sha256: a.sha256,
+                  unknownFields: a.unknownFields,
+                ),
+            ],
+          );
+          plaintext = Uint8List.fromList(encodeRecord(moved));
+        }
+        await store.write(
+          type,
+          id,
+          Envelope.seal(_crypto, slot: slot, key: newKey, plaintext: plaintext),
+        );
+      }
+    }
+
+    // 3. vault.json last: from here on only the new key opens the vault.
+    final updated = await VaultKeys.rewrapAll(
+      _crypto,
+      _header,
+      newKey,
+      password: password,
+      recoveryKey: newRecoveryKey,
+    );
+    await store.writeHeader(updated);
+    _header = updated;
+    _vaultKey = newKey;
+    oldKey.dispose();
+
+    // 4. Clean up.
+    await store.deleteJournal();
+    for (final id in retiredBlobs) {
+      await store.delete(ObjectType.blob, id);
+    }
   }
 
   /// A new random object id.
