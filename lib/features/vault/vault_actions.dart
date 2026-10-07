@@ -7,6 +7,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../app_editor/app_editor.dart';
+import '../export/export_attachment.dart';
 import '../item_editor/item_editor.dart';
 
 /// Opens the import dialog (design frame D04).
@@ -23,24 +24,14 @@ Future<void> openImport(BuildContext context) async {
   );
 }
 
-/// Saves [attachment] of [item] to a file the user picks, byte for byte.
-///
-/// Byte-exact export arrives with P1-19 (`exportAttachment` in
-/// `lib/features/export/export_attachment.dart`); until then this says so.
+/// Saves [attachment] of [item] to a file the user picks, byte for byte
+/// (P1-19, [exportAttachment]).
 Future<void> exportFile(
   BuildContext context,
   WidgetRef ref,
   Item item,
   Attachment attachment,
-) async {
-  BCToast.show(
-    context,
-    BCToastData(
-      title: 'Export is on its way',
-      description: 'Saving ${attachment.filename} arrives in the next update.',
-    ),
-  );
-}
+) => exportAttachment(context, ref, item, attachment);
 
 /// Opens the form for a new item, placed where [filter] is looking, and
 /// selects it once saved.
