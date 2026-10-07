@@ -69,6 +69,19 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('blob GC runs after the first sync of the day', (tester) async {
+    await open(tester);
+    await until(tester, () => synced(tester));
+    final controller = appContainer(tester)
+        .read(syncControllerProvider.notifier);
+    // The sample vault's one file is in use: nothing to collect.
+    expect(controller.lastBlobGc, isNotNull);
+    expect(controller.lastBlobGc!.collected, isEmpty);
+    final preview = await tester.runAsync(controller.previewBlobGc);
+    expect(preview!.dryRun, isTrue);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('an edit syncs two seconds later', (tester) async {
     await open(tester);
     await until(tester, () => synced(tester));

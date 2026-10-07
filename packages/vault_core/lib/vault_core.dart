@@ -19,6 +19,7 @@ export 'src/index/vault_index.dart';
 export 'src/model/item_type.dart';
 export 'src/model/records.dart';
 export 'src/store/vault_store.dart';
+export 'src/sync/blob_gc.dart';
 export 'src/sync/hlc.dart';
 export 'src/sync/local_dir_backend.dart';
 export 'src/sync/memory_backend.dart';

@@ -68,6 +68,25 @@ class SyncController extends Notifier<SyncStatus> {
   /// What the last successful run did (notices for the user).
   SyncReport? lastReport;
 
+  /// What the last blob GC did.
+  BlobGcReport? lastBlobGc;
+
+  BlobCollector _collector(Vault vault, StorageBackend backend) =>
+      BlobCollector(
+        vault: vault,
+        backend: backend,
+        rootPrefix: ref.read(storageRootPrefixProvider),
+        now: ref.read(clockProvider),
+      );
+
+  /// What blob GC would remove now, without removing anything.
+  Future<BlobGcReport?> previewBlobGc() async {
+    final backend = ref.read(storageBackendProvider);
+    final session = ref.read(vaultSessionProvider);
+    if (backend == null || session is! Unlocked) return null;
+    return _collector(session.vault, backend).run(dryRun: true);
+  }
+
   @override
   SyncStatus build() {
     final backend = ref.watch(storageBackendProvider);
@@ -129,6 +148,10 @@ class SyncController extends Notifier<SyncStatus> {
             _applyingSync = false;
           }
         }
+        // Once a day, after a clean sync, remove file blobs nothing has
+        // used for 30 days (P2-12).
+        final gc = _collector(session.vault, backend);
+        if (await gc.isDue()) lastBlobGc = await gc.run();
         return result;
       });
       lastReport = report;

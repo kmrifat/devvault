@@ -42,8 +42,11 @@ class SyncState {
     Set<String>? dirty,
     this.lastSync,
     this.capabilities,
+    Map<String, DateTime>? unreferencedSince,
+    this.lastBlobGc,
   }) : remote = remote ?? {},
-       dirty = dirty ?? {};
+       dirty = dirty ?? {},
+       unreferencedSince = unreferencedSince ?? {};
 
   static const formatVersion = 1;
 
@@ -58,6 +61,13 @@ class SyncState {
   /// What the store enforces, from the last connection test.
   StorageCapabilities? capabilities;
 
+  /// Blob id → when this device first saw it referenced by nothing. Blob
+  /// GC deletes a blob only after it has stayed unreferenced long enough.
+  final Map<String, DateTime> unreferencedSince;
+
+  /// When blob GC last ran here.
+  DateTime? lastBlobGc;
+
   Map<String, Object?> toJson() => {
     'format': formatVersion,
     'remote': {
@@ -67,6 +77,11 @@ class SyncState {
     'dirty': dirty.toList()..sort(),
     'last_sync': lastSync?.toUtc().toIso8601String(),
     'capabilities': capabilities?.toJson(),
+    'blob_unreferenced_since': {
+      for (final id in unreferencedSince.keys.toList()..sort())
+        id: unreferencedSince[id]!.toUtc().toIso8601String(),
+    },
+    'last_blob_gc': lastBlobGc?.toUtc().toIso8601String(),
   };
 
   factory SyncState.fromJson(Map<String, Object?> json) {
@@ -76,6 +91,9 @@ class SyncState {
     final remote = json['remote']! as Map<String, Object?>;
     final capabilities = json['capabilities'] as Map<String, Object?>?;
     final lastSync = json['last_sync'] as String?;
+    final lastGc = json['last_blob_gc'] as String?;
+    final unreferenced =
+        (json['blob_unreferenced_since'] as Map<String, Object?>?) ?? const {};
     return SyncState(
       remote: {
         for (final MapEntry(:key, :value) in remote.entries)
@@ -86,6 +104,11 @@ class SyncState {
       capabilities: capabilities == null
           ? null
           : StorageCapabilities.fromJson(capabilities),
+      unreferencedSince: {
+        for (final MapEntry(:key, :value) in unreferenced.entries)
+          key: DateTime.parse(value! as String),
+      },
+      lastBlobGc: lastGc == null ? null : DateTime.parse(lastGc),
     );
   }
 }
