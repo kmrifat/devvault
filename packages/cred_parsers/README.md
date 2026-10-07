@@ -34,6 +34,7 @@ Field keys are `static const`s on each parser class.
 | `AppleAuthKeyParser` | `.p8` | none (the key itself stays in the file) |
 | `X509CertificateParser` | `.cer`, `.crt`, single-cert PEM | none |
 | `Pkcs12Parser` | `.p12`, `.pfx` | none (asks for `password`) |
+| `ProvisioningProfileParser` | `.mobileprovision`, `.provisionprofile` (CMS signature not verified) | none |
 | `JavaKeystoreParser` | JKS, JCEKS | none (asks for `store_password`, `key_password`) |
 | `FirebaseConfigParser` | `google-services.json`, `GoogleService-Info.plist` | none (Firebase API keys are public) |
 | `ServiceAccountParser` | GCP service-account JSON | `private_key` |
