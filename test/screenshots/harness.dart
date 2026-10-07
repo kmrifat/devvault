@@ -66,6 +66,9 @@ enum ShotDevice {
 /// Registers a test that opens [route] on [device] and compares it with
 /// `screenshots/<name>.png`.
 ///
+/// The vault is unlocked unless [vault] says the device holds no vault or
+/// a locked one (first-run and lock screens).
+///
 /// [interact] runs after the first frame settles (tap through to a dialog,
 /// type into a field) before the capture.
 void shot(
@@ -75,6 +78,8 @@ void shot(
   Brightness brightness = Brightness.dark,
   Future<void> Function(WidgetTester tester)? interact,
   List<Override> overrides = const [],
+  TestVault? vault,
+  bool realKdf = false,
 }) {
   testWidgets(name, (tester) async {
     final ratio = device.pixelRatio;
@@ -98,13 +103,28 @@ void shot(
     // tearDowns run.
     debugDisableShadows = false;
     try {
-      await pumpUnlockedApp(
-        tester,
-        location: route,
-        layout: device.layout,
-        overrides: overrides,
-        settle: () => _settle(tester),
-      );
+      if (vault == null) {
+        await pumpUnlockedApp(
+          tester,
+          location: route,
+          layout: device.layout,
+          overrides: overrides,
+          settle: () => _settle(tester),
+        );
+      } else {
+        // First-run and lock screens: the device holds [vault], unopened.
+        final dir = await tester.runAsync(() => testSupportDir(vault));
+        await tester.pumpWidget(
+          testApp(
+            location: route,
+            supportDir: dir!,
+            layout: device.layout,
+            overrides: overrides,
+            realKdf: realKdf,
+          ),
+        );
+        await _settle(tester);
+      }
       if (interact != null) {
         await interact(tester);
         await _settle(tester);

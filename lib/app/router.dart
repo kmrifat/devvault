@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../features/create_vault/create_vault_screen.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
 import 'mobile_shell.dart';
@@ -78,14 +79,7 @@ GoRouter buildRouter({
           icon: LucideIcons.lock,
         ),
       ),
-      page(
-        Routes.create,
-        (_) => const PlaceholderScreen(
-          title: 'Create vault',
-          frame: 'D01',
-          icon: LucideIcons.vault,
-        ),
-      ),
+      page(Routes.create, (_) => const CreateVaultScreen()),
       page(
         Routes.createRecoveryKit,
         (_) => const PlaceholderScreen(

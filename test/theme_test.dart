@@ -63,7 +63,7 @@ void main() {
     final dir = await tester.runAsync(testSupportDir);
     await tester.pumpWidget(testApp(location: Routes.unlock, supportDir: dir!));
     await tester.pumpAndSettle();
-    final context = tester.element(find.text('Create vault'));
+    final context = tester.element(find.text('Create a master password'));
     expect(Theme.of(context).brightness, Brightness.dark);
   });
 }
