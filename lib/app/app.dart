@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/expiry_alerts.dart';
 import '../data/providers.dart';
 import '../data/vault_session.dart';
 import 'auto_lock.dart';
@@ -58,6 +59,8 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       passwordResetPendingProvider,
       (_, _) => _sessionChanges.value++,
     );
+    // Keeps expiry reminders in step with the vault from here on.
+    ref.read(expiryAlertsProvider);
   }
 
   @override
