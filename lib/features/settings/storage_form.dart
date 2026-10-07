@@ -45,6 +45,21 @@ class StorageFormModel extends ChangeNotifier {
     secretKey,
   ];
 
+  /// Fills every field from [settings] and [credentials], e.g. from a
+  /// pairing code (P4-06).
+  void fill(SyncSettings settings, AwsCredentials credentials) {
+    provider = settings.provider;
+    pathStyle = settings.pathStyle;
+    accountId.text = settings.accountId;
+    endpoint.text = settings.endpoint;
+    region.text = settings.region;
+    bucket.text = settings.bucket;
+    prefix.text = settings.prefix;
+    accessKey.text = credentials.accessKeyId;
+    secretKey.text = credentials.secretAccessKey;
+    notifyListeners();
+  }
+
   void setProvider(StorageProvider value) {
     provider = value;
     notifyListeners();

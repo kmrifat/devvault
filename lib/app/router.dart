@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/expiry/expiry_screen.dart';
+import '../features/pairing/pair_screen.dart';
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/join_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
@@ -18,7 +19,6 @@ import '../features/vault/vault_list_pane.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
 import 'mobile_shell.dart';
-import 'placeholder_screen.dart';
 import 'routes.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -87,15 +87,7 @@ GoRouter buildRouter({
       page(Routes.createRecoveryKit, (_) => const RecoveryKitScreen()),
       page(Routes.joinVault, (_) => const JoinVaultScreen()),
       page(Routes.recover, (_) => const RecoverScreen()),
-      page(
-        Routes.pair,
-        (_) => const PlaceholderScreen(
-          title: 'Pair a device',
-          frame: 'P4-06',
-          icon: LucideIcons.qrCode,
-        ),
-        fullscreenDialog: true,
-      ),
+      page(Routes.pair, (_) => const PairScreen(), fullscreenDialog: true),
 
       // Item screen: pushed on mobile, a selection in the detail pane on
       // desktop.

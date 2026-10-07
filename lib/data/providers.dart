@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
+import '../core/pairing.dart';
 import '../services/clipboard_guard.dart';
 import '../services/credential_store.dart';
 import 'app_settings.dart';
@@ -168,3 +169,7 @@ final documentPrinterProvider = Provider<DocumentPrinter>(
 final incomingFilesProvider = Provider<IncomingFiles>(
   (ref) => const NoIncomingFiles(),
 );
+
+/// Argon2id cost for pairing codes (P4-06). Tests lower it.
+final pairingOpsLimitProvider = Provider<int>((ref) => Pairing.opsLimit);
+final pairingMemLimitProvider = Provider<int>((ref) => Pairing.memLimit);

@@ -2,6 +2,7 @@ import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
+import 'package:devvault/features/pairing/pair_screen.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
@@ -33,24 +34,19 @@ void main() {
       GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
           .toString();
 
-  /// Every route reachable with an open vault, with the title its
-  /// placeholder shows. Lock screens are covered by session_routing_test.
-  const screens = {Routes.pair: 'Pair a device'};
-
   for (final layout in AppLayout.values) {
     group('${layout.name} layout', () {
-      for (final MapEntry(key: path, value: title) in screens.entries) {
-        testWidgets('$path opens "$title" in a MaterialPage', (tester) async {
-          await open(tester, layout, path);
-          final titleFinder = find.descendant(
-            of: find.byType(BCEmptyState),
-            matching: find.text(title),
-          );
-          expect(titleFinder, findsOneWidget);
-          final route = ModalRoute.of(tester.element(titleFinder))!;
-          expect(route.settings, isA<MaterialPage<void>>());
-        });
-      }
+      testWidgets('/pair opens the pairing screen in a MaterialPage', (
+        tester,
+      ) async {
+        await open(tester, layout, Routes.pair);
+        final screen = find.byType(PairScreen);
+        expect(screen, findsOneWidget);
+        expect(
+          ModalRoute.of(tester.element(screen))!.settings,
+          isA<MaterialPage<void>>(),
+        );
+      });
 
       testWidgets('/expiry opens the expiry dashboard in a MaterialPage', (
         tester,
