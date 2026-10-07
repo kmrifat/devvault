@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:cred_parsers/cred_parsers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../services/clipboard_guard.dart';
 import '../services/file_export.dart';
+import '../services/file_import.dart';
 import '../services/file_saver.dart';
 
 // Every service the app depends on, in one place. Values that need I/O are
@@ -71,4 +73,14 @@ class AutoLockSetting extends Notifier<Duration?> {
 
 final autoLockProvider = NotifierProvider<AutoLockSetting, Duration?>(
   AutoLockSetting.new,
+);
+
+/// Open dialogs for choosing files to import.
+final fileOpenerProvider = Provider<FileOpener>(
+  (ref) => const SystemFileOpener(),
+);
+
+/// Reads facts out of imported files.
+final credentialParsersProvider = Provider<CredentialParsers>(
+  (ref) => CredentialParsers.standard(),
 );

@@ -8,21 +8,11 @@ import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../app_editor/app_editor.dart';
 import '../export/export_attachment.dart';
+import '../import/import_dialog.dart';
 import '../item_editor/item_editor.dart';
 
-/// Opens the import dialog (design frame D04).
-///
-/// The dialog arrives with P1-18 (`showImportDialog` in
-/// `lib/features/import/import_dialog.dart`); until then this says so.
-Future<void> openImport(BuildContext context) async {
-  BCToast.show(
-    context,
-    const BCToastData(
-      title: 'Import is on its way',
-      description: 'Importing files arrives in the next update.',
-    ),
-  );
-}
+/// Opens the import dialog (design frame D04) for files the user chooses.
+Future<void> openImport(BuildContext context) => showImportDialog(context);
 
 /// Saves [attachment] of [item] to a file the user picks, byte for byte
 /// (P1-19, [exportAttachment]).
