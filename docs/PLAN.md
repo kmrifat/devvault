@@ -66,8 +66,8 @@ lib/
 | Area | Packages |
 |---|---|
 | App (known good, from invoice-app) | bc_ui ^0.7.0, flutter_riverpod ^3.4, go_router ^18.0, lucide_icons_flutter ^3.1, path_provider, intl, uuid, file_picker ^13, share_plus ^13, local_auth ^3, flutter_local_notifications ^22, timezone, flutter_timezone, pdf, printing |
-| App (verify) | sodium_libs, flutter_secure_storage ^10, window_manager, desktop_drop / super_drag_and_drop, biometric_storage, qr_flutter, mobile_scanner |
-| vault_core | sodium (pure-Dart FFI), crypto, pointycastle ^4 (HKDF), collection, meta |
+| App (verify) | flutter_secure_storage ^10, window_manager, desktop_drop / super_drag_and_drop, biometric_storage, qr_flutter, mobile_scanner |
+| vault_core | sodium ^4 (libsodium built by native-asset hooks, incl. Argon2id via sumo and HKDF-SHA256), crypto, collection, meta |
 | cred_parsers | pointycastle ^4 (ASN.1, PKCS#12 KDF, RC2, 3DES, AES, PBKDF2), xml, crypto, convert |
 | vault_s3 | http, xml, crypto (hand-written SigV4; no AWS SDK) |
 | Dev | flutter_lints ^6, lints, test, integration_test, flutter_launcher_icons |
@@ -150,9 +150,9 @@ Format: **ID · title** (estimate). **D:** dependencies. **AC:** acceptance crit
 - **P0-01 · SPEC.md v1** (1.5d).
   - Layout; vault.json schema; envelope; canonical AAD; item/app JSON; HLC encoding; recovery-key encoding; versioning (refuse a higher major version, keep unknown fields); 25 MiB attachment limit; a conformance section for the Go CLI.
   - ADR-0002 and ADR-0003.
-- **P0-02 · VaultCrypto + sodium loader** (1d).
-  - Interface: random, AEAD, pwhash, hkdf, sha256.
-  - Loader: `DEVVAULT_LIBSODIUM` in `dart test`, sodium_libs in the app.
+- **P0-02 · VaultCrypto on sodium 4** (1d).
+  - Interface: random, AEAD, pwhash, hkdf, keyed hash, sha256.
+  - `sodium` 4 builds libsodium with native-asset hooks, so the same code runs in `dart test` and in the app (ADR-0002); no loader or sodium_libs needed.
   - A deterministic RNG for vectors only, which cannot be used in release builds.
   - Keys as `SecureKey`.
 - **P0-03 · Argon2id + KdfParams** (1d).
@@ -285,7 +285,7 @@ Format: **ID · title** (estimate). **D:** dependencies. **AC:** acceptance crit
 | Risk | Mitigation |
 |---|---|
 | JKS/JCEKS parsing in Dart (no library, proprietary KeyProtector) | Test-first against keytool fixtures. Certs in JKS are plaintext, so fingerprints and expiry work without a password. JCEKS key-password check is optional. |
-| sodium_libs on 5 platforms (Linux deps, Windows DLL, isolate re-init) | P0-02 and P0-15 early; `VaultCrypto` interface allows a fallback; CI on every OS. |
+| libsodium on 5 platforms (sodium 4 compiles it with build hooks: needs a C toolchain incl. Android NDK; Argon2id in isolates) | P0-02 and P0-15 early; `VaultCrypto` interface keeps call sites independent of the library; vault_core CI on macOS, Windows and Linux. |
 | Argon2 p=1 vs. planned p=4 | ADR-0003. Params live in vault.json so they can be raised later; matches Go `argon2.IDKey(threads=1)`. |
 | macOS sandbox + keychain (`-34018` unsigned, drag-out) | Entitlements in M0-03; dogfood signed builds only; Save-as is the guaranteed export path. |
 | S3 conditional-write variance (AWS 409, B2/MinIO support) | Capability probe, write-then-verify fallback with a warning, MinIO conformance in CI, field merge as a second line of defence. |
