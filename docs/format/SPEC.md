@@ -87,7 +87,14 @@ XChaCha20 is used rather than AES-GCM (96-bit nonces).
   grace period (P2).
 - Local storage mirrors this layout. Device-local state (sync bookkeeping,
   the pinned key fingerprint) lives **outside** the `<vault_id>/` tree and is
-  never uploaded.
+  never uploaded:
+  - `<vault_id>.rotation`: the key-rotation journal (§9);
+  - `<vault_id>.sync/state.json`: the etag and `rev` of every remote object
+    as last synced, the keys changed locally since, and the storage's
+    probed capabilities;
+  - `<vault_id>.sync/base/<path>`: each object's ciphertext exactly as last
+    synced, the common ancestor for a three-way merge. It is already
+    encrypted and bound to its slot, so it needs no further protection.
 
 ---
 
