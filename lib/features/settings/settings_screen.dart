@@ -13,6 +13,7 @@ import '../../services/folder_revealer.dart';
 import '../../shared/ui.dart';
 import 'change_password_dialog.dart';
 import 'new_recovery_kit_dialog.dart';
+import 'settings_layout.dart';
 
 /// Settings: appearance, when the vault locks and how long copied secrets
 /// stay on the clipboard, the master password, and facts about this vault.
@@ -44,153 +45,159 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: bc.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const BCText('Settings', type: BCTextType.h2),
-                const _Section('General'),
-                BCListGroup(
-                  children: [
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.sunMoon),
-                      title: 'Appearance',
-                      suffix: _Picker<ThemeMode>(
-                        label: 'Appearance',
-                        value: settings.themeMode,
-                        options: {
-                          for (final mode in ThemeMode.values)
-                            mode: _themeLabel(mode),
-                        },
-                        onChanged: notifier.setThemeMode,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: SettingsLayout.padding(context),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const BCText('Settings', type: BCTextType.h2),
+                  const _Section('General'),
+                  BCListGroup(
+                    children: [
+                      _pickerItem(
+                        context,
+                        prefix: const Icon(LucideIcons.sunMoon),
+                        title: 'Appearance',
+                        picker: _Picker<ThemeMode>(
+                          label: 'Appearance',
+                          value: settings.themeMode,
+                          options: {
+                            for (final mode in ThemeMode.values)
+                              mode: _themeLabel(mode),
+                          },
+                          onChanged: notifier.setThemeMode,
+                        ),
                       ),
-                    ),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.bellRing),
-                      title: 'Expiry reminders',
-                      description:
-                          'At most two per item, at 09:00: when it enters '
-                          'its last 30 days, and on the day it expires.',
-                      suffix: BCSwitch(
-                        isSelected: settings.expiryReminders,
-                        onSelectedChange: notifier.setExpiryReminders,
-                      ),
-                    ),
-                  ],
-                ),
-                const _Section('Security'),
-                BCListGroup(
-                  children: [
-                    if (vault != null) ..._BiometricRow.rows(context, ref),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.timer),
-                      title: 'Lock after',
-                      description: ref.watch(lockInBackgroundProvider)
-                          ? 'Without input, and as soon as DevVault goes to '
-                                'the background.'
-                          : 'Without input. '
-                                '${defaultTargetPlatform == TargetPlatform.macOS ? '⌘L' : 'Ctrl+L'} '
-                                'locks right away.',
-                      suffix: _Picker<Duration?>(
-                        label: 'Lock after',
-                        value: settings.autoLockAfter,
-                        options: {
-                          for (final after in AppSettings.autoLockChoices)
-                            after: autoLockLabel(after),
-                        },
-                        onChanged: notifier.setAutoLock,
-                      ),
-                    ),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.clipboardX),
-                      title: 'Clear copied secrets after',
-                      description: 'Only if nothing else was copied since.',
-                      suffix: _Picker<Duration>(
-                        label: 'Clear copied secrets after',
-                        value: settings.clipboardClearAfter,
-                        options: {
-                          for (final after in AppSettings.clipboardChoices)
-                            after: '${after.inSeconds} seconds',
-                        },
-                        onChanged: notifier.setClipboardClear,
-                      ),
-                    ),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.keyRound),
-                      title: 'Master password',
-                      description:
-                          'Changing it rewrites only vault.json; items '
-                          'stay as they are.',
-                      suffix: BCButton(
-                        size: BCButtonSize.sm,
-                        variant: BCButtonVariant.secondary,
-                        isDisabled: vault == null,
-                        onPressed: () => showChangePasswordDialog(context),
-                        child: const Text('Change…'),
-                      ),
-                    ),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.lifeBuoy),
-                      title: 'Recovery kit',
-                      description:
-                          'Lost it? Make a new key as a PDF, printout or '
-                          'text file. The old key stops working.',
-                      suffix: BCButton(
-                        size: BCButtonSize.sm,
-                        variant: BCButtonVariant.secondary,
-                        isDisabled: vault == null,
-                        onPressed: () => showNewRecoveryKitDialog(context),
-                        child: const Text('New kit…'),
-                      ),
-                    ),
-                  ],
-                ),
-                const _Section('Sync'),
-                BCListGroup(
-                  children: [
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.cloud),
-                      title: 'Sync storage',
-                      description: switch (syncSetup) {
-                        null =>
-                          'Not set up: this vault is on this device only.',
-                        final s =>
-                          '${s.settings.provider.label} · '
-                              '${s.settings.bucket}',
-                      },
-                      suffix: Icon(
-                        LucideIcons.chevronRight,
-                        size: 16,
-                        color: bc.muted,
-                      ),
-                      onPressed: () => context.go(Routes.settingsSync),
-                    ),
-                    if (syncSetup != null)
                       BCListGroupItem(
-                        prefix: const Icon(LucideIcons.qrCode),
-                        title: 'Pair a device',
+                        prefix: const Icon(LucideIcons.bellRing),
+                        title: 'Expiry reminders',
                         description:
-                            'Show a QR code another device scans to join '
-                            'this vault. It still needs the master password.',
+                            'At most two per item, at 09:00: when it enters '
+                            'its last 30 days, and on the day it expires.',
+                        suffix: BCSwitch(
+                          isSelected: settings.expiryReminders,
+                          onSelectedChange: notifier.setExpiryReminders,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const _Section('Security'),
+                  BCListGroup(
+                    children: [
+                      if (vault != null) ..._BiometricRow.rows(context, ref),
+                      _pickerItem(
+                        context,
+                        prefix: const Icon(LucideIcons.timer),
+                        title: 'Lock after',
+                        description: ref.watch(lockInBackgroundProvider)
+                            ? 'Without input, and as soon as DevVault goes to '
+                                  'the background.'
+                            : 'Without input. '
+                                  '${defaultTargetPlatform == TargetPlatform.macOS ? '⌘L' : 'Ctrl+L'} '
+                                  'locks right away.',
+                        picker: _Picker<Duration?>(
+                          label: 'Lock after',
+                          value: settings.autoLockAfter,
+                          options: {
+                            for (final after in AppSettings.autoLockChoices)
+                              after: autoLockLabel(after),
+                          },
+                          onChanged: notifier.setAutoLock,
+                        ),
+                      ),
+                      _pickerItem(
+                        context,
+                        prefix: const Icon(LucideIcons.clipboardX),
+                        title: 'Clear copied secrets after',
+                        description: 'Only if nothing else was copied since.',
+                        picker: _Picker<Duration>(
+                          label: 'Clear copied secrets after',
+                          value: settings.clipboardClearAfter,
+                          options: {
+                            for (final after in AppSettings.clipboardChoices)
+                              after: '${after.inSeconds} seconds',
+                          },
+                          onChanged: notifier.setClipboardClear,
+                        ),
+                      ),
+                      BCListGroupItem(
+                        prefix: const Icon(LucideIcons.keyRound),
+                        title: 'Master password',
+                        description:
+                            'Changing it rewrites only vault.json; items '
+                            'stay as they are.',
+                        suffix: BCButton(
+                          size: BCButtonSize.sm,
+                          variant: BCButtonVariant.secondary,
+                          isDisabled: vault == null,
+                          onPressed: () => showChangePasswordDialog(context),
+                          child: const Text('Change…'),
+                        ),
+                      ),
+                      BCListGroupItem(
+                        prefix: const Icon(LucideIcons.lifeBuoy),
+                        title: 'Recovery kit',
+                        description:
+                            'Lost it? Make a new key as a PDF, printout or '
+                            'text file. The old key stops working.',
+                        suffix: BCButton(
+                          size: BCButtonSize.sm,
+                          variant: BCButtonVariant.secondary,
+                          isDisabled: vault == null,
+                          onPressed: () => showNewRecoveryKitDialog(context),
+                          child: const Text('New kit…'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const _Section('Sync'),
+                  BCListGroup(
+                    children: [
+                      BCListGroupItem(
+                        prefix: const Icon(LucideIcons.cloud),
+                        title: 'Sync storage',
+                        description: switch (syncSetup) {
+                          null =>
+                            'Not set up: this vault is on this device only.',
+                          final s =>
+                            '${s.settings.provider.label} · '
+                                '${s.settings.bucket}',
+                        },
                         suffix: Icon(
                           LucideIcons.chevronRight,
                           size: 16,
                           color: bc.muted,
                         ),
-                        onPressed: () => context.push(Routes.pair),
+                        onPressed: () => context.go(Routes.settingsSync),
                       ),
+                      if (syncSetup != null)
+                        BCListGroupItem(
+                          prefix: const Icon(LucideIcons.qrCode),
+                          title: 'Pair a device',
+                          description:
+                              'Show a QR code another device scans to join '
+                              'this vault. It still needs the master password.',
+                          suffix: Icon(
+                            LucideIcons.chevronRight,
+                            size: 16,
+                            color: bc.muted,
+                          ),
+                          onPressed: () => context.push(Routes.pair),
+                        ),
+                    ],
+                  ),
+                  if (vault != null) ...[
+                    const _Section('This vault'),
+                    _VaultFacts(vault: vault, revealer: revealer),
                   ],
-                ),
-                if (vault != null) ...[
-                  const _Section('This vault'),
-                  _VaultFacts(vault: vault, revealer: revealer),
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -265,7 +272,44 @@ class _Section extends StatelessWidget {
   }
 }
 
-/// A compact select for a settings row.
+/// A settings row with a select: beside the text where there's room,
+/// under it on a phone, where a 190-wide select would squeeze the title.
+BCListGroupItem _pickerItem(
+  BuildContext context, {
+  required Widget prefix,
+  required String title,
+  String? description,
+  required Widget picker,
+}) {
+  if (!SettingsLayout.isNarrow(context)) {
+    return BCListGroupItem(
+      prefix: prefix,
+      title: title,
+      description: description,
+      suffix: picker,
+    );
+  }
+  return BCListGroupItem(
+    prefix: prefix,
+    content: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 2,
+      children: [
+        BCText(title),
+        if (description != null)
+          BCText(
+            description,
+            type: BCTextType.bodySm,
+            color: BCTextColor.muted,
+          ),
+        const SizedBox(height: BCSpacing.xs),
+        picker,
+      ],
+    ),
+  );
+}
+
+/// A compact select for a settings row (full width on a phone).
 class _Picker<T> extends StatelessWidget {
   const _Picker({
     required this.label,
@@ -282,7 +326,7 @@ class _Picker<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 190,
+      width: SettingsLayout.isNarrow(context) ? double.infinity : 190,
       child: BCSelect<T>(
         listLabel: label,
         value: value,

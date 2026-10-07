@@ -4,9 +4,11 @@ import 'package:vault_core/vault_core.dart';
 
 import '../../app/routes.dart';
 import '../../data/providers.dart';
+import '../../data/sync_controller.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
+import '../sync/sync_status_chip.dart';
 import 'vault_actions.dart';
 import 'vault_list_pane.dart';
 
@@ -15,7 +17,8 @@ import 'vault_list_pane.dart';
 /// items grouped by app. Tapping an item pushes its screen (B3).
 ///
 /// Everything it shows comes from the `/vault` query, like the desktop
-/// list, so back and forward keep the filters.
+/// list, so back and forward keep the filters. With sync on, the sync line
+/// sits under the search and pulling the list down syncs (P3-07).
 class MobileVaultScreen extends ConsumerStatefulWidget {
   const MobileVaultScreen({super.key, required this.uri});
 
@@ -75,144 +78,160 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
       if (none.isNotEmpty) groups.add((null, none));
     }
 
-    return Scaffold(
-      backgroundColor: bc.background,
-      body: CustomScrollView(
-        slivers: [
-          BCSliverAppHeader(
-            largeTitle: const Text('Vault'),
-            actions: [
-              BCHeaderIconButton(
-                icon: const Icon(
-                  LucideIcons.filePlus2,
-                  semanticLabel: 'Import',
-                ),
-                onPressed: () => openImport(context),
+    final syncing = ref.watch(syncControllerProvider) is! SyncOff;
+
+    final list = CustomScrollView(
+      // Pull to refresh needs a list that scrolls even when it's short.
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        BCSliverAppHeader(
+          largeTitle: const Text('Vault'),
+          actions: [
+            BCHeaderIconButton(
+              icon: const Icon(LucideIcons.filePlus2, semanticLabel: 'Import'),
+              onPressed: () => openImport(context),
+            ),
+            BCHeaderIconButton(
+              icon: const Icon(LucideIcons.plus, semanticLabel: 'New item'),
+              onPressed: () => createItem(context, filter),
+            ),
+          ],
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          sliver: SliverList.list(
+            children: [
+              BCSearchField(
+                controller: _search,
+                placeholder: 'Search items, bundle IDs, key IDs',
+                onChanged: (q) => _go(filter.withQuery(q)),
+                onClear: () => _go(filter.withQuery('')),
               ),
-              BCHeaderIconButton(
-                icon: const Icon(LucideIcons.plus, semanticLabel: 'New item'),
-                onPressed: () => createItem(context, filter),
-              ),
-            ],
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            sliver: SliverList.list(
-              children: [
-                BCSearchField(
-                  controller: _search,
-                  placeholder: 'Search items, bundle IDs, key IDs',
-                  onChanged: (q) => _go(filter.withQuery(q)),
-                  onClear: () => _go(filter.withQuery('')),
+              if (syncing) ...[
+                const SizedBox(height: 8),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: SyncStatusChip(),
                 ),
+              ],
+              const SizedBox(height: 12),
+              // Sized to their labels: four equal tabs don't fit a narrow
+              // phone.
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: BCTabs<VaultKind>(
+                  value: filter.kind,
+                  onValueChange: (kind) => _go(filter.withKind(kind)),
+                  items: [
+                    for (final kind in VaultKind.values)
+                      BCTabItem(value: kind, label: kind.label),
+                  ],
+                ),
+              ),
+              if (apps.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                // Sized to their labels: four equal tabs don't fit a narrow
-                // phone.
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: BCTabs<VaultKind>(
-                    value: filter.kind,
-                    onValueChange: (kind) => _go(filter.withKind(kind)),
-                    items: [
-                      for (final kind in VaultKind.values)
-                        BCTabItem(value: kind, label: kind.label),
-                    ],
-                  ),
-                ),
-                if (apps.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      spacing: 8,
-                      children: [
-                        _AppChip(
-                          label: 'All apps',
-                          selected: filter.app == null,
-                          onPressed: () =>
-                              _go(VaultFilter(kind: filter.kind, q: filter.q)),
-                        ),
-                        for (final app in apps)
-                          _AppChip(
-                            label: app.name,
-                            leading: AppBadge(app: app, size: 16),
-                            selected: filter.app == app.id,
-                            onPressed: () => _go(
-                              VaultFilter(
-                                app: app.id,
-                                kind: filter.kind,
-                                q: filter.q,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (items.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: BCEmptyState(
-                  icon: Icon(
-                    index.items.isEmpty
-                        ? LucideIcons.vault
-                        : LucideIcons.searchX,
-                  ),
-                  title: index.items.isEmpty
-                      ? 'Your vault is empty'
-                      : filter.q != null
-                      ? 'No matches'
-                      : 'Nothing here',
-                  description: index.items.isEmpty
-                      ? 'Import a credential file to start.'
-                      : null,
-                ),
-              ),
-            )
-          else
-            for (final (app, groupItems) in groups) ...[
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                sliver: SliverToBoxAdapter(
                   child: Row(
                     spacing: 8,
                     children: [
-                      AppBadge(app: app, size: 18),
-                      BCText(
-                        app?.name ?? 'No app',
-                        type: BCTextType.bodySm,
-                        weight: BCTextWeight.medium,
-                        color: BCTextColor.muted,
+                      _AppChip(
+                        label: 'All apps',
+                        selected: filter.app == null,
+                        onPressed: () =>
+                            _go(VaultFilter(kind: filter.kind, q: filter.q)),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverToBoxAdapter(
-                  child: _Group(
-                    children: [
-                      for (final item in groupItems)
-                        VaultItemRow(
-                          item: item,
-                          selected: false,
-                          now: now,
-                          onTap: () => context.push(Routes.item(item.id)),
+                      for (final app in apps)
+                        _AppChip(
+                          label: app.name,
+                          leading: AppBadge(app: app, size: 16),
+                          selected: filter.app == app.id,
+                          onPressed: () => _go(
+                            VaultFilter(
+                              app: app.id,
+                              kind: filter.kind,
+                              q: filter.q,
+                            ),
+                          ),
                         ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ],
-          // Room for the floating bottom nav.
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
-        ],
-      ),
+          ),
+        ),
+        if (items.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: BCEmptyState(
+                icon: Icon(
+                  index.items.isEmpty ? LucideIcons.vault : LucideIcons.searchX,
+                ),
+                title: index.items.isEmpty
+                    ? 'Your vault is empty'
+                    : filter.q != null
+                    ? 'No matches'
+                    : 'Nothing here',
+                description: index.items.isEmpty
+                    ? 'Import a credential file to start.'
+                    : null,
+              ),
+            ),
+          )
+        else
+          for (final (app, groupItems) in groups) ...[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    AppBadge(app: app, size: 18),
+                    BCText(
+                      app?.name ?? 'No app',
+                      type: BCTextType.bodySm,
+                      weight: BCTextWeight.medium,
+                      color: BCTextColor.muted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: _Group(
+                  children: [
+                    for (final item in groupItems)
+                      VaultItemRow(
+                        item: item,
+                        selected: false,
+                        now: now,
+                        onTap: () => context.push(Routes.item(item.id)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        // Room for the floating bottom nav.
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
+    );
+
+    return Scaffold(
+      backgroundColor: bc.background,
+      body: syncing
+          ? RefreshIndicator.adaptive(
+              color: bc.accent,
+              backgroundColor: bc.surface,
+              onRefresh: () =>
+                  ref.read(syncControllerProvider.notifier).syncNow(),
+              child: list,
+            )
+          : list,
     );
   }
 }
