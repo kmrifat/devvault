@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
+import 'vault_actions.dart';
 
 /// Which part of the app the window shows, as the sidebar sees it.
 enum ShellSection { vault, expiry, settings }
@@ -132,7 +133,21 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                         ),
                       ),
                     const SizedBox(height: 18),
-                    const _SectionLabel('Apps'),
+                    _SectionLabel(
+                      'Apps',
+                      action: BCButton(
+                        size: BCButtonSize.sm,
+                        variant: BCButtonVariant.ghost,
+                        isIconOnly: true,
+                        onPressed: () => createApp(context),
+                        child: Icon(
+                          LucideIcons.plus,
+                          size: 16,
+                          color: bc.muted,
+                          semanticLabel: 'New app',
+                        ),
+                      ),
+                    ),
                     if (index == null || index.tree.isEmpty)
                       const _Hint('Items you add are grouped here by app')
                     else
@@ -583,19 +598,36 @@ class _Badge extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+  const _SectionLabel(this.text, {this.action});
 
   final String text;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
+    final label = BCText(
+      text,
+      type: BCTextType.bodySm,
+      weight: BCTextWeight.medium,
+      color: BCTextColor.muted,
+    );
+    final action = this.action;
+    if (action == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+        child: label,
+      );
+    }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-      child: BCText(
-        text,
-        type: BCTextType.bodySm,
-        weight: BCTextWeight.medium,
-        color: BCTextColor.muted,
+      padding: const EdgeInsets.only(left: 12, bottom: 2),
+      child: Row(
+        children: [
+          Expanded(child: label),
+          SizedBox(
+            height: 32,
+            child: Semantics(container: true, child: action),
+          ),
+        ],
       ),
     );
   }

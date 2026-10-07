@@ -153,6 +153,22 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     await reload();
   }
 
+  /// A new, unsaved app (fresh id, this device).
+  AppRecord newApp(String name) => _vault.newApp(name: name);
+
+  /// Saves [app] and refreshes the index. Returns it as stored.
+  Future<AppRecord> saveApp(AppRecord app) async {
+    final saved = await _vault.putApp(app);
+    await reload();
+    return saved;
+  }
+
+  /// Deletes the app [id]. Its items stay, grouped under "No app".
+  Future<void> deleteApp(String id) async {
+    await _vault.delete(id, TombstoneKind.app);
+    await reload();
+  }
+
   /// Re-reads the vault after a write, so the index matches the disk.
   Future<void> reload() async {
     final current = state;

@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
+import '../../app/routes.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
+import '../app_editor/app_editor.dart';
 import '../item_editor/item_editor.dart';
 
 /// Opens the import dialog (design frame D04).
@@ -79,6 +81,47 @@ Future<void> deleteItem(BuildContext context, WidgetRef ref, Item item) async {
     context,
     BCToastData(
       title: '“${item.title}” deleted',
+      variant: BCToastVariant.success,
+    ),
+  );
+}
+
+/// Opens the form for a new app and shows it once saved.
+Future<void> createApp(BuildContext context) async {
+  final id = await showAppEditor(context);
+  if (id != null && context.mounted) context.go(Routes.vault(app: id));
+}
+
+/// Opens the form for [app].
+Future<void> editApp(BuildContext context, AppRecord app) =>
+    showAppEditor(context, app: app);
+
+/// Asks, then deletes [app]. Its [itemCount] items stay in the vault,
+/// under "No app".
+Future<void> deleteApp(
+  BuildContext context,
+  WidgetRef ref,
+  AppRecord app, {
+  required int itemCount,
+}) async {
+  final confirmed = await showConfirmDialog(
+    context,
+    title: 'Delete “${app.name}”?',
+    message: itemCount == 0
+        ? 'The app is removed from this vault.'
+        : 'The app is removed, but its ${itemCount == 1 ? 'item stays' : '$itemCount items stay'} '
+              'in the vault under “No app”.',
+    confirmLabel: 'Delete app',
+    destructive: true,
+  );
+  if (!confirmed || !context.mounted) return;
+  await ref.read(vaultSessionProvider.notifier).deleteApp(app.id);
+  if (!context.mounted) return;
+  context.go(Routes.vault());
+  BCToast.show(
+    context,
+    BCToastData(
+      title: '“${app.name}” deleted',
       variant: BCToastVariant.success,
     ),
   );

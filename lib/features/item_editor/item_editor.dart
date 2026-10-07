@@ -144,7 +144,10 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
               child: _Choice(
                 label: 'App',
                 none: 'No app',
-                value: draft.appId,
+                // An app deleted since shows as no app, as in the sidebar.
+                value: apps.any((a) => a.id == draft.appId)
+                    ? draft.appId
+                    : null,
                 options: {for (final app in apps) app.id: app.name},
                 onChanged: (v) => setState(() => draft.appId = v),
               ),
