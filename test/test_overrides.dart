@@ -56,15 +56,20 @@ Future<Directory> testSupportDir([TestVault vault = TestVault.none]) async {
 }
 
 /// Provider overrides shared by every app-level test: a fixed clock and
-/// device id, the given support folder, libsodium, and the cheapest
-/// Argon2id the format allows.
-List<Override> testOverrides({required Directory supportDir}) => [
+/// device id, the given support folder, libsodium and, unless [realKdf],
+/// the cheapest Argon2id the format allows.
+List<Override> testOverrides({
+  required Directory supportDir,
+  bool realKdf = false,
+}) => [
   clockProvider.overrideWithValue(() => testNow),
   deviceIdProvider.overrideWithValue(testDeviceId),
   appSupportDirProvider.overrideWithValue(supportDir),
   cryptoProvider.overrideWithValue(testCrypto),
-  kdfOpsLimitProvider.overrideWithValue(KdfParams.minOpsLimit),
-  kdfMemLimitProvider.overrideWithValue(KdfParams.minMemLimit),
+  if (!realKdf) ...[
+    kdfOpsLimitProvider.overrideWithValue(KdfParams.minOpsLimit),
+    kdfMemLimitProvider.overrideWithValue(KdfParams.minMemLimit),
+  ],
 ];
 
 /// The whole app, wired the way main() wires it but with [testOverrides].
@@ -73,9 +78,10 @@ Widget testApp({
   required Directory supportDir,
   AppLayout? layout,
   List<Override> overrides = const [],
+  bool realKdf = false,
 }) => ProviderScope(
   overrides: [
-    ...testOverrides(supportDir: supportDir),
+    ...testOverrides(supportDir: supportDir, realKdf: realKdf),
     ...overrides,
   ],
   child: DevVaultApp(initialLocation: location, layout: layout),
