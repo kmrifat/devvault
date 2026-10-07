@@ -374,13 +374,25 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
   Future<void> _copy() async {
     final guard = ref.read(clipboardGuardProvider);
     final value = widget.field.value;
-    // Secrets come off the clipboard again after 30 s; plain facts stay.
+    // Secrets come off the clipboard again (Settings: 30 s by default);
+    // plain facts stay.
     if (widget.field.secret) {
       await guard.copySecret(value);
     } else {
       await guard.clipboard.write(value);
     }
     if (!mounted) return;
+    if (widget.field.secret) {
+      BCToast.show(
+        context,
+        BCToastData(
+          title: '${widget.label} copied',
+          description:
+              'Clears from the clipboard in '
+              '${guard.clearAfter.inSeconds} seconds.',
+        ),
+      );
+    }
     setState(() => _copied = true);
     _copiedTimer?.cancel();
     _copiedTimer = Timer(const Duration(seconds: 2), () {
