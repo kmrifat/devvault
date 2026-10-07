@@ -11,6 +11,7 @@ import '../services/file_export.dart';
 import '../services/file_import.dart';
 import '../services/file_saver.dart';
 import '../services/folder_revealer.dart';
+import '../services/notifications.dart';
 
 // Every service the app depends on, in one place. Values that need I/O are
 // loaded in main() before the first frame and handed in with overrides, so
@@ -101,6 +102,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setClipboardClear(Duration after) =>
       update(state.copyWith(clipboardClearAfter: after));
+
+  void setExpiryReminders(bool on) =>
+      update(state.copyWith(expiryReminders: on));
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
@@ -126,4 +130,21 @@ final fileOpenerProvider = Provider<FileOpener>(
 /// Reads facts out of imported files.
 final credentialParsersProvider = Provider<CredentialParsers>(
   (ref) => CredentialParsers.standard(),
+);
+
+/// The OS's notification service. main() swaps in the real one; tests and
+/// platforms without one get [NoAlertScheduler].
+final alertSchedulerProvider = Provider<AlertScheduler>(
+  (ref) => NoAlertScheduler(),
+);
+
+/// The reminder ledger on disk, next to the settings.
+final alertLedgerFileProvider = Provider<AlertLedgerFile>(
+  (ref) => AlertLedgerFile(ref.watch(appSupportDirProvider)),
+);
+
+/// How long expiry reminders wait after the last vault change before
+/// rescheduling.
+final alertDebounceProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 2),
 );

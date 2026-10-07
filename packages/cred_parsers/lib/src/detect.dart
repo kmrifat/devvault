@@ -40,6 +40,13 @@ enum CredentialFormat {
   /// OAuth client secret (`client_secret_*.json`).
   oauthClientJson('OAuth client', ItemType.oauthClient),
 
+  /// Several PEM blocks in one file: a certificate chain, or a certificate
+  /// with its private key (how APNs certificates are often kept).
+  pemBundle('PEM bundle', ItemType.appleCertificate),
+
+  /// An OpenSSH private key (`-----BEGIN OPENSSH PRIVATE KEY-----`).
+  sshPrivateKey('OpenSSH private key', ItemType.sshKey),
+
   /// Anything else. Imported as a generic file.
   unknown('File', ItemType.genericFile);
 
@@ -87,8 +94,13 @@ CredentialFormat _detect(String filename, Uint8List bytes) {
   }
 
   final text = _asciiPrefix(bytes, 64 * 1024);
+  if (text.contains('-----BEGIN OPENSSH PRIVATE KEY-----')) {
+    return CredentialFormat.sshPrivateKey;
+  }
   if (text.contains('-----BEGIN CERTIFICATE-----')) {
-    return CredentialFormat.x509Certificate;
+    return '-----BEGIN '.allMatches(text).length > 1
+        ? CredentialFormat.pemBundle
+        : CredentialFormat.x509Certificate;
   }
   // A bare PKCS#8 key could be anything; only a .p8 is an Apple auth key.
   if (ext == 'p8' && text.contains('-----BEGIN PRIVATE KEY-----')) {
