@@ -13,6 +13,7 @@ workspace:
   - packages/vault_s3
 
 dependencies:
+  bc_ui: ^0.7.0
   flutter:
     sdk: flutter
 
@@ -23,3 +24,25 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # bc_ui bundles Inter under its own package namespace, but its text styles
+  # ask for the bare 'Inter' family, which only resolves if the app registers
+  # the font itself. JetBrains Mono renders key IDs, fingerprints and
+  # filenames (AppText.mono). Both fonts are SIL OFL 1.1, see assets/fonts.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
