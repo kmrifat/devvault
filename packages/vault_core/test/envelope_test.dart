@@ -22,12 +22,8 @@ void main() {
     ObjectType type = ObjectType.item,
   }) => ObjectSlot(vaultId: vault, objectId: object, type: type);
 
-  Uint8List seal(Uint8List plaintext, {ObjectSlot? at}) => Envelope.seal(
-    crypto,
-    slot: at ?? slot(),
-    key: key,
-    plaintext: plaintext,
-  );
+  Uint8List seal(Uint8List plaintext, {ObjectSlot? at}) =>
+      Envelope.seal(crypto, slot: at ?? slot(), key: key, plaintext: plaintext);
 
   Uint8List open(Uint8List envelope, {ObjectSlot? at, SecureKey? withKey}) =>
       Envelope.open(
@@ -119,10 +115,7 @@ void main() {
 
   group('slots', () {
     test('build the AAD from location, as in the spec', () {
-      expect(
-        utf8.decode(slot().associatedData),
-        '$vaultId|$objectId|item|1',
-      );
+      expect(utf8.decode(slot().associatedData), '$vaultId|$objectId|item|1');
       expect(
         utf8.decode(slot(type: ObjectType.vkWrapRecovery).associatedData),
         '$vaultId|$objectId|vk_wrap_recovery|1',
