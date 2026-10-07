@@ -123,6 +123,22 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
+  /// Whether [password] is the current master password. Runs Argon2id, so
+  /// it takes as long as an unlock.
+  Future<bool> checkPassword(String password) async {
+    try {
+      final key = await VaultKeys.unlockWithPassword(
+        _crypto,
+        _vault.header,
+        password,
+      );
+      key.dispose();
+      return true;
+    } on WrongPassword {
+      return false;
+    }
+  }
+
   /// Sets a new master password. Writes `vault.json` only.
   Future<void> changePassword(String newPassword) async {
     final current = state;

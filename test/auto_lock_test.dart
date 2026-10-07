@@ -1,6 +1,9 @@
+import 'dart:ui' show AppExitResponse;
+
 import 'package:devvault/app/auto_lock.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/data/app_settings.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/services/clipboard_guard.dart';
@@ -115,7 +118,7 @@ void main() {
 
   testWidgets('"Never" keeps it open', (tester) async {
     await open(tester);
-    appContainer(tester).read(autoLockProvider.notifier).set(null);
+    appContainer(tester).read(settingsProvider.notifier).setAutoLock(null);
     await idle(tester, const Duration(hours: 8));
     expect(session(tester), isA<Unlocked>());
   });
@@ -123,8 +126,8 @@ void main() {
   testWidgets('a shorter setting applies right away', (tester) async {
     await open(tester);
     appContainer(tester)
-        .read(autoLockProvider.notifier)
-        .set(const Duration(minutes: 1));
+        .read(settingsProvider.notifier)
+        .setAutoLock(const Duration(minutes: 1));
     await idle(tester, const Duration(minutes: 1));
     expect(session(tester), isA<Locked>());
   });
@@ -144,6 +147,17 @@ void main() {
     });
   }
 
+  testWidgets('quitting clears a copied secret', (tester) async {
+    await open(tester);
+    await appContainer(tester)
+        .read(clipboardGuardProvider)
+        .copySecret('kitchenly-store-pass');
+    expect(clipboard.text, 'kitchenly-store-pass');
+    final response = await tester.binding.handleRequestAppExit();
+    expect(response, AppExitResponse.exit);
+    expect(clipboard.text, isEmpty);
+  });
+
   testWidgets('a plain L types, it doesn’t lock', (tester) async {
     await open(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
@@ -152,6 +166,6 @@ void main() {
   });
 
   test('defaults to 5 minutes', () {
-    expect(AutoLockSetting.defaultAfter, const Duration(minutes: 5));
+    expect(const AppSettings().autoLockAfter, const Duration(minutes: 5));
   });
 }

@@ -20,6 +20,9 @@ export 'src/model/item_type.dart';
 export 'src/model/records.dart';
 export 'src/store/vault_store.dart';
 export 'src/sync/hlc.dart';
+export 'src/sync/local_dir_backend.dart';
+export 'src/sync/memory_backend.dart';
+export 'src/sync/storage_backend.dart';
 export 'src/vault/vault.dart';
 
 /// Version of the on-disk and in-bucket vault format this package writes.

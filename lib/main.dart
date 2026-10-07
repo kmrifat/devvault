@@ -5,6 +5,7 @@ import 'package:vault_core/vault_core.dart';
 
 import 'app/app.dart';
 import 'app/routes.dart';
+import 'data/app_settings.dart';
 import 'data/providers.dart';
 import 'services/device_id.dart';
 import 'services/window.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
   final supportDir = await getApplicationSupportDirectory();
   final deviceId = await loadOrCreateDeviceId(supportDir);
   final crypto = await VaultCrypto.init();
+  final settings = AppSettings.load(supportDir);
 
   runApp(
     ProviderScope(
@@ -31,6 +33,7 @@ Future<void> main() async {
         appSupportDirProvider.overrideWithValue(supportDir),
         deviceIdProvider.overrideWithValue(deviceId),
         cryptoProvider.overrideWithValue(crypto),
+        initialSettingsProvider.overrideWithValue(settings),
       ],
       child: const DevVaultApp(initialLocation: _start),
     ),

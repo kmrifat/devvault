@@ -1,11 +1,16 @@
 import 'dart:io';
 
+import 'package:cred_parsers/cred_parsers.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../services/clipboard_guard.dart';
+import 'app_settings.dart';
 import '../services/file_export.dart';
+import '../services/file_import.dart';
 import '../services/file_saver.dart';
+import '../services/folder_revealer.dart';
 
 // Every service the app depends on, in one place. Values that need I/O are
 // loaded in main() before the first frame and handed in with overrides, so
@@ -45,7 +50,14 @@ final kdfMemLimitProvider = Provider<int>((ref) => KdfParams.defaultMemLimit);
 /// Copies secrets and clears them again (default after 30 seconds, and on
 /// lock).
 final clipboardGuardProvider = Provider<ClipboardGuard>((ref) {
-  final guard = ClipboardGuard();
+  final guard = ClipboardGuard(
+    clearAfter: ref.read(settingsProvider).clipboardClearAfter,
+  );
+  // Follows the setting without dropping a clear that's already pending.
+  ref.listen(
+    settingsProvider.select((s) => s.clipboardClearAfter),
+    (_, after) => guard.clearAfter = after,
+  );
   ref.onDispose(guard.dispose);
   return guard;
 });
@@ -58,17 +70,60 @@ final fileExportProvider = Provider<FileExport>(
   (ref) => FileExport(ref.watch(fileSaverProvider)),
 );
 
-/// How long the vault stays open without any input before it locks itself;
-/// null never locks on idle. Settings (P1-23) changes and keeps it.
-class AutoLockSetting extends Notifier<Duration?> {
-  static const defaultAfter = Duration(minutes: 5);
+/// The settings saved on this device, read in main() before the first
+/// frame. Tests start from the defaults.
+final initialSettingsProvider = Provider<AppSettings>(
+  (ref) => const AppSettings(),
+);
 
+/// This device's preferences. Every change is saved to `settings.json`.
+class SettingsNotifier extends Notifier<AppSettings> {
   @override
-  Duration? build() => defaultAfter;
+  AppSettings build() => ref.read(initialSettingsProvider);
 
-  void set(Duration? after) => state = after;
+  /// Saves run one after another, each writing the latest state, so quick
+  /// changes can't interleave in the temp file.
+  Future<void> _saving = Future.value();
+
+  void update(AppSettings next) {
+    if (next == state) return;
+    state = next;
+    final dir = ref.read(appSupportDirProvider);
+    // Best effort: a failed write only means the old value returns next
+    // launch, never a broken vault.
+    _saving = _saving.then((_) => state.save(dir)).catchError((_) {});
+  }
+
+  void setThemeMode(ThemeMode mode) => update(state.copyWith(themeMode: mode));
+
+  void setAutoLock(Duration? after) =>
+      update(state.copyWith(autoLockAfter: () => after));
+
+  void setClipboardClear(Duration after) =>
+      update(state.copyWith(clipboardClearAfter: after));
 }
 
-final autoLockProvider = NotifierProvider<AutoLockSetting, Duration?>(
-  AutoLockSetting.new,
+final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
+  SettingsNotifier.new,
+);
+
+/// How long the vault stays open without input before it locks itself
+/// (null: never), from [settingsProvider].
+final autoLockProvider = Provider<Duration?>(
+  (ref) => ref.watch(settingsProvider.select((s) => s.autoLockAfter)),
+);
+
+/// Shows folders in Finder / Explorer / the Linux file manager.
+final folderRevealerProvider = Provider<FolderRevealer>(
+  (ref) => const SystemFolderRevealer(),
+);
+
+/// Open dialogs for choosing files to import.
+final fileOpenerProvider = Provider<FileOpener>(
+  (ref) => const SystemFileOpener(),
+);
+
+/// Reads facts out of imported files.
+final credentialParsersProvider = Provider<CredentialParsers>(
+  (ref) => CredentialParsers.standard(),
 );
