@@ -73,16 +73,17 @@ Future<Directory> testSupportDir([
   return dir;
 }
 
-/// Provider overrides shared by every app-level test: a fixed clock and
-/// device id, the given support folder, libsodium ([crypto] or the shared
-/// test instance) and, unless [realKdf], the cheapest Argon2id the format
-/// allows.
+/// Provider overrides shared by every app-level test: a fixed clock (or
+/// [clock], for tests that move time) and device id, the given support
+/// folder, libsodium ([crypto] or the shared test instance) and, unless
+/// [realKdf], the cheapest Argon2id the format allows.
 List<Override> testOverrides({
   required Directory supportDir,
   bool realKdf = false,
   VaultCrypto? crypto,
+  DateTime Function()? clock,
 }) => [
-  clockProvider.overrideWithValue(() => testNow),
+  clockProvider.overrideWithValue(clock ?? () => testNow),
   deviceIdProvider.overrideWithValue(testDeviceId),
   appSupportDirProvider.overrideWithValue(supportDir),
   cryptoProvider.overrideWithValue(crypto ?? testCrypto),
@@ -100,9 +101,15 @@ Widget testApp({
   List<Override> overrides = const [],
   bool realKdf = false,
   VaultCrypto? crypto,
+  DateTime Function()? clock,
 }) => ProviderScope(
   overrides: [
-    ...testOverrides(supportDir: supportDir, realKdf: realKdf, crypto: crypto),
+    ...testOverrides(
+      supportDir: supportDir,
+      realKdf: realKdf,
+      crypto: crypto,
+      clock: clock,
+    ),
     ...overrides,
   ],
   child: DevVaultApp(initialLocation: location, layout: layout),
@@ -122,6 +129,7 @@ Future<void> pumpUnlockedApp(
   AppLayout? layout,
   List<Override> overrides = const [],
   VaultCrypto? crypto,
+  DateTime Function()? clock,
   Future<void> Function()? settle,
 }) async {
   final dir = await tester.runAsync(() => testSupportDir(vault, crypto));
@@ -132,6 +140,7 @@ Future<void> pumpUnlockedApp(
       layout: layout,
       overrides: overrides,
       crypto: crypto,
+      clock: clock,
     ),
   );
   await tester.pump();

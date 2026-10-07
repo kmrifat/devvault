@@ -231,12 +231,18 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
                   ),
                 ),
               ),
-              BCButton(
-                size: BCButtonSize.sm,
-                variant: BCButtonVariant.tertiary,
-                onPressed: () => ref.read(vaultSessionProvider.notifier).lock(),
-                startContent: const Icon(LucideIcons.lock, size: 14),
-                child: const Text('Lock'),
+              Tooltip(
+                message: defaultTargetPlatform == TargetPlatform.macOS
+                    ? 'Lock now (⌘L)'
+                    : 'Lock now (Ctrl+L)',
+                child: BCButton(
+                  size: BCButtonSize.sm,
+                  variant: BCButtonVariant.tertiary,
+                  onPressed: () =>
+                      ref.read(vaultSessionProvider.notifier).lock(),
+                  startContent: const Icon(LucideIcons.lock, size: 14),
+                  child: const Text('Lock'),
+                ),
               ),
             ],
           ),

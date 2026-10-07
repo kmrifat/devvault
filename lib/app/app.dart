@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/vault_session.dart';
+import 'auto_lock.dart';
 import 'layout.dart';
 import 'router.dart';
 import 'routes.dart';
@@ -74,7 +75,8 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       routerConfig: _router,
-      builder: (context, child) => BCToastProvider(child: child!),
+      builder: (context, child) =>
+          AutoLock(child: BCToastProvider(child: child!)),
     );
   }
 }
