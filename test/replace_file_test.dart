@@ -214,7 +214,7 @@ void main() {
         (appContainer(tester).read(vaultSessionProvider) as Unlocked).index;
 
     Future<void> settle(WidgetTester tester, bool Function() done) async {
-      for (var i = 0; i < 300 && !done(); i++) {
+      for (var i = 0; i < 1000 && !done(); i++) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );

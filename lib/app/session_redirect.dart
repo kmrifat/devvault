@@ -3,7 +3,7 @@ import 'routes.dart';
 
 /// Where the router sends the user for the current [session].
 ///
-/// - No vault: only *create*.
+/// - No vault: only *create*, or *join* one from a bucket.
 /// - Locked: only *unlock* and *recover*; anything else bounces to unlock
 ///   and comes back afterwards (`?from=`).
 /// - Unlocked with a new recovery key not yet confirmed: only the recovery
@@ -23,7 +23,9 @@ String? sessionRedirect(
   final path = location.path;
   switch (session) {
     case NoVault():
-      return path == Routes.create ? null : Routes.create;
+      return path == Routes.create || path == Routes.joinVault
+          ? null
+          : Routes.create;
 
     case Locked():
       if (path == Routes.unlock || path == Routes.recover) return null;
@@ -55,6 +57,7 @@ bool _isEntry(String path) =>
     path == Routes.unlock ||
     path == Routes.recover ||
     path == Routes.create ||
+    path == Routes.joinVault ||
     path == Routes.createRecoveryKit;
 
 /// A `from` worth returning to: an in-app path that isn't itself an entry

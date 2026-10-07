@@ -67,6 +67,12 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     return store == null ? const NoVault() : Locked.of(store);
   }
 
+  /// Looks for a vault on disk again (after joining one from a bucket).
+  void findOnDisk() {
+    final store = findVault(ref.read(vaultsDirProvider));
+    state = store == null ? const NoVault() : Locked.of(store);
+  }
+
   VaultCrypto get _crypto => ref.read(cryptoProvider);
   String get _deviceId => ref.read(deviceIdProvider);
   DateTime Function() get _now => ref.read(clockProvider);
@@ -165,6 +171,14 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
       done.complete();
     }
   }
+
+  /// Issues a new recovery key; the old one stops working. Writes
+  /// `vault.json` only. The caller shows the key once and disposes it.
+  Future<RecoveryKey> replaceRecoveryKey() => exclusive(() async {
+    final current = state;
+    if (current is! Unlocked) throw StateError('The vault is locked');
+    return current.vault.replaceRecoveryKey();
+  });
 
   Vault get _vault => switch (state) {
     Unlocked(:final vault) => vault,

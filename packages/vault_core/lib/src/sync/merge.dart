@@ -1,6 +1,7 @@
 import '../format/timestamps.dart';
 import '../model/item_type.dart';
 import '../model/records.dart';
+import 'hlc.dart';
 
 /// What a sync conflict kept: the versions that lost a field-level clash,
 /// and deletions that lost to an edit (ADR-0004, SPEC §6.1 `conflict`).
@@ -52,6 +53,13 @@ class Conflict {
       'deleted_at': formatTimestamp(tombstone.deletedAt),
     });
   }
+
+  /// Drops the kept version at [rev] once the user has chosen (D05).
+  void removeVersion(Hlc rev) => versions.removeWhere((v) => v.rev == rev);
+
+  /// Drops every recorded deletion once the user has chosen to keep or
+  /// delete the item.
+  void clearDeletions() => deletions.clear();
 
   void addAll(Conflict other) {
     other.versions.forEach(addVersion);
@@ -253,6 +261,10 @@ List<String> _mergeSet(
     ...{...local, ...remote}.where((v) => !removed.contains(v)),
   ];
 }
+
+/// [item] with its conflict replaced by [conflict] (empty clears it).
+Item withConflict(Item item, Conflict conflict) =>
+    _rebuild(item, conflict: conflict.toJson());
 
 /// [item] with a different conflict (null clears it).
 Item _rebuild(Item item, {required Map<String, Object?>? conflict}) => Item(
