@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
+import '../features/settings/settings_screen.dart';
 import '../features/unlock/recover_screen.dart';
 import '../features/unlock/unlock_screen.dart';
 import '../features/vault/item_detail_pane.dart';
@@ -141,11 +142,7 @@ GoRouter buildRouter({
             routes: [
               tab(
                 Routes.settings,
-                (_) => const PlaceholderScreen(
-                  title: 'Settings',
-                  frame: 'D07',
-                  icon: LucideIcons.settings,
-                ),
+                (_) => const SettingsScreen(),
                 routes: [
                   tab(
                     'sync',
@@ -155,14 +152,7 @@ GoRouter buildRouter({
                       icon: LucideIcons.cloud,
                     ),
                   ),
-                  tab(
-                    'security',
-                    (_) => const PlaceholderScreen(
-                      title: 'Security',
-                      frame: 'D07',
-                      icon: LucideIcons.shieldCheck,
-                    ),
-                  ),
+                  tab('security', (_) => const SettingsScreen()),
                 ],
               ),
             ],

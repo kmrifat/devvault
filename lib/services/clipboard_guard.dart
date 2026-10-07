@@ -32,7 +32,9 @@ class ClipboardGuard {
   });
 
   final ClipboardAccess clipboard;
-  final Duration clearAfter;
+
+  /// Applies to the next copy; a clear already scheduled keeps its time.
+  Duration clearAfter;
 
   String? _copied;
   Timer? _timer;

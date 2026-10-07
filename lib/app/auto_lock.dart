@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -9,7 +10,7 @@ import '../data/vault_session.dart';
 
 /// Locks the vault on its own: after [autoLockProvider] of no input, when
 /// the app comes back after the computer slept past that time, and on ⌘L
-/// (Ctrl+L).
+/// (Ctrl+L). On quit it clears a copied secret from the clipboard.
 ///
 /// Idle time is measured on the wall clock ([clockProvider]) and checked
 /// every [checkEvery], so a sleeping computer, whose timers stop, still
@@ -38,7 +39,14 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     super.initState();
     HardwareKeyboard.instance.addHandler(_onKey);
     _ticker = Timer.periodic(AutoLock.checkEvery, (_) => _check());
-    _lifecycle = AppLifecycleListener(onResume: _check);
+    _lifecycle = AppLifecycleListener(
+      onResume: _check,
+      // Quitting takes a copied secret off the clipboard too.
+      onExitRequested: () async {
+        await ref.read(clipboardGuardProvider).clearNow();
+        return AppExitResponse.exit;
+      },
+    );
     // A fresh unlock starts a fresh idle period.
     ref.listenManual(vaultSessionProvider, (previous, next) {
       if (next is Unlocked && previous is! Unlocked) _touch();

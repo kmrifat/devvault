@@ -159,10 +159,18 @@ void main() {
     // Copying doesn't reveal it on screen.
     expect(find.text('kitchenly-store-pass'), findsNothing);
     expect(inDetail(find.text('Copied')), findsNWidgets(2));
+    // Only the secret says when it leaves the clipboard.
+    expect(find.text('Store password copied'), findsOneWidget);
+    expect(
+      find.text('Clears from the clipboard in 30 seconds.'),
+      findsOneWidget,
+    );
+    expect(find.text('Alias copied'), findsNothing);
 
     await tester.pump(const Duration(seconds: 2));
     expect(inDetail(find.text('Copied')), findsNothing);
     await guard.clearNow();
+    await tester.pumpAndSettle(const Duration(seconds: 10));
   });
 
   testWidgets('shows the file with its size and hash', (tester) async {

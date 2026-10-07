@@ -36,9 +36,7 @@ void main() {
   const screens = {
     Routes.pair: 'Pair a device',
     Routes.expiry: 'Expiry',
-    Routes.settings: 'Settings',
     Routes.settingsSync: 'Sync storage',
-    Routes.settingsSecurity: 'Security',
   };
 
   for (final layout in AppLayout.values) {
