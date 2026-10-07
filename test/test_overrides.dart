@@ -32,15 +32,21 @@ enum TestVault {
 }
 
 /// A throwaway app support folder, optionally with a vault in it.
-Future<Directory> testSupportDir([TestVault vault = TestVault.none]) async {
+///
+/// Pass a seeded [crypto] for reproducible ids and keys (screenshots).
+Future<Directory> testSupportDir([
+  TestVault vault = TestVault.none,
+  VaultCrypto? crypto,
+]) async {
   final dir = Directory.systemTemp.createTempSync('devvault_test_');
   addTearDown(() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
   if (vault == TestVault.locked) {
-    final id = VaultKeys.uuidV4(testCrypto);
+    final c = crypto ?? testCrypto;
+    final id = VaultKeys.uuidV4(c);
     final (created, recoveryKey) = await Vault.create(
-      crypto: testCrypto,
+      crypto: c,
       store: VaultStore(Directory('${dir.path}/vaults/$id')),
       password: testPassword,
       deviceId: testDeviceId,
@@ -56,16 +62,18 @@ Future<Directory> testSupportDir([TestVault vault = TestVault.none]) async {
 }
 
 /// Provider overrides shared by every app-level test: a fixed clock and
-/// device id, the given support folder, libsodium and, unless [realKdf],
-/// the cheapest Argon2id the format allows.
+/// device id, the given support folder, libsodium ([crypto] or the shared
+/// test instance) and, unless [realKdf], the cheapest Argon2id the format
+/// allows.
 List<Override> testOverrides({
   required Directory supportDir,
   bool realKdf = false,
+  VaultCrypto? crypto,
 }) => [
   clockProvider.overrideWithValue(() => testNow),
   deviceIdProvider.overrideWithValue(testDeviceId),
   appSupportDirProvider.overrideWithValue(supportDir),
-  cryptoProvider.overrideWithValue(testCrypto),
+  cryptoProvider.overrideWithValue(crypto ?? testCrypto),
   if (!realKdf) ...[
     kdfOpsLimitProvider.overrideWithValue(KdfParams.minOpsLimit),
     kdfMemLimitProvider.overrideWithValue(KdfParams.minMemLimit),
@@ -79,9 +87,10 @@ Widget testApp({
   AppLayout? layout,
   List<Override> overrides = const [],
   bool realKdf = false,
+  VaultCrypto? crypto,
 }) => ProviderScope(
   overrides: [
-    ...testOverrides(supportDir: supportDir, realKdf: realKdf),
+    ...testOverrides(supportDir: supportDir, realKdf: realKdf, crypto: crypto),
     ...overrides,
   ],
   child: DevVaultApp(initialLocation: location, layout: layout),
@@ -99,15 +108,19 @@ Future<void> pumpUnlockedApp(
   required String location,
   AppLayout? layout,
   List<Override> overrides = const [],
+  VaultCrypto? crypto,
   Future<void> Function()? settle,
 }) async {
-  final dir = await tester.runAsync(() => testSupportDir(TestVault.locked));
+  final dir = await tester.runAsync(
+    () => testSupportDir(TestVault.locked, crypto),
+  );
   await tester.pumpWidget(
     testApp(
       location: location,
       supportDir: dir!,
       layout: layout,
       overrides: overrides,
+      crypto: crypto,
     ),
   );
   await tester.pump();

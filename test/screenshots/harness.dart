@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vault_core/vault_core.dart';
 
 import '../test_overrides.dart';
 
@@ -102,6 +103,13 @@ void shot(
     // flag has to be restored inside the body: it is checked before
     // tearDowns run.
     debugDisableShadows = false;
+    // Seeded per shot, so vault ids, recovery keys and nonces are the same
+    // on every run and the image only changes when the UI does.
+    final crypto = await tester.runAsync(
+      // Seeded randomness is what reproducible screenshots need.
+      // ignore: invalid_use_of_visible_for_testing_member
+      () => VaultCrypto.withFixedRandom(utf8.encode('devvault shot $name')),
+    );
     try {
       if (vault == null) {
         await pumpUnlockedApp(
@@ -109,11 +117,12 @@ void shot(
           location: route,
           layout: device.layout,
           overrides: overrides,
+          crypto: crypto,
           settle: () => _settle(tester),
         );
       } else {
         // First-run and lock screens: the device holds [vault], unopened.
-        final dir = await tester.runAsync(() => testSupportDir(vault));
+        final dir = await tester.runAsync(() => testSupportDir(vault, crypto));
         await tester.pumpWidget(
           testApp(
             location: route,
@@ -121,6 +130,7 @@ void shot(
             layout: device.layout,
             overrides: overrides,
             realKdf: realKdf,
+            crypto: crypto,
           ),
         );
         await _settle(tester);
