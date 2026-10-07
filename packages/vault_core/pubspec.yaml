@@ -7,6 +7,13 @@ resolution: workspace
 environment:
   sdk: ^3.13.4
 
+dependencies:
+  crypto: ^3.0.7
+  meta: ^1.19.0
+  # libsodium, compiled from source by native-asset build hooks for every
+  # platform (ADR-0002). Argon2id lives in its sumo API.
+  sodium: ^4.1.1
+
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6
