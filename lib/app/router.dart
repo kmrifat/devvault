@@ -12,6 +12,7 @@ import '../features/settings/sync_settings_screen.dart';
 import '../features/unlock/recover_screen.dart';
 import '../features/unlock/unlock_screen.dart';
 import '../features/vault/item_detail_pane.dart';
+import '../features/vault/item_screen.dart';
 import '../features/vault/mobile_vault_screen.dart';
 import '../features/vault/vault_list_pane.dart';
 import 'desktop_shell.dart';
@@ -100,11 +101,7 @@ GoRouter buildRouter({
       // desktop.
       page(
         '/vault/item/:id',
-        (s) => PlaceholderScreen(
-          title: 'Item ${s.pathParameters['id']}',
-          frame: 'B3',
-          icon: LucideIcons.fileKey2,
-        ),
+        (s) => ItemScreen(itemId: s.pathParameters['id']!),
       ),
 
       StatefulShellRoute.indexedStack(
