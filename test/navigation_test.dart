@@ -2,6 +2,7 @@ import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
+import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
@@ -114,13 +115,8 @@ void main() {
       await open(tester, AppLayout.mobile, Routes.vault());
       expect(find.byType(BCBottomNav), findsOneWidget);
       expect(find.byType(VaultSidebar), findsNothing);
-      expect(
-        find.descendant(
-          of: find.byType(BCEmptyState),
-          matching: find.text('Vault'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(MobileVaultScreen), findsOneWidget);
+      expect(find.text('Your vault is empty'), findsOneWidget);
     });
 
     testWidgets('an item is pushed as its own screen', (tester) async {
