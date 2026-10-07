@@ -123,6 +123,13 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
+  /// Sets a new master password. Writes `vault.json` only.
+  Future<void> changePassword(String newPassword) async {
+    final current = state;
+    if (current is! Unlocked) throw StateError('The vault is locked');
+    await current.vault.changePassword(newPassword);
+  }
+
   /// Re-reads the vault after a write, so the index matches the disk.
   Future<void> reload() async {
     final current = state;
@@ -176,3 +183,16 @@ class PendingRecoveryKey extends Notifier<RecoveryKey?> {
 
 final pendingRecoveryKeyProvider =
     NotifierProvider<PendingRecoveryKey, RecoveryKey?>(PendingRecoveryKey.new);
+
+/// Set after unlocking with the recovery key: the user must choose a new
+/// master password before the vault opens (design frame D00, recovery).
+class PasswordResetPending extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void require() => state = true;
+  void done() => state = false;
+}
+
+final passwordResetPendingProvider =
+    NotifierProvider<PasswordResetPending, bool>(PasswordResetPending.new);

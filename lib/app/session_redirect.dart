@@ -8,6 +8,8 @@ import 'routes.dart';
 ///   and comes back afterwards (`?from=`).
 /// - Unlocked with a new recovery key not yet confirmed: only the recovery
 ///   kit (D02), so the key is never skipped.
+/// - Unlocked with the recovery key: only *recover*, until a new master
+///   password is set.
 /// - Unlocked: lock screens forward to where the user was going, or the
 ///   vault.
 ///
@@ -16,6 +18,7 @@ String? sessionRedirect(
   VaultSession session,
   Uri location, {
   required bool recoveryKitPending,
+  bool passwordResetPending = false,
 }) {
   final path = location.path;
   switch (session) {
@@ -31,6 +34,9 @@ String? sessionRedirect(
       ).toString();
 
     case Unlocked():
+      if (passwordResetPending) {
+        return path == Routes.recover ? null : Routes.recover;
+      }
       if (recoveryKitPending) {
         return path == Routes.createRecoveryKit
             ? null

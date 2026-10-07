@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
+import '../features/unlock/recover_screen.dart';
 import '../features/unlock/unlock_screen.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
@@ -76,14 +77,7 @@ GoRouter buildRouter({
       page(Routes.unlock, (_) => const UnlockScreen()),
       page(Routes.create, (_) => const CreateVaultScreen()),
       page(Routes.createRecoveryKit, (_) => const RecoveryKitScreen()),
-      page(
-        Routes.recover,
-        (_) => const PlaceholderScreen(
-          title: 'Recover with recovery key',
-          frame: 'D00',
-          icon: LucideIcons.lifeBuoy,
-        ),
-      ),
+      page(Routes.recover, (_) => const RecoverScreen()),
       page(
         Routes.pair,
         (_) => const PlaceholderScreen(
