@@ -5,5 +5,7 @@
 /// `docs/format/SPEC.md`.
 library;
 
+export 'src/model/item_type.dart';
+
 /// Version of the on-disk and in-bucket vault format this package writes.
 const int vaultFormatVersion = 1;

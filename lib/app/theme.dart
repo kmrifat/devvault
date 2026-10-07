@@ -9,7 +9,12 @@ abstract final class AppTheme {
 
   static const BCThemeOverrides _overrides = BCThemeOverrides(accent: accent);
 
-  static ThemeData light() => BCTheme.light(overrides: _overrides);
+  static ThemeData light() {
+    final theme = BCTheme.light(overrides: _overrides);
+    return theme.copyWith(
+      extensions: [...theme.extensions.values, AppColors.light],
+    );
+  }
 
   static ThemeData dark() {
     final theme = BCTheme.dark(overrides: _overrides);
@@ -26,9 +31,72 @@ abstract final class AppTheme {
             shadows: [BoxShadow(color: bc.separator, spreadRadius: 1)],
           ),
         ),
+        AppColors.dark,
       ],
     );
   }
+}
+
+/// Two hues bc_ui doesn't have, used only to tell item types apart
+/// (provisioning profiles and OAuth clients). Status meaning (success,
+/// warning, danger) always comes from bc_ui's own tokens.
+@immutable
+class AppColors extends ThemeExtension<AppColors> {
+  const AppColors({
+    required this.violet,
+    required this.violetSoft,
+    required this.teal,
+    required this.tealSoft,
+  });
+
+  final Color violet;
+  final Color violetSoft;
+  final Color teal;
+  final Color tealSoft;
+
+  // Soft variants use the same 15% alpha as bc_ui's accentSoft and friends.
+  static const light = AppColors(
+    violet: Color(0xFF7C3AED),
+    violetSoft: Color(0x267C3AED),
+    teal: Color(0xFF0F8F86),
+    tealSoft: Color(0x260F8F86),
+  );
+
+  static const dark = AppColors(
+    violet: Color(0xFFC4A2FF),
+    violetSoft: Color(0x26A47CF5),
+    teal: Color(0xFF4FD1C5),
+    tealSoft: Color(0x2638B2A8),
+  );
+
+  @override
+  AppColors copyWith({
+    Color? violet,
+    Color? violetSoft,
+    Color? teal,
+    Color? tealSoft,
+  }) => AppColors(
+    violet: violet ?? this.violet,
+    violetSoft: violetSoft ?? this.violetSoft,
+    teal: teal ?? this.teal,
+    tealSoft: tealSoft ?? this.tealSoft,
+  );
+
+  @override
+  AppColors lerp(AppColors? other, double t) {
+    if (other == null) return this;
+    return AppColors(
+      violet: Color.lerp(violet, other.violet, t)!,
+      violetSoft: Color.lerp(violetSoft, other.violetSoft, t)!,
+      teal: Color.lerp(teal, other.teal, t)!,
+      tealSoft: Color.lerp(tealSoft, other.tealSoft, t)!,
+    );
+  }
+}
+
+extension AppColorsContext on BuildContext {
+  /// DevVault's extra hues for the current theme.
+  AppColors get appColors => Theme.of(this).extension<AppColors>()!;
 }
 
 /// Text styles DevVault adds on top of bc_ui's Inter scale.
