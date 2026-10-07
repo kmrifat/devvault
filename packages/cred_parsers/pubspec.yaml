@@ -8,6 +8,7 @@ environment:
   sdk: ^3.13.4
 
 dependencies:
+  crypto: ^3.0.7
   meta: ^1.19.0
   vault_core: ^0.1.0
 

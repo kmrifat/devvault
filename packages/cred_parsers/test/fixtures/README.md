@@ -11,6 +11,8 @@ JSON and plist values are placeholders, and every password is
 | `renamed-key.p8` | a copy of `AuthKey_TESTKEY123.p8` without Apple's filename |
 | `AuthKey_ED25519KEY.p8` | `openssl genpkey -algorithm ed25519` (not P-256, so not an Apple key) |
 | `cert.pem`, `cert.cer` | `openssl req -x509` (PEM), `openssl x509 -outform DER` |
+| `apple_development.cer` | `openssl req -x509 -subj "/UID=TESTUID001/CN=Apple Development: DevVault Test (TESTTEAM01)/OU=TESTTEAM01/O=DevVault Tests/C=US" -days 365 -outform DER` |
+| `developer_id_oid.cer` | `openssl req -x509 -subj "/CN=DevVault Test Signer/OU=TESTTEAM01/O=DevVault Tests" -addext "1.2.840.113635.100.6.1.13=ASN1:NULL" -days 36500 -outform DER` (Apple marker extension only; GeneralizedTime notAfter) |
 | `cert.p12` | `openssl pkcs12 -export` (OpenSSL 3 defaults: PBES2/AES) |
 | `test.mobileprovision` | `openssl cms -sign -nodetach -binary -outform DER` over a small plist |
 | `ber.mobileprovision` | `test.mobileprovision` with its outer layers re-encoded with BER indefinite lengths, as Apple writes them |

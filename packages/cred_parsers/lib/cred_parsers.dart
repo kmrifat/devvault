@@ -9,6 +9,8 @@ export 'src/detect.dart' show CredentialFormat, detectFormat;
 export 'src/parse_result.dart';
 export 'src/parsers.dart';
 export 'src/parsers/apple_auth_key.dart';
+export 'src/parsers/x509_certificate.dart';
+export 'src/x509.dart';
 
 /// File extensions DevVault recognises on import. Everything else is
 /// imported as a generic file.
