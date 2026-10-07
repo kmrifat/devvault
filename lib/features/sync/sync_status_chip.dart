@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/routes.dart';
 import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
+import '../../data/sync_setup.dart';
 import '../../shared/ui.dart';
 
 /// The toolbar's sync line (design frame D03: "Synced · R2 · 2 min ago").

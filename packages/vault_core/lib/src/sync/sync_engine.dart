@@ -43,7 +43,7 @@ class SyncReport {
 
 /// Two-way sync between an unlocked [Vault] and a [StorageBackend].
 ///
-/// Objects live remotely under `<vault_id>/` with the local layout
+/// Objects live remotely under `[rootPrefix]<vault_id>/` with the local layout
 /// (SPEC §3). Each round:
 ///
 /// 1. **Pull.** Every remote object whose etag moved since the last sync is
@@ -66,14 +66,24 @@ class SyncEngine {
     required this.backend,
     SyncStateStore? stateStore,
     this.maxAttempts = 5,
+    this.rootPrefix = '',
     DateTime Function()? now,
   }) : stateStore = stateStore ?? SyncStateStore(vault.store),
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now {
+    if (rootPrefix.isNotEmpty && !rootPrefix.endsWith('/')) {
+      throw ArgumentError.value(rootPrefix, 'rootPrefix', 'must end with /');
+    }
+    StorageKeys.checkPrefix(rootPrefix);
+  }
 
   final Vault vault;
   final StorageBackend backend;
   final SyncStateStore stateStore;
   final int maxAttempts;
+
+  /// A folder in the bucket to keep vaults under, such as `devvault/`;
+  /// empty for the bucket root.
+  final String rootPrefix;
   final DateTime Function() _now;
 
   static const _header = VaultHeader.fileName;
@@ -83,7 +93,7 @@ class SyncEngine {
     ObjectType.tombstone,
   ];
 
-  String get _prefix => '${vault.vaultId}/';
+  String get _prefix => '$rootPrefix${vault.vaultId}/';
 
   Future<SyncReport> sync() async {
     final report = SyncReport();

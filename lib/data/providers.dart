@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../services/clipboard_guard.dart';
+import '../services/credential_store.dart';
 import 'app_settings.dart';
 import '../services/file_export.dart';
 import '../services/file_import.dart';
@@ -130,6 +131,11 @@ final fileOpenerProvider = Provider<FileOpener>(
 /// Reads facts out of imported files.
 final credentialParsersProvider = Provider<CredentialParsers>(
   (ref) => CredentialParsers.standard(),
+);
+
+/// Storage access keys, in the OS keychain under `s3:<vault_id>`.
+final credentialStoreProvider = Provider<CredentialStore>(
+  (ref) => const SystemCredentialStore(),
 );
 
 /// The OS's notification service. main() swaps in the real one; tests and
