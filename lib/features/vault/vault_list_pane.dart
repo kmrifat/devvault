@@ -302,7 +302,7 @@ class _ItemList extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Group(
       count: items.length,
-      builder: (i) => _ItemRow(
+      builder: (i) => VaultItemRow(
         item: items[i],
         selected: items[i].id == selected,
         now: now,
@@ -343,8 +343,11 @@ class _Group extends StatelessWidget {
   }
 }
 
-class _ItemRow extends StatefulWidget {
-  const _ItemRow({
+/// One item in a list: type tile, title, file name or type, and a
+/// conflict or expiry chip. Used by the desktop list and the phone list.
+class VaultItemRow extends StatefulWidget {
+  const VaultItemRow({
+    super.key,
     required this.item,
     required this.selected,
     required this.now,
@@ -357,10 +360,10 @@ class _ItemRow extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_ItemRow> createState() => _ItemRowState();
+  State<VaultItemRow> createState() => _VaultItemRowState();
 }
 
-class _ItemRowState extends State<_ItemRow> {
+class _VaultItemRowState extends State<VaultItemRow> {
   bool _hovered = false;
 
   @override
