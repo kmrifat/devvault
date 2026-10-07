@@ -8,6 +8,7 @@ import 'app/routes.dart';
 import 'data/app_settings.dart';
 import 'data/providers.dart';
 import 'services/device_id.dart';
+import 'services/notifications.dart';
 import 'services/window.dart';
 
 /// Opens the app at any route, e.g. `--dart-define=START=/vault`.
@@ -26,6 +27,7 @@ Future<void> main() async {
   final deviceId = await loadOrCreateDeviceId(supportDir);
   final crypto = await VaultCrypto.init();
   final settings = AppSettings.load(supportDir);
+  final alerts = await LocalAlertScheduler.init();
 
   runApp(
     ProviderScope(
@@ -34,6 +36,7 @@ Future<void> main() async {
         deviceIdProvider.overrideWithValue(deviceId),
         cryptoProvider.overrideWithValue(crypto),
         initialSettingsProvider.overrideWithValue(settings),
+        alertSchedulerProvider.overrideWithValue(alerts),
       ],
       child: const DevVaultApp(initialLocation: _start),
     ),

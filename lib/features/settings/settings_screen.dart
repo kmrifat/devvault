@@ -66,6 +66,17 @@ class SettingsScreen extends ConsumerWidget {
                         onChanged: notifier.setThemeMode,
                       ),
                     ),
+                    BCListGroupItem(
+                      prefix: const Icon(LucideIcons.bellRing),
+                      title: 'Expiry reminders',
+                      description:
+                          'At most two per item, at 09:00: when it enters '
+                          'its last 30 days, and on the day it expires.',
+                      suffix: BCSwitch(
+                        isSelected: settings.expiryReminders,
+                        onSelectedChange: notifier.setExpiryReminders,
+                      ),
+                    ),
                   ],
                 ),
                 const _Section('Security'),
