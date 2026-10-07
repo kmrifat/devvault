@@ -68,7 +68,8 @@ enum ShotDevice {
 /// `screenshots/<name>.png`.
 ///
 /// The vault is unlocked unless [vault] says the device holds no vault or
-/// a locked one (first-run and lock screens).
+/// a locked one (first-run and lock screens). [sample] fills the unlocked
+/// vault with the design frames' credentials.
 ///
 /// [interact] runs after the first frame settles (tap through to a dialog,
 /// type into a field) before the capture.
@@ -80,6 +81,7 @@ void shot(
   Future<void> Function(WidgetTester tester)? interact,
   List<Override> overrides = const [],
   TestVault? vault,
+  bool sample = false,
   bool realKdf = false,
 }) {
   testWidgets(name, (tester) async {
@@ -115,6 +117,7 @@ void shot(
         await pumpUnlockedApp(
           tester,
           location: route,
+          vault: sample ? TestVault.sample : TestVault.locked,
           layout: device.layout,
           overrides: overrides,
           crypto: crypto,

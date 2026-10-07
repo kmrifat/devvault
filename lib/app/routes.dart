@@ -33,6 +33,7 @@ abstract final class Routes {
     String? platform,
     String? env,
     String? tag,
+    String? view,
     String? q,
   }) {
     final query = <String, String>{
@@ -41,6 +42,7 @@ abstract final class Routes {
       'platform': ?platform,
       'env': ?env,
       'tag': ?tag,
+      'view': ?view,
       'q': ?q,
     };
     return Uri(
@@ -48,6 +50,10 @@ abstract final class Routes {
       queryParameters: query.isEmpty ? null : query,
     ).toString();
   }
+
+  /// The expiry dashboard, opened on the expired section when [expired].
+  static String expiryShowing({bool expired = false}) =>
+      expired ? '$expiry?show=expired' : expiry;
 
   /// A single item as its own screen (mobile). On desktop this redirects to
   /// [vault] with the item selected.
