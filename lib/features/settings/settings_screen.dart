@@ -69,15 +69,22 @@ class SettingsScreen extends ConsumerWidget {
                         onChanged: notifier.setThemeMode,
                       ),
                     ),
-                    BCListGroupItem(
-                      prefix: const Icon(LucideIcons.bellRing),
-                      title: 'Expiry reminders',
-                      description:
-                          'At most two per item, at 09:00: when it enters '
-                          'its last 30 days, and on the day it expires.',
-                      suffix: BCSwitch(
-                        isSelected: settings.expiryReminders,
-                        onSelectedChange: notifier.setExpiryReminders,
+                    // The whole row toggles, and reads as one switch: a
+                    // big enough target on a phone, and named.
+                    MergeSemantics(
+                      child: BCListGroupItem(
+                        prefix: const Icon(LucideIcons.bellRing),
+                        title: 'Expiry reminders',
+                        description:
+                            'At most two per item, at 09:00: when it enters '
+                            'its last 30 days, and on the day it expires.',
+                        onPressed: () => notifier.setExpiryReminders(
+                          !settings.expiryReminders,
+                        ),
+                        suffix: BCSwitch(
+                          isSelected: settings.expiryReminders,
+                          onSelectedChange: notifier.setExpiryReminders,
+                        ),
                       ),
                     ),
                   ],

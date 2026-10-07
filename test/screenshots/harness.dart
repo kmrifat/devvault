@@ -18,6 +18,7 @@ import 'dart:convert';
 
 import 'package:devvault/app/app.dart';
 import 'package:devvault/app/layout.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -37,17 +38,35 @@ enum ShotDevice {
     Size(390, 844),
     2,
     EdgeInsets.only(top: 47, bottom: 34),
+    TargetPlatform.iOS,
   ),
 
   /// The desktop window, like the Desktop · bc_ui frames (D00–D07).
-  desktop(AppLayout.desktop, Size(1440, 900), 1, EdgeInsets.zero);
+  desktop(
+    AppLayout.desktop,
+    Size(1440, 900),
+    1,
+    EdgeInsets.zero,
+    TargetPlatform.macOS,
+  );
 
-  const ShotDevice(this.layout, this.size, this.pixelRatio, this.insets);
+  const ShotDevice(
+    this.layout,
+    this.size,
+    this.pixelRatio,
+    this.insets,
+    this.platform,
+  );
 
   final AppLayout layout;
   final Size size;
   final double pixelRatio;
   final EdgeInsets insets;
+
+  /// What the shot renders as, so platform-dependent UI (touch-sized
+  /// targets, scan vs paste) matches the device. flutter_test defaults to
+  /// Android otherwise.
+  final TargetPlatform platform;
 }
 
 /// Registers a test that opens [route] on [device] and compares it with
@@ -91,6 +110,7 @@ void shot(
     // flag has to be restored inside the body: it is checked before
     // tearDowns run.
     debugDisableShadows = false;
+    debugDefaultTargetPlatformOverride = device.platform;
     // Seeded per shot, so vault ids, recovery keys and nonces are the same
     // on every run and the image only changes when the UI does.
     final crypto = await tester.runAsync(
@@ -136,6 +156,7 @@ void shot(
       );
     } finally {
       debugDisableShadows = true;
+      debugDefaultTargetPlatformOverride = null;
     }
   });
 }
