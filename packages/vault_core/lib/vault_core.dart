@@ -22,6 +22,7 @@ export 'src/store/vault_store.dart';
 export 'src/sync/hlc.dart';
 export 'src/sync/local_dir_backend.dart';
 export 'src/sync/memory_backend.dart';
+export 'src/sync/merge.dart';
 export 'src/sync/storage_backend.dart';
 export 'src/sync/storage_capabilities.dart';
 export 'src/sync/sync_state.dart';

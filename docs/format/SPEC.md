@@ -303,7 +303,7 @@ Records are UTF-8 JSON objects. Common rules:
 | `fields` | Map of field key → `{value, source, secret?}`. `source` is `"file"` (parsed from an attachment) or `"user"` (typed in). `secret: true` marks values that are masked, never indexed for search and copied only through the clipboard guard. |
 | `attachments[].sha256` | Lowercase hex SHA-256 of the **plaintext** file. Export MUST verify it. |
 | `expires_at` / `expires_source` | Both present or both absent. `expires_source` is `"file"` or `"user"`, never anything else. **There is no inferred expiry.** |
-| `conflict` | `null`, or the remote version kept by a sync conflict (P2, ADR-0004). |
+| `conflict` | `null`, or what a sync conflict kept until the user resolves it (ADR-0004): `{"versions": [<item record>…], "deletions": [{"rev", "device_id", "deleted_at"}…]}`. `versions` are the losing item records (each without its own `conflict`), sorted by `rev`, unique by `rev`; `deletions` are deletes that lost to an edit, sorted by `rev`. Conflicts accumulate across merges and are cleared only by an explicit choice. |
 
 ### 6.2 App
 
