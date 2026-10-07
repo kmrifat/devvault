@@ -1,3 +1,4 @@
+import 'package:bc_ui/bc_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -44,6 +45,7 @@ class _DevVaultAppState extends State<DevVaultApp> {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       routerConfig: _router,
+      builder: (context, child) => BCToastProvider(child: child!),
     );
   }
 }

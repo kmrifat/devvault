@@ -1,8 +1,10 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/theme.dart';
-import 'package:devvault/app/app.dart';
+import 'package:devvault/app/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'test_overrides.dart';
 
 void main() {
   BCThemeExtension tokens(ThemeData theme) =>
@@ -56,7 +58,7 @@ void main() {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-    await tester.pumpWidget(const DevVaultApp());
+    await tester.pumpWidget(testApp(location: Routes.unlock));
     await tester.pumpAndSettle();
     final context = tester.element(find.text('Unlock'));
     expect(Theme.of(context).brightness, Brightness.dark);

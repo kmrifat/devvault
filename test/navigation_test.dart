@@ -1,10 +1,11 @@
 import 'package:bc_ui/bc_ui.dart';
-import 'package:devvault/app/app.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import 'test_overrides.dart';
 
 void main() {
   Future<void> open(
@@ -18,9 +19,7 @@ void main() {
           : const Size(390 * 3, 844 * 3)
       ..devicePixelRatio = layout == AppLayout.desktop ? 1 : 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      DevVaultApp(initialLocation: location, layout: layout),
-    );
+    await tester.pumpWidget(testApp(location: location, layout: layout));
     await tester.pumpAndSettle();
   }
 
