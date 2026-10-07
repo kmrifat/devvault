@@ -124,6 +124,48 @@ class Vault {
     );
   }
 
+  /// Opens the vault with its raw vault key, as kept by a device-bound
+  /// unlock (SPEC §9.1): Face ID, Touch ID or a fingerprint. Takes ownership
+  /// of [vaultKey] and disposes of it when it doesn't match the vault's
+  /// `vk_id`, throwing [VaultKeyMismatch] (the key was rotated since).
+  ///
+  /// An interrupted rotation is left for the next password unlock: finishing
+  /// it needs the password.
+  static Future<Vault> unlockWithKey({
+    required VaultCrypto crypto,
+    required VaultStore store,
+    required SecureKey vaultKey,
+    required String deviceId,
+    required DateTime Function() now,
+  }) async {
+    final VaultHeader header;
+    try {
+      await store.open();
+      header = await store.readHeader();
+    } catch (_) {
+      vaultKey.dispose();
+      rethrow;
+    }
+    if (VaultKeys.vkId(crypto, vaultKey) != header.vkId) {
+      vaultKey.dispose();
+      throw const VaultKeyMismatch();
+    }
+    return Vault._(
+      crypto: crypto,
+      store: store,
+      header: header,
+      vaultKey: vaultKey,
+      deviceId: deviceId,
+      now: now,
+    );
+  }
+
+  /// Runs [use] with the raw vault key, for a device-bound unlock to store
+  /// in the platform's biometric-protected key store (SPEC §9.1). [use]
+  /// must not keep or log the bytes: they're only valid during the call.
+  T withVaultKeyBytes<T>(T Function(Uint8List bytes) use) =>
+      _key.runUnlockedSync(use);
+
   /// Rewraps the vault key under [newPassword]. Writes `vault.json` and
   /// nothing else.
   Future<void> changePassword(String newPassword) async {

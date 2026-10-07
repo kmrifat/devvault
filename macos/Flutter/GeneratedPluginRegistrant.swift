@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import biometric_key
 import desktop_drop
 import file_picker_darwin
 import flutter_local_notifications
@@ -16,6 +17,7 @@ import share_plus
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  BiometricKeyPlugin.register(with: registry.registrar(forPlugin: "BiometricKeyPlugin"))
   DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))

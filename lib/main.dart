@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +9,7 @@ import 'app/routes.dart';
 import 'data/app_settings.dart';
 import 'app/layout.dart';
 import 'data/providers.dart';
+import 'services/biometric_key_store.dart';
 import 'services/share_sheet_saver.dart';
 import 'services/device_id.dart';
 import 'services/notifications.dart';
@@ -18,6 +20,13 @@ const String _start = String.fromEnvironment(
   'START',
   defaultValue: Routes.unlock,
 );
+
+/// Where `packages/biometric_key` keeps the vault key behind biometrics.
+const _biometricPlatforms = {
+  TargetPlatform.iOS,
+  TargetPlatform.android,
+  TargetPlatform.macOS,
+};
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +51,10 @@ Future<void> main() async {
         cryptoProvider.overrideWithValue(crypto),
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
+        if (_biometricPlatforms.contains(defaultTargetPlatform))
+          biometricKeyStoreProvider.overrideWithValue(
+            const ChannelBiometricKeyStore(),
+          ),
         if (phone) fileSaverProvider.overrideWithValue(ShareSheetSaver()),
       ],
       child: const DevVaultApp(initialLocation: _start),

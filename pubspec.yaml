@@ -8,12 +8,14 @@ environment:
 
 # Pure-Dart packages developed alongside the app. See docs/adr/0001-workspace.md.
 workspace:
+  - packages/biometric_key
   - packages/vault_core
   - packages/cred_parsers
   - packages/vault_s3
 
 dependencies:
   bc_ui: ^0.7.0
+  biometric_key: ^0.1.0
   cred_parsers: ^0.1.0
   desktop_drop: ^0.8.0
   file_picker: ^13.1.0

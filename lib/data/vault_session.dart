@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
+import '../services/biometric_key_store.dart';
 import 'providers.dart';
 
 /// Where the app is with its vault. Drives routing: no vault → create,
@@ -130,6 +132,70 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
+  BiometricKeyStore get _biometric => ref.read(biometricKeyStoreProvider);
+
+  /// Unlocks with the vault key kept behind biometrics (SPEC §9.1). Returns
+  /// false if the user cancelled the prompt. Throws [BiometricKeyGone] when
+  /// the key is gone or no longer matches the vault (rotated elsewhere); the
+  /// stored key is deleted then, and the password is the way in.
+  Future<bool> unlockWithBiometrics({required String reason}) async {
+    final store = _lockedStore;
+    final vaultId = switch (state) {
+      Locked(:final header?) => header.vaultId,
+      _ => throw const BiometricKeyGone(),
+    };
+    final Uint8List? bytes;
+    try {
+      bytes = await _biometric.read(vaultId, reason: reason);
+    } on BiometricKeyGone {
+      await _forgetBiometricKey(vaultId);
+      rethrow;
+    }
+    if (bytes == null) return false;
+    final key = _crypto.keyFromBytes(bytes);
+    bytes.fillRange(0, bytes.length, 0);
+    final Vault vault;
+    try {
+      vault = await Vault.unlockWithKey(
+        crypto: _crypto,
+        store: store,
+        vaultKey: key,
+        deviceId: _deviceId,
+        now: _now,
+      );
+    } on VaultKeyMismatch {
+      await _forgetBiometricKey(vaultId);
+      throw const BiometricKeyGone();
+    }
+    await _open(vault);
+    return true;
+  }
+
+  /// Keeps the vault key on this device behind biometrics, so it can be
+  /// unlocked without the password. Returns false if the user cancelled the
+  /// prompt (Android asks before storing). Throws [BiometricKeyUnavailable].
+  Future<bool> enableBiometricUnlock({required String reason}) async {
+    final vault = _vault;
+    final bytes = vault.withVaultKeyBytes(Uint8List.fromList);
+    try {
+      return await _biometric.save(vault.vaultId, bytes, reason: reason);
+    } finally {
+      bytes.fillRange(0, bytes.length, 0);
+      ref.read(_biometricRevision.notifier).bump();
+    }
+  }
+
+  /// Deletes the key kept behind biometrics.
+  Future<void> disableBiometricUnlock() => _forgetBiometricKey(_vault.vaultId);
+
+  Future<void> _forgetBiometricKey(String vaultId) async {
+    try {
+      await _biometric.delete(vaultId);
+    } finally {
+      ref.read(_biometricRevision.notifier).bump();
+    }
+  }
+
   /// Whether [password] is the current master password. Runs Argon2id, so
   /// it takes as long as an unlock.
   Future<bool> checkPassword(String password) async {
@@ -146,11 +212,13 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
-  /// Sets a new master password. Writes `vault.json` only.
+  /// Sets a new master password. Writes `vault.json` only. A key kept
+  /// behind biometrics is deleted (SPEC §9.1): the user turns it on again.
   Future<void> changePassword(String newPassword) => exclusive(() async {
     final current = state;
     if (current is! Unlocked) throw StateError('The vault is locked');
     await current.vault.changePassword(newPassword);
+    await _forgetBiometricKey(current.vault.vaultId);
   });
 
   Future<void>? _writing;
@@ -251,6 +319,47 @@ final vaultSessionProvider =
     NotifierProvider<VaultSessionNotifier, VaultSession>(
       VaultSessionNotifier.new,
     );
+
+/// Device-bound unlock for this device's vault: what the device offers and
+/// whether the vault key is stored behind it.
+class BiometricUnlock {
+  const BiometricUnlock(this.biometry, {required this.enabled});
+
+  /// Null when the device has no biometrics (or none enrolled).
+  final Biometry? biometry;
+  final bool enabled;
+
+  bool get available => biometry != null;
+}
+
+/// Bumped when the stored key changes, so [biometricUnlockProvider] asks
+/// the key store again.
+class _Revision extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+final _biometricRevision = NotifierProvider<_Revision, int>(_Revision.new);
+
+final biometricUnlockProvider = FutureProvider<BiometricUnlock>((ref) async {
+  ref.watch(_biometricRevision);
+  final store = ref.watch(biometricKeyStoreProvider);
+  final vaultId = ref.watch(
+    vaultSessionProvider.select(
+      (s) => switch (s) {
+        Locked(:final header) => header?.vaultId,
+        Unlocked(:final vault) => vault.vaultId,
+        NoVault() => null,
+      },
+    ),
+  );
+  final biometry = await store.biometry();
+  final enabled =
+      biometry != null && vaultId != null && await store.has(vaultId);
+  return BiometricUnlock(biometry, enabled: enabled);
+});
 
 /// The recovery key of a vault created moments ago, held until the user
 /// confirms they saved it (design frame D02), then disposed.

@@ -7,6 +7,7 @@ import '../../app/routes.dart';
 import '../../data/app_settings.dart';
 import '../../data/providers.dart';
 import '../../data/vault_session.dart';
+import '../../services/biometric_key_store.dart';
 import '../../services/folder_revealer.dart';
 import '../../shared/ui.dart';
 import 'change_password_dialog.dart';
@@ -83,6 +84,7 @@ class SettingsScreen extends ConsumerWidget {
                 const _Section('Security'),
                 BCListGroup(
                   children: [
+                    if (vault != null) ..._BiometricRow.rows(context, ref),
                     BCListGroupItem(
                       prefix: const Icon(LucideIcons.timer),
                       title: 'Lock after',
@@ -171,6 +173,53 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// "Unlock with Face ID" (SPEC §9.1): shown only where the device offers
+/// biometrics.
+abstract final class _BiometricRow {
+  static List<Widget> rows(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(biometricUnlockProvider).value;
+    final biometry = status?.biometry;
+    if (biometry == null) return const [];
+    final session = ref.read(vaultSessionProvider.notifier);
+
+    Future<void> toggle(bool on) async {
+      try {
+        if (!on) return await session.disableBiometricUnlock();
+        await session.enableBiometricUnlock(
+          reason: 'Turn on unlocking DevVault with ${biometry.label}',
+        );
+      } on BiometricKeyUnavailable {
+        if (!context.mounted) return;
+        BCToast.show(
+          context,
+          BCToastData(
+            title: "Couldn't turn on ${biometry.label}",
+            description:
+                'This device refused to keep the key. Use the '
+                'master password to unlock.',
+            variant: BCToastVariant.danger,
+          ),
+        );
+      }
+    }
+
+    return [
+      BCListGroupItem(
+        prefix: Icon(
+          biometry == Biometry.faceId
+              ? LucideIcons.scanFace
+              : LucideIcons.fingerprint,
+        ),
+        title: 'Unlock with ${biometry.label}',
+        description:
+            'The vault key stays on this device, behind ${biometry.label}. '
+            'Changing the master password turns this off.',
+        suffix: BCSwitch(isSelected: status!.enabled, onSelectedChange: toggle),
+      ),
+    ];
   }
 }
 
