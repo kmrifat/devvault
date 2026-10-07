@@ -36,8 +36,18 @@ class _IncomingImportsState extends ConsumerState<IncomingImports> {
     _sub = _incoming.available.listen((_) => _collect());
     // A file opened while DevVault was in the background.
     _lifecycle = AppLifecycleListener(onResume: _collect);
-    ref.listenManual(vaultSessionProvider, (_, next) {
-      if (next is Unlocked) _importWaiting();
+    ref.listenManual(vaultSessionProvider, (previous, next) {
+      if (next is! Unlocked) return;
+      if (previous is Unlocked) {
+        _importWaiting();
+        return;
+      }
+      // Just unlocked: the router is about to swap the unlock screen for
+      // the vault, which would take a dialog opened now down with it.
+      // Open it once that frame is done.
+      WidgetsBinding.instance
+        ..addPostFrameCallback((_) => _importWaiting())
+        ..scheduleFrame();
     });
     _collect();
   }
