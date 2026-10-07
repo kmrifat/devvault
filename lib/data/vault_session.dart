@@ -130,6 +130,29 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     await current.vault.changePassword(newPassword);
   }
 
+  Vault get _vault => switch (state) {
+    Unlocked(:final vault) => vault,
+    _ => throw StateError('The vault is locked'),
+  };
+
+  /// A new, unsaved item of [type] (fresh id, this device).
+  Item newItem(ItemType type, String title) =>
+      _vault.newItem(type: type, title: title);
+
+  /// Saves [item] and refreshes the index. Returns it as stored.
+  Future<Item> saveItem(Item item) async {
+    final saved = await _vault.putItem(item);
+    await reload();
+    return saved;
+  }
+
+  /// Deletes the item [id] (a tombstone, so other devices delete it too)
+  /// and refreshes the index.
+  Future<void> deleteItem(String id) async {
+    await _vault.delete(id, TombstoneKind.item);
+    await reload();
+  }
+
   /// Re-reads the vault after a write, so the index matches the disk.
   Future<void> reload() async {
     final current = state;

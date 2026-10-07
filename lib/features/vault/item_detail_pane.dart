@@ -174,6 +174,40 @@ class _Header extends ConsumerWidget {
             startContent: const Icon(LucideIcons.share, size: 15),
             child: const Text('Export'),
           ),
+        if (!item.isReadOnly)
+          BCButton(
+            size: BCButtonSize.sm,
+            variant: BCButtonVariant.secondary,
+            isIconOnly: true,
+            onPressed: () => editItem(context, item),
+            child: const Icon(
+              LucideIcons.pencil,
+              size: 16,
+              semanticLabel: 'Edit',
+            ),
+          ),
+        BCMenu(
+          alignment: BCOverlayAlignment.end,
+          trigger: (context, controller) => BCButton(
+            size: BCButtonSize.sm,
+            variant: BCButtonVariant.secondary,
+            isIconOnly: true,
+            onPressed: controller.toggle,
+            child: const Icon(
+              LucideIcons.ellipsis,
+              size: 16,
+              semanticLabel: 'More actions',
+            ),
+          ),
+          children: [
+            BCMenuItem(
+              title: 'Delete item…',
+              icon: const Icon(LucideIcons.trash2),
+              variant: BCMenuItemVariant.danger,
+              onSelected: () => deleteItem(context, ref, item),
+            ),
+          ],
+        ),
       ],
     );
   }
