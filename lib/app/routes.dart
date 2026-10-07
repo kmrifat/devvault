@@ -9,6 +9,9 @@ abstract final class Routes {
   static const unlock = '/unlock';
   static const create = '/create';
   static const createRecoveryKit = '/create/recovery-kit';
+
+  /// Join a vault that already syncs to a bucket (P2-10).
+  static const joinVault = '/create/join';
   static const recover = '/recover';
 
   // Shell branches (sidebar on desktop, bottom nav on mobile)
