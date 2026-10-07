@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
+import '../conflict/conflict_dialog.dart';
 import 'vault_actions.dart';
 
 /// Design frame D03's detail pane: one item's type, place in the tree,
@@ -65,11 +66,18 @@ class ItemDetailPane extends ConsumerWidget {
                   'export it here, but not change it.',
             ),
           if (item.conflict != null)
-            const _Notice(
+            _Notice(
               icon: LucideIcons.gitMerge,
-              text:
-                  'Another device changed this item at the same time. '
-                  'Both versions are kept until you choose.',
+              text: Conflict.of(item).versions.isEmpty
+                  ? 'Deleted on another device while it changed here. It '
+                        'was kept until you choose.'
+                  : 'Another device changed this item at the same time. '
+                        'Both versions are kept until you choose.',
+              action: BCButton(
+                size: BCButtonSize.sm,
+                onPressed: () => showConflictDialog(context, item),
+                child: const Text('Resolve…'),
+              ),
             ),
           _ExpiryCard(item: item, now: now),
           if (item.fields.isNotEmpty) _Fields(fields: item.fields),
@@ -650,10 +658,13 @@ class _Meta extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.icon, required this.text});
+  const _Notice({required this.icon, required this.text, this.action});
 
   final IconData icon;
   final String text;
+
+  /// A button at the end, such as "Resolve…".
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -677,6 +688,7 @@ class _Notice extends StatelessWidget {
                 ),
               ),
             ),
+            ?action,
           ],
         ),
       ),
