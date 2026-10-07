@@ -183,10 +183,8 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(inDetail(find.text('Save as…')));
-    await tester.pump();
-    expect(find.text('Export is on its way'), findsOneWidget);
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+    // Saving it is covered in export_test.dart.
+    expect(inDetail(find.text('Save as…')), findsOneWidget);
   });
 
   testWidgets('items without a file have no Export button', (tester) async {

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../services/clipboard_guard.dart';
+import '../services/file_export.dart';
 import '../services/file_saver.dart';
 
 // Every service the app depends on, in one place. Values that need I/O are
@@ -51,3 +52,8 @@ final clipboardGuardProvider = Provider<ClipboardGuard>((ref) {
 
 /// Save dialogs (recovery kit, exported files).
 final fileSaverProvider = Provider<FileSaver>((ref) => const SystemFileSaver());
+
+/// Writes attachments back out byte for byte, through [fileSaverProvider].
+final fileExportProvider = Provider<FileExport>(
+  (ref) => FileExport(ref.watch(fileSaverProvider)),
+);
