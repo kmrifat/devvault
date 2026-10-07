@@ -172,6 +172,14 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
+  /// Issues a new recovery key; the old one stops working. Writes
+  /// `vault.json` only. The caller shows the key once and disposes it.
+  Future<RecoveryKey> replaceRecoveryKey() async {
+    final current = state;
+    if (current is! Unlocked) throw StateError('The vault is locked');
+    return current.vault.replaceRecoveryKey();
+  }
+
   Vault get _vault => switch (state) {
     Unlocked(:final vault) => vault,
     _ => throw StateError('The vault is locked'),
