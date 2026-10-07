@@ -25,6 +25,7 @@ export 'src/sync/memory_backend.dart';
 export 'src/sync/merge.dart';
 export 'src/sync/storage_backend.dart';
 export 'src/sync/storage_capabilities.dart';
+export 'src/sync/sync_engine.dart';
 export 'src/sync/sync_state.dart';
 export 'src/vault/vault.dart';
 
