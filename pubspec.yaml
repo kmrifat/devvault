@@ -1,0 +1,25 @@
+name: devvault
+description: "Local-first, end-to-end encrypted vault for developer credential files."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.4
+
+# Pure-Dart packages developed alongside the app. See docs/adr/0001-workspace.md.
+workspace:
+  - packages/vault_core
+  - packages/cred_parsers
+  - packages/vault_s3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
