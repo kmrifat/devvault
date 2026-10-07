@@ -1,10 +1,13 @@
 import 'dart:isolate';
 
 import 'detect.dart';
-import 'parsers/apple_auth_key.dart';
-import 'parsers/java_keystore.dart';
-import 'parsers/x509_certificate.dart';
 import 'parse_result.dart';
+import 'parsers/apple_auth_key.dart';
+import 'parsers/firebase_config.dart';
+import 'parsers/java_keystore.dart';
+import 'parsers/oauth_client.dart';
+import 'parsers/service_account.dart';
+import 'parsers/x509_certificate.dart';
 
 /// Reads facts out of one or more [CredentialFormat]s.
 ///
@@ -37,6 +40,9 @@ class CredentialParsers {
     AppleAuthKeyParser(),
     X509CertificateParser(),
     JavaKeystoreParser(),
+    FirebaseConfigParser(),
+    ServiceAccountParser(),
+    OAuthClientParser(),
   ]);
 
   final Map<CredentialFormat, CredentialParser> _byFormat;

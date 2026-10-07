@@ -9,7 +9,10 @@ export 'src/detect.dart' show CredentialFormat, detectFormat;
 export 'src/parse_result.dart';
 export 'src/parsers.dart';
 export 'src/parsers/apple_auth_key.dart';
+export 'src/parsers/firebase_config.dart';
 export 'src/parsers/java_keystore.dart';
+export 'src/parsers/oauth_client.dart';
+export 'src/parsers/service_account.dart';
 export 'src/parsers/x509_certificate.dart';
 export 'src/x509.dart';
 

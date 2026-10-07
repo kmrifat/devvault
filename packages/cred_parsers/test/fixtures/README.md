@@ -27,3 +27,13 @@ The expected keystore fingerprints and expiry dates in
 | `trusted.jks` | `keytool -importcert -alias ca -file cert.cer` only (no private key) |
 | `secret.jceks` | `keytool -genseckey -alias api -keyalg AES` then `-genkeypair -alias signing` (the serialized secret key comes first in the file) |
 | `*.json`, `GoogleService-Info.plist` | written by hand |
+| `GoogleService-Info.binary.plist` | `plutil -convert binary1` of `GoogleService-Info.plist` (binary plists aren't read) |
+
+The Google config fixtures cover:
+
+- `google-services.json`: one Android app, so its facts are reported.
+- `google-services.multi.json`: two Android apps, so the user picks one.
+- `GoogleService-Info.plist`: the iOS config as the Firebase console writes it.
+- `service-account.json`: a GCP service-account key.
+- `client_secret_…-test…json` / `client_secret_…-web…json`: OAuth
+  `installed` and `web` clients.
