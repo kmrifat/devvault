@@ -19,29 +19,15 @@ import 'dart:convert';
 import 'package:devvault/app/app.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../test_overrides.dart';
 
-/// Loads every font the app bundles (Inter, JetBrains Mono, Lucide icons)
-/// so screenshots show real glyphs instead of the test font's boxes.
-Future<void> loadAppFonts() async {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  await loadTestCrypto();
-  final manifest = json.decode(
-    await rootBundle.loadString('FontManifest.json'),
-  ) as List<dynamic>;
-  for (final entry in manifest.cast<Map<String, dynamic>>()) {
-    final loader = FontLoader(entry['family'] as String);
-    for (final font in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
-      loader.addFont(rootBundle.load(font['asset'] as String));
-    }
-    await loader.load();
-  }
-}
+/// Gets a screenshot file ready: libsodium. The app's real fonts are
+/// loaded for every test by `test/flutter_test_config.dart`.
+Future<void> loadAppFonts() => loadTestCrypto();
 
 /// The devices screenshots are taken on. They match the design frames.
 enum ShotDevice {

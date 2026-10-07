@@ -1,10 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Runs before every test file in `test/`.
+///
+/// Every test renders with the fonts the app bundles (Inter, JetBrains Mono,
+/// Lucide icons) rather than the test font, whose square glyphs are far
+/// wider: layouts that fit on screen (tab bars, toolbars) would otherwise
+/// overflow in tests only.
 ///
 /// Golden screenshots differ by faint anti-aliasing along text edges between
 /// Macs (CPU, macOS version), so an exact match fails on CI for no visible
@@ -17,7 +24,22 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
       comparator.basedir.resolve('golden_test.dart'),
     );
   }
+  TestWidgetsFlutterBinding.ensureInitialized();
+  await _loadAppFonts();
   await testMain();
+}
+
+Future<void> _loadAppFonts() async {
+  final manifest = json.decode(
+    await rootBundle.loadString('FontManifest.json'),
+  ) as List<dynamic>;
+  for (final entry in manifest.cast<Map<String, dynamic>>()) {
+    final loader = FontLoader(entry['family'] as String);
+    for (final font in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
+      loader.addFont(rootBundle.load(font['asset'] as String));
+    }
+    await loader.load();
+  }
 }
 
 /// Compares goldens per pixel: a pixel only counts as changed when one of
