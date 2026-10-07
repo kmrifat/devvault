@@ -16,6 +16,7 @@ export 'src/format/vault_header.dart';
 export 'src/keys/recovery_key.dart';
 export 'src/keys/vault_keys.dart';
 export 'src/model/item_type.dart';
+export 'src/model/records.dart';
 export 'src/sync/hlc.dart';
 
 /// Version of the on-disk and in-bucket vault format this package writes.
