@@ -262,6 +262,15 @@ final syncSetupProvider = NotifierProvider<SyncSetupNotifier, SyncSetup?>(
   SyncSetupNotifier.new,
 );
 
+/// Makes the backend for a bucket: [S3Backend]. Tests swap in a
+/// [MemoryBackend] so no request leaves the machine.
+final storageBackendFactoryProvider =
+    Provider<StorageBackend Function(SyncSettings, AwsCredentials)>(
+      (ref) =>
+          (settings, credentials) =>
+              S3Backend(config: settings.toConfig(), credentials: credentials),
+    );
+
 /// Tests a bucket: [S3Backend.probe] under the given prefix. Tests swap in
 /// a fake so no request leaves the machine.
 typedef StorageProbe = Future<StorageCapabilities> Function(
@@ -290,11 +299,11 @@ final storageProbeProvider = Provider<StorageProbe>(
 final storageBackendProvider = Provider<StorageBackend?>((ref) {
   final setup = ref.watch(syncSetupProvider);
   if (setup == null) return null;
-  final s3 = S3Backend(
-    config: setup.settings.toConfig(),
-    credentials: setup.credentials,
+  final s3 = ref.watch(storageBackendFactoryProvider)(
+    setup.settings,
+    setup.credentials,
   );
-  ref.onDispose(s3.close);
+  if (s3 is S3Backend) ref.onDispose(s3.close);
   final capabilities = setup.capabilities;
   return capabilities == null || capabilities.isRaceFree
       ? s3

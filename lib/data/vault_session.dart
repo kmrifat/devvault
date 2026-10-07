@@ -67,6 +67,12 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     return store == null ? const NoVault() : Locked.of(store);
   }
 
+  /// Looks for a vault on disk again (after joining one from a bucket).
+  void findOnDisk() {
+    final store = findVault(ref.read(vaultsDirProvider));
+    state = store == null ? const NoVault() : Locked.of(store);
+  }
+
   VaultCrypto get _crypto => ref.read(cryptoProvider);
   String get _deviceId => ref.read(deviceIdProvider);
   DateTime Function() get _now => ref.read(clockProvider);

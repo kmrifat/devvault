@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/password_policy.dart';
+import '../../app/routes.dart';
 import '../../data/providers.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
@@ -150,6 +152,25 @@ class _CreateVaultScreenState extends ConsumerState<CreateVaultScreen> {
                   ? null
                   : const Icon(LucideIcons.arrowRight, size: 16),
               child: Text(_busy ? 'Creating vault…' : 'Continue'),
+            ),
+          ),
+          const SizedBox(height: BCSpacing.lg),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: BCSpacing.xs,
+              children: [
+                const BCText(
+                  'Already use DevVault elsewhere?',
+                  type: BCTextType.bodySm,
+                  color: BCTextColor.muted,
+                ),
+                BCLinkButton(
+                  onPressed: _busy ? null : () => context.go(Routes.joinVault),
+                  child: const Text('Join from your bucket'),
+                ),
+              ],
             ),
           ),
         ],

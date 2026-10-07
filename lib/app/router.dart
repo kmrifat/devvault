@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/create_vault/create_vault_screen.dart';
+import '../features/create_vault/join_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/sync_settings_screen.dart';
@@ -81,6 +82,7 @@ GoRouter buildRouter({
       page(Routes.unlock, (_) => const UnlockScreen()),
       page(Routes.create, (_) => const CreateVaultScreen()),
       page(Routes.createRecoveryKit, (_) => const RecoveryKitScreen()),
+      page(Routes.joinVault, (_) => const JoinVaultScreen()),
       page(Routes.recover, (_) => const RecoverScreen()),
       page(
         Routes.pair,
