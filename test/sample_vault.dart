@@ -15,8 +15,13 @@ Future<void> seedSampleVault(Vault vault, DateTime now) async {
   );
   final ledgerly = await vault.putApp(vault.newApp(name: 'Ledgerly'));
 
-  ItemField field(String value, {bool secret = false}) =>
-      ItemField(value: value, source: FieldSource.file, secret: secret);
+  // Facts come from the file; secrets are what the user typed in when
+  // importing (a keystore's passwords aren't in any readable part of it).
+  ItemField field(String value, {bool secret = false}) => ItemField(
+    value: value,
+    source: secret ? FieldSource.user : FieldSource.file,
+    secret: secret,
+  );
 
   Future<void> add(
     ItemType type,

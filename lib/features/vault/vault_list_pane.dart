@@ -183,6 +183,17 @@ class _Header extends StatelessWidget {
               startContent: const Icon(LucideIcons.filePlus2, size: 15),
               child: const Text('Import'),
             ),
+            BCButton(
+              size: BCButtonSize.sm,
+              variant: BCButtonVariant.secondary,
+              isIconOnly: true,
+              onPressed: () => createItem(context, filter),
+              child: const Icon(
+                LucideIcons.plus,
+                size: 16,
+                semanticLabel: 'New item',
+              ),
+            ),
           ],
         ),
       ],

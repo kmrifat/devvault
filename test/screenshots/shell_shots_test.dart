@@ -44,6 +44,16 @@ void main() {
     interact: selectProduction,
     brightness: Brightness.light,
   );
+  shot(
+    'D03-item-editor',
+    Routes.vault(),
+    sample: true,
+    interact: (tester) async {
+      await selectProduction(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Edit'));
+    },
+  );
   shot('B2-vault-shell', Routes.vault(), device: ShotDevice.mobile);
   shot(
     'B2-vault-shell-light',

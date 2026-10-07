@@ -3,6 +3,7 @@ abstract final class Format {
   /// Words shown in capitals inside field names.
   static const _acronyms = {
     'id': 'ID',
+    'uuid': 'UUID',
     'url': 'URL',
     'uri': 'URI',
     'api': 'API',

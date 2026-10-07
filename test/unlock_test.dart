@@ -22,14 +22,27 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Types [password] and presses Unlock, giving Argon2id real time.
+  /// Types [password] and presses Unlock, giving Argon2id real time until
+  /// the attempt finishes (however busy the machine is).
   Future<void> tryPassword(WidgetTester tester, String password) async {
     await tester.enterText(find.byType(EditableText), password);
     await tester.pump();
+    // Tapped inside runAsync so the unlock (an isolate) runs in real time.
     await tester.runAsync(() async {
       await tester.tap(find.text('Unlock'));
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
+    await tester.pump();
+    for (
+      var i = 0;
+      i < 500 && find.text('Unlocking…').evaluate().isNotEmpty;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
     await tester.pumpAndSettle();
   }
 
