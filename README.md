@@ -38,7 +38,7 @@ Platform notes:
 | iOS 15+ | Face ID unlock (P3). |
 | Android 7.0+ (API 24) | App data is excluded from Google backup and device transfer. |
 | Windows 10+ | |
-| Linux | Install build deps: `sudo apt install ninja-build libgtk-3-dev libsecret-1-dev libsodium-dev` |
+| Linux | Install build deps: `sudo apt install ninja-build libgtk-3-dev libsecret-1-dev` (libsodium is compiled from source by the `sodium` package, so a C compiler is all it needs) |
 
 ## Tests
 
