@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:vault_core/vault_core.dart';
 
 /// Fills [vault] with the credentials shown in the design frames (D03, B2):
@@ -25,6 +27,8 @@ Future<void> seedSampleVault(Vault vault, DateTime now) async {
     List<String> tags = const [],
     Map<String, ItemField> fields = const {},
     DateTime? expiresAt,
+    List<Attachment> attachments = const [],
+    String? notes,
   }) async {
     final item = vault
         .newItem(type: type, title: title, fields: fields)
@@ -35,6 +39,8 @@ Future<void> seedSampleVault(Vault vault, DateTime now) async {
           tags: tags,
           expiresAt: expiresAt,
           expiresSource: expiresAt == null ? null : ExpirySource.file,
+          attachments: attachments,
+          notes: notes,
         );
     await vault.putItem(item);
   }
@@ -50,8 +56,23 @@ Future<void> seedSampleVault(Vault vault, DateTime now) async {
     fields: {
       'alias': field('upload'),
       'store_password': field('kitchenly-store-pass', secret: true),
+      'key_password': field('kitchenly-key-pass', secret: true),
+      'sha1': field(
+        '5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25',
+      ),
+      'sha256': field(
+        'FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:'
+        '9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C',
+      ),
     },
     expiresAt: DateTime.utc(2051, 1, 14),
+    attachments: [
+      await vault.addAttachment(
+        Uint8List.fromList(List.generate(2662, (i) => i % 251)),
+        filename: 'kitchenly-upload.jks',
+      ),
+    ],
+    notes: 'Upload key for Play App Signing. Google holds the app signing key.',
   );
   await add(
     ItemType.gcpServiceAccount,

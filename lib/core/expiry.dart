@@ -31,3 +31,9 @@ extension ExpiryCounts on VaultIndex {
   int countExpiring(ExpiryState state, DateTime now) =>
       byExpiry.where((i) => ExpiryState.of(i, now) == state).length;
 }
+
+/// "1 day", "12 days": whole days left, rounded up.
+String daysLeft(DateTime expiresAt, DateTime now) {
+  final days = (expiresAt.difference(now).inMinutes / (24 * 60)).ceil();
+  return days == 1 ? '1 day' : '$days days';
+}

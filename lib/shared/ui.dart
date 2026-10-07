@@ -8,6 +8,7 @@ export 'package:flutter/material.dart';
 export 'package:lucide_icons_flutter/lucide_icons.dart';
 
 export '../app/theme.dart' show AppColors, AppColorsContext, AppText, AppTheme;
+export 'widgets/app_badge.dart';
 export 'widgets/confirm_dialog.dart';
 export 'widgets/mono_text.dart';
 export 'widgets/password_field.dart';

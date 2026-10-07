@@ -81,7 +81,7 @@ void main() {
     testWidgets('an item link selects it in the detail pane', (tester) async {
       await open(tester, AppLayout.desktop, Routes.item('abc'));
       expect(location(tester), Routes.vault(item: 'abc'));
-      expect(find.text('Item abc'), findsOneWidget);
+      expect(find.text('This item isn’t in the vault'), findsOneWidget);
       expect(find.byType(VaultSidebar), findsOneWidget);
     });
 
