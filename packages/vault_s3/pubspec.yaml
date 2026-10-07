@@ -7,6 +7,10 @@ resolution: workspace
 environment:
   sdk: ^3.13.4
 
+dependencies:
+  crypto: ^3.0.7
+  meta: ^1.19.0
+
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6

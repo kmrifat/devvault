@@ -5,5 +5,7 @@
 /// server.
 library;
 
+export 'src/sigv4.dart';
+
 /// Region to sign with when the provider has no real regions (Cloudflare R2).
 const String autoRegion = 'auto';
