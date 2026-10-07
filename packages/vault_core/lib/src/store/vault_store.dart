@@ -88,8 +88,11 @@ class VaultStore {
 
   /// The encrypted object at [type]/[id], or `null` if there is none.
   Future<Uint8List?> read(ObjectType type, String id) async {
-    final file = _objectFile(type, id);
-    return await file.exists() ? file.readAsBytes() : null;
+    try {
+      return await _objectFile(type, id).readAsBytes();
+    } on PathNotFoundException {
+      return null;
+    }
   }
 
   /// Writes [envelope] to [type]/[id], replacing what was there.

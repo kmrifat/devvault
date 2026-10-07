@@ -1,0 +1,3 @@
+tags:
+  acceptance:
+    # The P2-14 run against a real bucket; skipped without S3_TEST_*.

@@ -277,6 +277,36 @@ void main() {
     }
   });
 
+  test('a file that vanishes mid-sync is skipped, not a crash', () async {
+    final a = await createOnA();
+    final kept = await addItem(a, 'Kept');
+    final gone = await addItem(a, 'Gone');
+    final blob = await a.addAttachment(
+      Uint8List.fromList([1, 2, 3]),
+      filename: 'x.bin',
+    );
+    // The same vault, through a store whose files disappear right after it
+    // lists them: a delete or blob GC racing the sync.
+    final racing = _VanishingStore(storeOf('a').root)
+      ..vanish = {'items/${gone.id}.enc', 'blobs/${blob.blobId}.enc'};
+    final reopened = await Vault.unlock(
+      crypto: crypto,
+      store: racing,
+      password: _password,
+      deviceId: _deviceA,
+      now: now,
+    );
+
+    final report = await engine(reopened).sync();
+    expect(report.pushed, 2); // vault.json + the item still there
+    expect(bucket.keys, contains('${a.vaultId}/items/${kept.id}.enc'));
+    expect(bucket.keys, isNot(contains('${a.vaultId}/items/${gone.id}.enc')));
+    expect(
+      bucket.keys,
+      isNot(contains('${a.vaultId}/blobs/${blob.blobId}.enc')),
+    );
+  });
+
   test('attachments travel as blobs', () async {
     final a = await createOnA();
     final bytes = Uint8List.fromList(List.generate(4096, (i) => i % 256));
@@ -354,4 +384,22 @@ void main() {
       }
     },
   );
+}
+
+/// Deletes the files in [vanish] as soon as a listing has returned them.
+class _VanishingStore extends VaultStore {
+  _VanishingStore(super.root);
+
+  Set<String> vanish = {};
+
+  @override
+  Future<List<String>> list(ObjectType type) async {
+    final ids = await super.list(type);
+    for (final id in ids) {
+      if (vanish.contains('${type.folder}/$id.enc')) {
+        await File('${root.path}/${type.folder}/$id.enc').delete();
+      }
+    }
+    return ids;
+  }
 }
