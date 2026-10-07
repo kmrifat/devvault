@@ -1,6 +1,7 @@
 import 'package:vault_core/vault_core.dart';
 
 import '../app/routes.dart';
+import '../core/expiry.dart';
 
 /// A special list the sidebar can open instead of a tree filter.
 enum VaultView {
@@ -14,8 +15,35 @@ enum VaultView {
       values.where((v) => v.name == name).firstOrNull;
 }
 
+/// The list's tabs, which narrow whatever the sidebar selected.
+enum VaultKind {
+  all('All'),
+  expiring('Expiring'),
+  files('Files'),
+  secrets('Secrets');
+
+  const VaultKind(this.label);
+
+  final String label;
+
+  static VaultKind parse(String? name) =>
+      values.where((k) => k.name == name).firstOrNull ?? all;
+
+  /// Whether [item] belongs under this tab at [now]: expiring includes the
+  /// expired, files are items with an attachment, secrets the rest.
+  bool includes(Item item, DateTime now) => switch (this) {
+    all => true,
+    expiring => switch (ExpiryState.of(item, now)) {
+      ExpiryState.soon || ExpiryState.expired => true,
+      _ => false,
+    },
+    files => item.attachments.isNotEmpty,
+    secrets => item.attachments.isEmpty,
+  };
+}
+
 /// What the vault list shows, read from and written to the `/vault` query
-/// (`?app=…&platform=…&env=…&tag=…&view=…&q=…`), so every selection is a
+/// (`?app=…&platform=…&env=…&tag=…&view=…&kind=…&q=…`), so every selection is a
 /// link that survives a reload and works with back and forward.
 ///
 /// [app], [platform] and [env] take [none] for "items without one", which
@@ -27,6 +55,7 @@ class VaultFilter {
     this.env,
     this.tag,
     this.view,
+    this.kind = VaultKind.all,
     this.q,
   });
 
@@ -42,6 +71,7 @@ class VaultFilter {
       env: param('env'),
       tag: param('tag'),
       view: VaultView.parse(param('view')),
+      kind: VaultKind.parse(param('kind')),
       q: param('q'),
     );
   }
@@ -54,9 +84,11 @@ class VaultFilter {
   final String? env;
   final String? tag;
   final VaultView? view;
+  final VaultKind kind;
   final String? q;
 
-  /// Nothing narrows the list: the sidebar's "All items".
+  /// The sidebar selected nothing: "All items". The list's [kind] tab and
+  /// the search don't count.
   bool get isAll =>
       app == null &&
       platform == null &&
@@ -72,6 +104,7 @@ class VaultFilter {
     env: env,
     tag: tag,
     view: view?.name,
+    kind: kind == VaultKind.all ? null : kind.name,
     q: q,
   );
 
@@ -82,11 +115,24 @@ class VaultFilter {
     env: env,
     tag: tag,
     view: view,
+    kind: kind,
     q: query == null || query.trim().isEmpty ? null : query,
   );
 
-  /// The items of [index] this filter shows, sorted by title. Quarantined
-  /// objects aren't items, so [VaultView.quarantine] shows none.
+  /// This filter on a different tab.
+  VaultFilter withKind(VaultKind kind) => VaultFilter(
+    app: app,
+    platform: platform,
+    env: env,
+    tag: tag,
+    view: view,
+    kind: kind,
+    q: q,
+  );
+
+  /// The items of [index] the sidebar selection and search show, sorted by
+  /// title, before the [kind] tab narrows them ([VaultKind.includes]).
+  /// Quarantined objects aren't items, so [VaultView.quarantine] shows none.
   List<Item> apply(VaultIndex index) {
     if (view == VaultView.quarantine) return const [];
     final withoutApp = app == none;
@@ -115,10 +161,11 @@ class VaultFilter {
       other.env == env &&
       other.tag == tag &&
       other.view == view &&
+      other.kind == kind &&
       other.q == q;
 
   @override
-  int get hashCode => Object.hash(app, platform, env, tag, view, q);
+  int get hashCode => Object.hash(app, platform, env, tag, view, kind, q);
 
   @override
   String toString() => 'VaultFilter(${location()})';

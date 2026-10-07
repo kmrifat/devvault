@@ -1,6 +1,7 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -72,7 +73,8 @@ void main() {
       await open(tester, AppLayout.desktop, Routes.vault());
       expect(find.byType(VaultSidebar), findsOneWidget);
       expect(find.byType(BCBottomNav), findsNothing);
-      expect(find.text('Items'), findsOneWidget);
+      expect(find.byType(VaultListPane), findsOneWidget);
+      expect(find.text('Your vault is empty'), findsOneWidget);
       expect(find.text('No item selected'), findsOneWidget);
     });
 

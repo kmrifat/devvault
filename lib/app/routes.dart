@@ -34,6 +34,7 @@ abstract final class Routes {
     String? env,
     String? tag,
     String? view,
+    String? kind,
     String? q,
   }) {
     final query = <String, String>{
@@ -43,6 +44,7 @@ abstract final class Routes {
       'env': ?env,
       'tag': ?tag,
       'view': ?view,
+      'kind': ?kind,
       'q': ?q,
     };
     return Uri(

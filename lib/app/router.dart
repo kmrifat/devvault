@@ -7,6 +7,7 @@ import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
 import '../features/unlock/recover_screen.dart';
 import '../features/unlock/unlock_screen.dart';
+import '../features/vault/vault_list_pane.dart';
 import 'desktop_shell.dart';
 import 'layout.dart';
 import 'mobile_shell.dart';
@@ -110,11 +111,7 @@ GoRouter buildRouter({
                 Routes.vaultRoot,
                 (s) => desktop
                     ? VaultPanes(
-                        list: const PlaceholderScreen(
-                          title: 'Items',
-                          frame: 'D03 list',
-                          icon: LucideIcons.layers,
-                        ),
+                        list: VaultListPane(uri: s.uri),
                         detail: PlaceholderScreen(
                           title: s.uri.queryParameters['item'] == null
                               ? 'No item selected'
