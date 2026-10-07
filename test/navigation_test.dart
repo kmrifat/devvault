@@ -33,11 +33,7 @@ void main() {
 
   /// Every route reachable with an open vault, with the title its
   /// placeholder shows. Lock screens are covered by session_routing_test.
-  const screens = {
-    Routes.pair: 'Pair a device',
-    Routes.expiry: 'Expiry',
-    Routes.settingsSync: 'Sync storage',
-  };
+  const screens = {Routes.pair: 'Pair a device', Routes.expiry: 'Expiry'};
 
   for (final layout in AppLayout.values) {
     group('${layout.name} layout', () {

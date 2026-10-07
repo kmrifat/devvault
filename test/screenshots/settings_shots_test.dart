@@ -19,4 +19,13 @@ void main() {
     sample: true,
     brightness: Brightness.light,
   );
+
+  // Sync storage with nothing set up yet: R2 preselected.
+  shot('D07-sync-storage', Routes.settingsSync, sample: true);
+  shot(
+    'D07-sync-storage-light',
+    Routes.settingsSync,
+    sample: true,
+    brightness: Brightness.light,
+  );
 }

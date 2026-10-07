@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'providers.dart';
+import 'sync_setup.dart';
 import 'vault_session.dart';
 
 /// Where sync is, for the status chip.
@@ -48,13 +49,6 @@ final class SyncFailed extends SyncStatus {
   final String message;
   final DateTime? lastSync;
 }
-
-/// The configured storage, or null when sync is off. Sync settings (P2-09)
-/// build it from the saved endpoint and the keychain credentials.
-final storageBackendProvider = Provider<StorageBackend?>((ref) => null);
-
-/// A short name for the storage in the status chip, such as `R2`.
-final storageLabelProvider = Provider<String?>((ref) => null);
 
 /// Runs sync and decides when (P2-08): on unlock, 2 s after an edit, every
 /// 60 s while the app is in front, and on request (⌘R, the status chip).
@@ -124,6 +118,7 @@ class SyncController extends Notifier<SyncStatus> {
         final result = await SyncEngine(
           vault: session.vault,
           backend: backend,
+          rootPrefix: ref.read(storageRootPrefixProvider),
           now: ref.read(clockProvider),
         ).sync();
         if (result.changedLocally) {

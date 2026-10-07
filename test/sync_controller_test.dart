@@ -1,6 +1,7 @@
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/sync_controller.dart';
+import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/sync/sync_status_chip.dart';
 import 'package:flutter/services.dart';

@@ -321,6 +321,26 @@ void main() {
     expect((await items(b))[y.id]!.title, 'Y');
   });
 
+  test('vaults can live under a folder in the bucket', () async {
+    final a = await createOnA();
+    await addItem(a, 'X');
+    await SyncEngine(
+      vault: a,
+      backend: bucket,
+      rootPrefix: 'devvault/',
+      now: () => clock,
+    ).sync();
+    expect(bucket.keys, everyElement(startsWith('devvault/${a.vaultId}/')));
+    expect(
+      () => SyncEngine(vault: a, backend: bucket, rootPrefix: 'no-slash'),
+      throwsArgumentError,
+    );
+    expect(
+      () => SyncEngine(vault: a, backend: bucket, rootPrefix: '../x/'),
+      throwsArgumentError,
+    );
+  });
+
   test(
     'nothing local is ever uploaded unencrypted, except vault.json',
     () async {
