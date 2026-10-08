@@ -886,21 +886,16 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           if (replacing == null) ...[
             DesktopFormRow(
               label: 'App',
-              // At least as wide as the controls under it, and wider for an
-              // app whose label carries its organization.
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: _controlWidth),
-                  child: DesktopPopup<String>(
-                    value: draft.appId ?? '',
-                    choices: [
-                      const DesktopChoice('', 'No app'),
-                      for (final app in apps) DesktopChoice(app.id, app.label),
-                    ],
-                    onChanged: (id) =>
-                        setState(() => draft.appId = id.isEmpty ? null : id),
-                  ),
+              child: SheetNote(
+                width: _controlWidth,
+                control: DesktopPopup<String>(
+                  value: draft.appId ?? '',
+                  choices: [
+                    const DesktopChoice('', 'No app'),
+                    for (final app in apps) DesktopChoice(app.id, app.label),
+                  ],
+                  onChanged: (id) =>
+                      setState(() => draft.appId = id.isEmpty ? null : id),
                 ),
               ),
             ),
