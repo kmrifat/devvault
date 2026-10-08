@@ -79,7 +79,7 @@ lib/
   - Both KEKs wrap a random 256-bit **VK**.
 - **Cipher:** XChaCha20-Poly1305-IETF with a random 24 B nonce per write. AAD = `vault_id|object_id|object_type|format_version`.
 - **Envelope:** `"DVLT"(4) | format_version u8 | object_type u8 | nonce(24) | ciphertext+tag`.
-- **Recovery key encoding:** Crockford base32 plus a 4-character checksum, shown in groups of four (`K7QF-2M9X-…`). The parser is lenient and reports where a typo is.
+- **Recovery key encoding:** Crockford base32 plus a 4-character checksum, shown in groups of four (`K7QF-2M9X-…`). The parser is lenient: it reports where a character outside the alphabet is, and the checksum catches any other typo.
 - **Key handling:** keys are held as sodium `SecureKey` and disposed on lock. Dart cannot zero heap memory, so the risk is reduced (index dropped on lock, secrets decrypted lazily) and documented rather than hidden.
 
 ---
@@ -159,10 +159,10 @@ Format: **ID · title** (estimate). **D:** dependencies. **AC:** acceptance crit
   - Defaults ops=3, mem=64 MiB, p=1.
   - Header bounds (mem 8 MiB–1 GiB, ops 1–10) block a memory DoS from a tampered header.
   - Runs in an isolate.
-  - AC: RFC 9106 / libsodium vectors pass; the UI isolate isn't blocked; under 1.5 s on a mid-range Android phone.
+  - AC: Argon2id matches Go x/crypto's known answers (libsodium is single-lane, so RFC 9106's 4-lane vector can't run on it); the UI isolate isn't blocked; under 1.5 s on a mid-range Android phone.
 - **P0-04 · AEAD envelope + AAD** (1d). AC: flipping a bit, changing a header byte, or swapping object_id, object_type, vault_id or version **each** fail.
 - **P0-05 · VK + password wrap + vault.json codec** (1d). Canonical (sorted) JSON that keeps unknown fields. AC: round-trip; a wrong password raises a typed `WrongPassword`.
-- **P0-06 · Recovery key** (1d). AC: RFC 5869 HKDF vectors pass; a one-character typo is detected and located; the recovery key alone unwraps the VK.
+- **P0-06 · Recovery key** (1d). AC: RFC 5869 HKDF vectors pass; a one-character typo is detected, and located when the character isn't in the alphabet; the recovery key alone unwraps the VK.
 - **P0-07 · Hybrid logical clock** (0.5d). `{wallMs, counter, deviceId}` with sortable string encoding. AC: property tests for monotonicity, total order and receive ≥ both inputs.
 - **P0-08 · Item/App model + schema v1** (1.5d).
   - Types: `apple_auth_key`, `apple_certificate`, `provisioning_profile`, `android_keystore`, `firebase_config`, `gcp_service_account`, `oauth_client`, `generic_file`, `generic_secret`, `app`.
