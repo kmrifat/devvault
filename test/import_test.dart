@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 const _fixtures = 'packages/cred_parsers/test/fixtures';
 
@@ -387,6 +388,11 @@ void main() {
       expect(find.text('Keep the password with the item'), findsOneWidget);
 
       await tapImport(tester, () => index(tester).all.isNotEmpty);
+      await settle(
+        tester,
+        () => find.text('File imported').evaluate().isNotEmpty,
+      );
+      expectNoSecretInToasts(tester, ['test-password', 'nope']);
       final item = index(tester).all.single;
       expect(item.typeName, ItemType.appleCertificate.wireName);
       expect(item.expiresSource, ExpirySource.file);

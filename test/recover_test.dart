@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 void main() {
   setUpAll(loadTestCrypto);
@@ -108,6 +109,11 @@ void main() {
       until: find.text('New master password set'),
     );
     expect(location(tester), Routes.vault());
+    expectNoSecretInToasts(tester, [
+      'a brand new password',
+      recoveryKey,
+      ...recoveryKey.split('-'),
+    ]);
 
     // The old password is gone, the new one works.
     final store = VaultStore(

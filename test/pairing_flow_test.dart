@@ -22,6 +22,7 @@ import 'package:vault_s3/vault_s3.dart';
 
 import 'clipboard_guard_test.dart' show FakeClipboard;
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 const _accountId = '0123456789abcdef0123456789abcdef';
 const _password = 'the password used elsewhere';
@@ -148,6 +149,12 @@ void main() {
       final payload = clipboard.text!;
       expect(payload, startsWith(Pairing.prefix));
       expect(payload, isNot(contains('pair-secret')));
+      expectNoSecretInToasts(tester, [
+        payload,
+        code,
+        Pairing.display(code),
+        'pair-secret',
+      ]);
 
       final contents = await tester.runAsync(
         () => Pairing.open(
