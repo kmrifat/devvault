@@ -7,7 +7,10 @@ import '../../shared/ui.dart';
 enum SettingsPane {
   general(Routes.settings, 'General'),
   security(Routes.settingsSecurity, 'Security'),
-  sync(Routes.settingsSync, 'Sync');
+  sync(Routes.settingsSync, 'Sync'),
+
+  /// Desktop only (P5): phones don't serve AI agents.
+  agents(Routes.settingsAgents, 'AI Agents');
 
   const SettingsPane(this.route, this.label);
 

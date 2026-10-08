@@ -63,6 +63,7 @@ void main() {
         Routes.settings,
         Routes.settingsSync,
         Routes.settingsSecurity,
+        if (layout == AppLayout.desktop) Routes.settingsAgents,
         Routes.pair,
       ]) {
         testWidgets(path, (tester) async {
