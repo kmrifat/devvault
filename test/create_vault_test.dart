@@ -1,5 +1,7 @@
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/shared/ui.dart'
+    show BCButton, BCSpinner, PasswordField;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -58,16 +60,50 @@ void main() {
     await openCreate(tester);
     await tester.enterText(field('Master password'), 'a long master password');
     await tester.enterText(field('Confirm password'), 'a long master password');
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Continue'));
-      // Argon2id runs on a real isolate; give it real time.
-      for (var i = 0; i < 50; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        if (appContainer(tester).read(pendingRecoveryKeyProvider) != null) {
-          break;
-        }
-      }
-    });
+    final controllers = [
+      for (final f in tester.widgetList<PasswordField>(
+        find.byType(PasswordField),
+      ))
+        f.controller,
+    ];
+    expect(controllers.map((c) => c.text), everyElement(isNotEmpty));
+
+    // While Argon2id runs: progress, and nothing can be changed or sent
+    // twice.
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+    expect(find.text('Creating vault…'), findsOneWidget);
+    expect(find.byType(BCSpinner), findsOneWidget);
+    expect(
+      tester
+          .widgetList<PasswordField>(find.byType(PasswordField))
+          .map((f) => f.isDisabled),
+      [true, true],
+    );
+    expect(
+      tester
+          .widget<BCButton>(
+            find.ancestor(
+              of: find.text('Creating vault…'),
+              matching: find.byType(BCButton),
+            ),
+          )
+          .isDisabled,
+      isTrue,
+    );
+
+    // Argon2id runs on a real isolate: give it real time, and frames for
+    // what follows it.
+    for (
+      var i = 0;
+      i < 250 && appContainer(tester).read(pendingRecoveryKeyProvider) == null;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
     await tester.pumpAndSettle();
 
     final c = appContainer(tester);
@@ -77,5 +113,8 @@ void main() {
       GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri.path,
       Routes.createRecoveryKit,
     );
+    // The password isn't kept: the screen cleared its fields on the way out.
+    expect(find.byType(PasswordField), findsNothing);
+    expect(controllers.map((c) => c.text), everyElement(isEmpty));
   });
 }
