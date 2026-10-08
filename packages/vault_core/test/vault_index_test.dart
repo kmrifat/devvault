@@ -243,5 +243,7 @@ void main() {
     // ignore: avoid_print
     print('search over 1000 items: ${runs.first.inMicroseconds} µs');
     expect(runs.first, lessThan(const Duration(milliseconds: 16)));
-  });
+    // Writing the 1,000 items (atomic, fsynced) is the slow part, not what
+    // is measured: on a Windows runner it can take most of the default 30 s.
+  }, timeout: const Timeout(Duration(minutes: 3)));
 }
