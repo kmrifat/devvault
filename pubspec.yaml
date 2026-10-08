@@ -41,6 +41,9 @@ dependencies:
   vault_core: ^0.1.0
   vault_s3: ^0.1.0
   window_manager: ^0.5.2
+  macos_ui: ^2.2.2
+  fluent_ui: ^4.16.1
+  yaru: ^10.2.0
 
 dev_dependencies:
   flutter_test:
