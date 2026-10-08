@@ -172,6 +172,11 @@ void main() {
     final request = app.requests.single;
     expect(request.items.single.fields, unorderedEquals(['value', 'pem']));
     expect(request.delivery.mode, DeliveryMode.command);
+    expect(request.delivery.cwd, Directory.current.absolute.path);
+    expect(request.delivery.env, {
+      'STRIPE_KEY': '$itemId#value',
+      'PEM': '$itemId#pem',
+    });
   });
 
   test('bad env refs are refused before asking', () async {

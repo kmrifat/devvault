@@ -16,9 +16,17 @@ enum DeliveryMode {
 }
 
 class Delivery {
-  const Delivery.reveal() : mode = DeliveryMode.reveal, target = null;
-  const Delivery.file(String path) : mode = DeliveryMode.file, target = path;
-  const Delivery.command(String command)
+  const Delivery.reveal()
+    : mode = DeliveryMode.reveal,
+      target = null,
+      cwd = null,
+      env = const {};
+  const Delivery.file(String path)
+    : mode = DeliveryMode.file,
+      target = path,
+      cwd = null,
+      env = const {};
+  const Delivery.command(String command, {this.cwd, this.env = const {}})
     : mode = DeliveryMode.command,
       target = command;
 
@@ -27,11 +35,27 @@ class Delivery {
   /// The file path or the command line; null for [DeliveryMode.reveal].
   final String? target;
 
+  /// Where the command runs (absolute); null for the helper's own folder.
+  final String? cwd;
+
+  /// For a command: environment variable → `<item id>#<field>`, so the
+  /// user sees which value each name carries.
+  final Map<String, String> env;
+
   Map<String, Object?> toJson() => switch (mode) {
     DeliveryMode.reveal => {'mode': 'reveal'},
     DeliveryMode.file => {'mode': 'file', 'path': target},
-    DeliveryMode.command => {'mode': 'command', 'command': target},
+    DeliveryMode.command => {
+      'mode': 'command',
+      'command': target,
+      'cwd': ?cwd,
+      if (env.isNotEmpty) 'env': env,
+    },
   };
+
+  /// Everything the user approves about where values go, as one string:
+  /// a grant only covers a request whose delivery is identical.
+  String get identity => jsonEncode(toJson());
 
   factory Delivery.fromJson(Object? json) {
     if (json is! Map) throw _bad('delivery');
@@ -51,7 +75,22 @@ class Delivery {
             command.length > 4096) {
           throw _bad('delivery.command');
         }
-        return Delivery.command(command);
+        final cwd = json['cwd'];
+        if (cwd != null &&
+            (cwd is! String || !cwd.startsWith('/') || cwd.length > 1024)) {
+          throw _bad('delivery.cwd must be an absolute path');
+        }
+        final env = json['env'] ?? const {};
+        if (env is! Map ||
+            env.length > 100 ||
+            env.entries.any((e) => e.key is! String || e.value is! String)) {
+          throw _bad('delivery.env');
+        }
+        return Delivery.command(
+          command,
+          cwd: cwd as String?,
+          env: env.cast<String, String>(),
+        );
       default:
         throw _bad('delivery.mode');
     }

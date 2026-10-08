@@ -21,21 +21,34 @@ import 'harness.dart';
 void main() {
   setUpAll(loadAppFonts);
 
-  Future<void> Function(WidgetTester) ask(Delivery delivery) => (tester) async {
+  /// [delivery] gets the upload keystore's id, for a command's variables.
+  Future<void> Function(WidgetTester) ask(
+    Delivery Function(String) delivery,
+  ) => (tester) async {
     final c = appContainer(tester);
     final index = (c.read(vaultSessionProvider) as Unlocked).index;
+    final keystore = index.all.firstWhere((i) => i.title == 'Upload keystore');
     c
         .read(agentBridgeProvider.notifier)
-        .debugAsk(sampleSecretPrompt(index, delivery: delivery));
+        .debugAsk(sampleSecretPrompt(index, delivery: delivery(keystore.id)));
   };
 
   for (final (name, delivery) in [
-    ('N09-agent-reveal', const Delivery.reveal()),
-    ('N09-agent-file', const Delivery.file('/Users/me/kitchenly/upload.jks')),
+    ('N09-agent-reveal', (_) => const Delivery.reveal()),
+    (
+      'N09-agent-file',
+      (_) => const Delivery.file('/Users/me/kitchenly/upload.jks'),
+    ),
     (
       'N09-agent-command',
-      const Delivery.command(
-        r'./gradlew bundleRelease -Pstore.password="$STORE_PASSWORD"',
+      (String id) => Delivery.command(
+        r'./gradlew bundleRelease -Pstore.password="$STORE_PASSWORD" '
+        r'-Pkey.password="$KEY_PASSWORD"',
+        cwd: '/Users/me/kitchenly/android',
+        env: {
+          'STORE_PASSWORD': '$id#store_password',
+          'KEY_PASSWORD': '$id#key_password',
+        },
       ),
     ),
   ]) {

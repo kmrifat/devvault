@@ -183,6 +183,11 @@ class _SecretDetails extends StatelessWidget {
               spacing: 6,
               children: [
                 Text(delivery.target!, style: mono),
+                if (delivery.cwd case final cwd?)
+                  Text('in $cwd', style: secondary),
+                for (final MapEntry(key: name, value: ref)
+                    in delivery.env.entries)
+                  Text('\$$name ← ${_describe(ref)}', style: secondary),
                 Text(
                   'Its output comes back to ${prompt.client} with the '
                   'values blanked out.',
@@ -194,6 +199,19 @@ class _SecretDetails extends StatelessWidget {
         },
       ],
     );
+  }
+}
+
+extension on _SecretDetails {
+  /// `<item id>#<field>` as the user knows it: the item's title and field.
+  String _describe(String ref) {
+    final [id, field] = ref.split('#');
+    final title = prompt.items
+        .where((i) => i.item.id == id)
+        .firstOrNull
+        ?.item
+        .title;
+    return '${title ?? id} · $field';
   }
 }
 
