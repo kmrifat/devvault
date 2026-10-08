@@ -49,6 +49,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  msix: ^3.18.0
 
 flutter:
   uses-material-design: true
@@ -97,3 +98,16 @@ flutter_launcher_icons:
     icon_size: 256
   web:
     generate: false
+
+# Windows MSIX (P2-13), packaged by release.yml from the release build with
+# tool/release/windows_msix.ps1. The identity matches the notification AUMID;
+# the publisher comes from the signing certificate when there is one.
+msix_config:
+  display_name: DevVault
+  publisher_display_name: Binary Castle
+  identity_name: BinaryCastle.DevVault
+  logo_path: assets/icon/app_icon.png
+  capabilities: internetClient
+  build_windows: false
+  install_certificate: false
+  store: false

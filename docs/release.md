@@ -23,8 +23,16 @@ attached to the GitHub Release.
 
 The workflow can also be run by hand (**Actions › Release › Run
 workflow**); without a tag it uploads the files as run artifacts only.
-It also runs on pull requests that change it or `tool/release/`, which
-exercises the unsigned path.
+It also runs on pull requests that change it, `tool/release/` or
+`pubspec.yaml`, which exercises the unsigned path.
+
+Each tag gives these desktop files:
+
+| Platform | Files |
+|---|---|
+| macOS | `DevVault-macos.dmg` (notarized) |
+| Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix` |
+| Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature |
 
 ## Secrets
 
@@ -62,6 +70,11 @@ certificate builds SmartScreen reputation over time; an EV certificate
 is trusted at once but usually lives on a hardware token, which a hosted
 runner can't use.
 
+`tool/release/windows_msix.ps1` then packages the signed build as an MSIX
+with the `msix` package (`msix_config` in `pubspec.yaml`), signed with the
+same certificate; the certificate's subject becomes the MSIX publisher.
+Windows installs a signed MSIX only when it trusts that certificate.
+
 ### Linux: detached GPG signature
 
 | Secret | What |
@@ -69,9 +82,14 @@ runner can't use.
 | `LINUX_GPG_PRIVATE_KEY` | An armored private key (`gpg --armor --export-secret-keys <id>`). Publish its public key in the README so users can verify. |
 | `LINUX_GPG_PASSPHRASE` | Its passphrase. |
 
-The tarball gets `devvault-linux-x64.tar.gz.asc`. Users check it with
-`gpg --verify devvault-linux-x64.tar.gz.asc`, and every file with
+The tarball and the AppImage each get a `.asc` signature
+(`devvault-linux-x64.tar.gz.asc`, `devvault-linux-x64.AppImage.asc`).
+Users check them with `gpg --verify <file>.asc`, and every file with
 `sha256sum -c SHA256SUMS`.
+
+`tool/release/linux_appimage.sh` builds the AppImage from the release
+bundle with `appimagetool`, which is pinned to 1.9.1 and checked against
+its SHA-256. Like the tarball, it uses the host's GTK 3 and libsecret.
 
 ### iOS: TestFlight
 
