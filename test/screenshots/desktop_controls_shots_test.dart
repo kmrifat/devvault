@@ -38,6 +38,85 @@ void main() {
     }
   });
 
+  testWidgets('desktop-sheet-macos-light', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1440, 1000)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    debugDisableShadows = false;
+    try {
+      await pumpDesktop(
+        tester,
+        DesktopKit.macos,
+        Builder(
+          builder: (context) => DesktopButton(
+            label: 'Open',
+            onPressed: () => showDesktopSheet<void>(
+              context,
+              builder: (context) => DesktopSheet(
+                title: 'Import AuthKey_R7KQ2M9XWP.p8',
+                leadingAction: DesktopButton(
+                  label: 'Delete',
+                  kind: DesktopButtonKind.destructive,
+                  onPressed: () {},
+                ),
+                actions: [
+                  DesktopButton(label: 'Cancel', onPressed: () {}),
+                  DesktopButton(
+                    label: 'Add to Vault',
+                    kind: DesktopButtonKind.primary,
+                    onPressed: () {},
+                  ),
+                ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 14,
+                  children: [
+                    const DesktopGroupBox(
+                      title: 'From the file',
+                      child: Text('Key ID R7KQ2M9XWP · APNs auth key'),
+                    ),
+                    DesktopForm(
+                      children: [
+                        DesktopFormRow(
+                          label: 'Name',
+                          child: DesktopTextField(
+                            controller: TextEditingController(
+                              text: 'Kitchenly · APNs',
+                            ),
+                          ),
+                        ),
+                        DesktopFormRow(
+                          label: 'Environment',
+                          child: DesktopComboBox(
+                            value: 'production',
+                            suggestions: const ['development', 'production'],
+                            onChanged: (_) {},
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('../../screenshots/desktop-sheet-macos-light.png'),
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      debugDisableShadows = true;
+    }
+  });
+
   for (final brightness in Brightness.values) {
     final name = 'desktop-controls-macos-${brightness.name}';
     testWidgets(name, (tester) async {

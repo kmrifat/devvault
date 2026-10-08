@@ -17,6 +17,7 @@ export 'desktop/desktop_menu_bar.dart';
 export 'desktop/desktop_metrics.dart';
 export 'desktop/desktop_popup.dart';
 export 'desktop/desktop_search_field.dart';
+export 'desktop/desktop_sheet.dart';
 export 'desktop/desktop_symbols.dart';
 export 'desktop/desktop_text_field.dart';
 export 'desktop/desktop_theme.dart';
