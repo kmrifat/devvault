@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_overrides.dart';
+import 'wait_until.dart';
 
 const _agent = ClientInfo(name: 'claude-code', version: '2.1');
 
@@ -374,6 +375,98 @@ void main() {
       await result;
     });
 
+    test('a grant covers only the same names and the same delivery', () async {
+      await start();
+      final (client, _) = await paired();
+      final id = await itemId('Upload keystore');
+      SecretRequest ask(
+        List<String> fields, {
+        Delivery delivery = const Delivery.reveal(),
+      }) => SecretRequest(
+        reason: 'Sign',
+        delivery: delivery,
+        items: [SecretItemRequest(id: id, fields: fields)],
+      );
+
+      var result = client.requestSecret(
+        ask(['alias'], delivery: const Delivery.file('/tmp/a')),
+      );
+      await answerNext(AgentDecision.allowForAWhile);
+      await result;
+      // The same again: no sheet.
+      await client.requestSecret(
+        ask(['alias'], delivery: const Delivery.file('/tmp/a')),
+      );
+      expect(bridge().activity.first.outcome, 'Allowed earlier');
+
+      // Another field, another path, or revealing: each asks again.
+      for (final request in [
+        ask(['store_password'], delivery: const Delivery.file('/tmp/a')),
+        ask(['alias'], delivery: const Delivery.file('/tmp/b')),
+        ask(['alias']),
+      ]) {
+        result = client.requestSecret(request);
+        await answerNext(AgentDecision.deny);
+        await expectLater(result, _fails(BridgeError.denied));
+      }
+    });
+
+    test(
+      'a command shows its folder and variables, and they must match',
+      () async {
+        await start();
+        final (client, _) = await paired();
+        final id = await itemId('Stripe secret key');
+        SecretRequest run(Map<String, String> env) => SecretRequest(
+          reason: 'Smoke test',
+          delivery: Delivery.command(
+            r'curl -u "$KEY:" https://api.stripe.com',
+            cwd: '/Users/me/ledgerly',
+            env: env,
+          ),
+          items: [
+            SecretItemRequest(id: id, fields: ['value']),
+          ],
+        );
+
+        // A variable pointing at something the request doesn't ask for.
+        await expectLater(
+          client.requestSecret(run({'KEY': '$id#other'})),
+          _fails(BridgeError.badRequest),
+        );
+        await expectLater(
+          client.requestSecret(
+            run({'KEY': '00000000-0000-4000-8000-00000000dead#value'}),
+          ),
+          _fails(BridgeError.badRequest),
+        );
+        expect(bridge().prompts, isEmpty);
+
+        final result = client.requestSecret(run({'KEY': '$id#value'}));
+        final prompt =
+            await answerNext(AgentDecision.allowForAWhile) as SecretPrompt;
+        expect(prompt.delivery.cwd, '/Users/me/ledgerly');
+        expect(prompt.delivery.env, {'KEY': '$id#value'});
+        await result;
+        // Same command elsewhere: asks again.
+        final elsewhere = client.requestSecret(
+          SecretRequest(
+            reason: 'Smoke test',
+            delivery: Delivery.command(
+              r'curl -u "$KEY:" https://api.stripe.com',
+              cwd: '/tmp',
+              env: {'KEY': '$id#value'},
+            ),
+            items: [
+              SecretItemRequest(id: id, fields: ['value']),
+            ],
+          ),
+        );
+        await answerNext(AgentDecision.deny);
+        await expectLater(elsewhere, _fails(BridgeError.denied));
+      },
+    );
+
     test('deny fails with denied', () async {
       await start();
       final (client, _) = await paired();
@@ -439,15 +532,4 @@ void main() {
       await until(() => bridge().prompts.isEmpty);
     });
   });
-}
-
-/// Polls [condition] (real time) until it holds, or fails after 5 s.
-Future<void> until(bool Function() condition) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (!condition()) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail('Timed out waiting for a condition');
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-  }
 }

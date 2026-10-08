@@ -141,36 +141,48 @@ class DevVaultTools {
         });
       });
 
-  Future<ToolOutput> runWithSecrets(Map<String, Object?> args) =>
-      _guard(() async {
-        final command = _required(args, 'command');
-        final cwd = _optional(args, 'cwd');
-        if (cwd != null && !Directory(cwd).existsSync()) {
-          throw const DeliveryError("cwd doesn't exist");
-        }
-        final seconds = args['timeout_seconds'];
-        final timeout = Duration(
-          seconds: seconds is int ? seconds.clamp(1, 3600) : 300,
-        );
-        final refs = _envRefs(args);
-        final values = await _values(
-          refs,
-          reason: _required(args, 'reason'),
-          delivery: Delivery.command(command),
-        );
-        final result = await delivery.runWithSecrets(
+  Future<ToolOutput> runWithSecrets(Map<String, Object?> args) => _guard(
+    () async {
+      final command = _required(args, 'command');
+      // Always absolute and always shown: the user approves where it
+      // runs as well as what runs.
+      final cwd = Directory(_optional(args, 'cwd') ?? Directory.current.path)
+          .absolute
+          .path;
+      if (!cwd.startsWith('/') || !Directory(cwd).existsSync()) {
+        throw const DeliveryError("cwd doesn't exist");
+      }
+      final seconds = args['timeout_seconds'];
+      final timeout = Duration(
+        seconds: seconds is int ? seconds.clamp(1, 3600) : 300,
+      );
+      final refs = _envRefs(args);
+      final values = await _values(
+        refs,
+        reason: _required(args, 'reason'),
+        delivery: Delivery.command(
           command,
-          env: values,
           cwd: cwd,
-          timeout: timeout,
-        );
-        return ToolOutput.json({
-          ...result.toJson(),
-          'note':
-              'Secret values in the output were replaced with '
-              '[redacted:NAME].',
-        });
+          env: {
+            for (final MapEntry(key: name, value: (id, field)) in refs.entries)
+              name: '$id#$field',
+          },
+        ),
+      );
+      final result = await delivery.runWithSecrets(
+        command,
+        env: values,
+        cwd: cwd,
+        timeout: timeout,
+      );
+      return ToolOutput.json({
+        ...result.toJson(),
+        'note':
+            'Secret values in the output were replaced with '
+            '[redacted:NAME].',
       });
+    },
+  );
 
   /// Fetches the values [refs] point at, in one approval.
   Future<Map<String, String>> _values(

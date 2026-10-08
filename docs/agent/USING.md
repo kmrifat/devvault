@@ -53,12 +53,14 @@ Every request shows:
 - the reason it gave, word for word;
 - each item, as app › platform › environment › title, with the fields
   and files it wants;
-- where the values will go.
+- where the values will go: the file path, or the command with the
+  folder it runs in and which value each variable carries.
 
 You answer with one of:
 - **Allow Once.**
-- **Allow for 15 Minutes:** the same client won't be asked again about
-  those items until then, or until the vault locks.
+- **Allow for 15 Minutes:** exactly the same request (same client,
+  items, fields and destination) won't ask again until then, or until the
+  vault locks. Anything different asks.
 - **Deny.** The agent is told not to ask again unless you say so.
 
 Unanswered requests fail after 2 minutes. Locking the vault cancels

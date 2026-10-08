@@ -473,9 +473,19 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
       DeliveryMode.file => 'Wrote file',
       DeliveryMode.command => 'Ran command',
     };
+    _checkEnv(request, items);
     final detail = items.map((i) => i.item.title).join(', ');
+    // A grant covers exactly what the sheet showed: this client, these
+    // items, these names, this delivery (mode, path or command, folder,
+    // variables). Anything else asks again.
     final keys = [
-      for (final i in items) '${call.session.tokenHash}|${i.item.id}',
+      for (final i in items)
+        [
+          call.session.tokenHash,
+          i.item.id,
+          i.names.join('\u0000'),
+          request.delivery.identity,
+        ].join('|'),
     ];
     if (_granted(keys)) {
       _log(call, action, detail, 'Allowed earlier');
@@ -528,6 +538,26 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
       );
     }
     return SecretResult(result).toJson();
+  }
+
+  /// A command's variables may only carry what the request asks for, so
+  /// the mapping on the sheet is the whole story.
+  static void _checkEnv(SecretRequest request, List<SecretPromptItem> items) {
+    if (request.delivery.mode != DeliveryMode.command) return;
+    final asked = {
+      for (final (i, wanted) in request.items.indexed)
+        wanted.id: wanted.wantsAllFields
+            ? items[i].item.fields.keys.toSet()
+            : {...?wanted.fields},
+    };
+    for (final MapEntry(key: name, value: ref)
+        in request.delivery.env.entries) {
+      final parts = ref.split('#');
+      if (parts.length != 2 ||
+          !(asked[parts[0]]?.contains(parts[1]) ?? false)) {
+        throw BridgeException(BridgeError.badRequest, 'env $name');
+      }
+    }
   }
 
   /// The items a request names, with what it asks of each. Throws

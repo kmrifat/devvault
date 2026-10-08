@@ -122,7 +122,7 @@ inferred, and absent keys mean the vault has no value.
 | Key | Type | Meaning |
 |---|---|---|
 | `reason` | str, required | Why the agent needs it. Shown verbatim to the user. |
-| `delivery` | object, required | `{"mode": "reveal"}`, `{"mode": "file", "path": str}` or `{"mode": "command", "command": str}`. Shown to the user. |
+| `delivery` | object, required | `{"mode": "reveal"}`, `{"mode": "file", "path": str}`, or `{"mode": "command", "command": str, "cwd": str?, "env": {NAME: "<item id>#<field>"}?}`. All of it is shown to the user. `cwd` is absolute. Every `env` entry must name a field the request asks for (else `bad_request`). |
 | `items` | list, required, 1–20 entries | Each entry: `{"id": uuid, "fields": [names]?, "attachments": [ids]?, "notes": bool?}` |
 
 - When an entry has neither `fields`, `attachments` nor `notes`, it asks
@@ -148,9 +148,12 @@ inferred, and absent keys mean the vault has no value.
    names. A `reveal` delivery carries a warning that the value will be
    sent to the AI model.
 4. It waits for *Allow once*, *Allow for 15 minutes* or *Deny*.
-   - *Allow for 15 minutes* records a grant for (client, item id). Later
-     requests from the same client whose items are all granted skip the
-     sheet.
+   - *Allow for 15 minutes* records a grant per item for exactly what the
+     sheet showed: (client, item id, the names asked for, the delivery,
+     meaning mode plus path, command, `cwd` and `env`). A later request
+     skips the sheet only if every item matches a grant on all of these.
+     Another field, another path or command, or revealing instead of
+     writing asks again.
    - Every grant is cleared when the vault locks.
 5. *Deny* fails with `denied`. After 120 s with no answer, the request
    fails with `timeout`.

@@ -28,6 +28,32 @@ void main() {
       expect(back.items.single.wantsAllFields, isFalse);
     });
 
+    test('a command delivery carries its folder and variables', () {
+      final back = Delivery.fromJson(
+        const Delivery.command(
+          'make deploy',
+          cwd: '/srv/app',
+          env: {'KEY': '$_id#value'},
+        ).toJson(),
+      );
+      expect(back.target, 'make deploy');
+      expect(back.cwd, '/srv/app');
+      expect(back.env, {'KEY': '$_id#value'});
+      expect(
+        () => Delivery.fromJson({
+          'mode': 'command',
+          'command': 'x',
+          'cwd': 'relative',
+        }),
+        throwsA(isA<BridgeException>()),
+      );
+      // Grants compare deliveries by identity.
+      expect(
+        const Delivery.command('x', cwd: '/a').identity,
+        isNot(const Delivery.command('x', cwd: '/b').identity),
+      );
+    });
+
     test('an item naming nothing wants every field', () {
       expect(const SecretItemRequest(id: _id).wantsAllFields, isTrue);
     });
