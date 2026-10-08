@@ -3,12 +3,20 @@ name: Release
 # v1 release builds for the three desktop platforms (P4-09). On a version
 # tag they are built, signed where the secrets exist, checksummed and
 # attached to a draft GitHub Release. Without the secrets each artifact is
-# built unsigned and named so. iOS and Android store builds are P3-08
-# (TestFlight / Play internal).
+# built unsigned and named so.
+#
+# The phones go to their stores instead (P3-08): on a version tag, iOS is
+# archived and uploaded to TestFlight, Android's signed bundle to Play's
+# internal testing track. Other runs build them unsigned, as a check.
 #
 # Secrets (docs/release.md): MACOS_CERT_P12_BASE64, MACOS_CERT_PASSWORD,
 # APPLE_TEAM_ID, APPLE_ID, APPLE_APP_PASSWORD; WINDOWS_CERT_PFX_BASE64,
-# WINDOWS_CERT_PASSWORD; LINUX_GPG_PRIVATE_KEY, LINUX_GPG_PASSPHRASE.
+# WINDOWS_CERT_PASSWORD; LINUX_GPG_PRIVATE_KEY, LINUX_GPG_PASSPHRASE;
+# IOS_DIST_CERT_P12_BASE64, IOS_DIST_CERT_PASSWORD,
+# APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID,
+# APP_STORE_CONNECT_KEY_P8_BASE64; ANDROID_KEYSTORE_BASE64,
+# ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD,
+# PLAY_SERVICE_ACCOUNT_JSON.
 
 on:
   push:
@@ -19,6 +27,7 @@ on:
     paths:
       - .github/workflows/release.yml
       - tool/release/**
+      - android/app/build.gradle.kts
 
 permissions:
   contents: read
@@ -122,6 +131,98 @@ jobs:
             devvault-linux-x64*.tar.gz*
           if-no-files-found: error
 
+  store:
+    name: Store build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: ios
+          - os: ubuntu-latest
+            target: android
+    env:
+      # Only a version tag goes to the stores; other runs just build.
+      TAGGED: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      UPLOAD_IOS: ${{ secrets.IOS_DIST_CERT_P12_BASE64 != '' && secrets.APP_STORE_CONNECT_KEY_P8_BASE64 != '' && secrets.APPLE_TEAM_ID != '' }}
+      SIGN_ANDROID: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      UPLOAD_ANDROID: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: matrix.target == 'android'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      # iOS: TestFlight on a tag with the secrets, an unsigned app otherwise.
+      - name: Archive and upload to TestFlight (iOS)
+        if: matrix.target == 'ios' && env.UPLOAD_IOS == 'true' && env.TAGGED == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_P8_BASE64 }}
+        run: |
+          flutter build ios --release --config-only
+          tool/release/ios_testflight.sh
+      - name: Unsigned app (iOS)
+        if: matrix.target == 'ios' && !(env.UPLOAD_IOS == 'true' && env.TAGGED == 'true')
+        run: |
+          flutter build ios --release --no-codesign
+          ditto -c -k --keepParent build/ios/iphoneos/Runner.app DevVault-ios-unsigned.zip
+
+      # Android: an app bundle signed with the upload key, to Play's
+      # internal testing track on a tag. Without the keystore it keeps the
+      # debug key (android/app/build.gradle.kts) and is named -unsigned.
+      - name: Upload keystore (Android)
+        if: matrix.target == 'android' && env.SIGN_ANDROID == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+      - name: App bundle (Android)
+        if: matrix.target == 'android'
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          flutter build appbundle --release
+          name=devvault-android.aab
+          if [ "$SIGN_ANDROID" != true ]; then name=devvault-android-unsigned.aab; fi
+          cp build/app/outputs/bundle/release/app-release.aab "$name"
+          rm -f "$RUNNER_TEMP/upload.jks"
+      - name: Upload to Play internal testing (Android)
+        if: matrix.target == 'android' && env.UPLOAD_ANDROID == 'true' && env.TAGGED == 'true'
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.binarycastle.devvault
+          releaseFiles: devvault-android.aab
+          track: internal
+          status: completed
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.target == 'android' || hashFiles('DevVault-ios-unsigned.zip') != ''
+        with:
+          name: store-${{ matrix.target }}
+          path: |
+            DevVault-ios-unsigned.zip
+            devvault-android*.aab
+          if-no-files-found: error
+
   release:
     name: Draft release
     needs: build
@@ -132,6 +233,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          # The desktop files; phone builds went to their stores.
+          pattern: devvault-*
           path: dist
           merge-multiple: true
       - name: Checksums
