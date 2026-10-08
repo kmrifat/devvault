@@ -31,7 +31,12 @@ void main() {
         storageBackendProvider.overrideWithValue(backend ?? bucket),
         storageLabelProvider.overrideWithValue('R2'),
       ],
-      settle: () => tester.pump(),
+      // Not pumpAndSettle: the status chip animates while syncing. One
+      // second is enough for the vault's page transition to finish.
+      settle: () async {
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      },
     );
   }
 

@@ -154,6 +154,25 @@ void main() {
       expect(writes, ['vault.json']);
     });
 
+    test(
+      'after a recovery-key unlock, the reset writes only vault.json',
+      () async {
+        final (vault, recoveryKey) = await create();
+        await addKeystore(vault);
+        vault.lock();
+        final recovered = await Vault.unlockWithRecovery(
+          crypto: crypto,
+          store: store(),
+          recoveryKey: recoveryKey,
+          deviceId: device,
+          now: now,
+        );
+        writes.clear();
+        await recovered.changePassword('a brand new password');
+        expect(writes, ['vault.json']);
+      },
+    );
+
     test('old password stops working, new one and recovery key work', () async {
       final (vault, recoveryKey) = await create();
       final item = await addKeystore(vault);

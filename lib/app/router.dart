@@ -97,9 +97,12 @@ GoRouter buildRouter({
       ),
 
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => desktop
-            ? DesktopShell(navigationShell: shell, uri: state.uri)
-            : MobileShell(navigationShell: shell),
+        pageBuilder: (context, state, shell) => materialPage(
+          state,
+          desktop
+              ? DesktopShell(navigationShell: shell, uri: state.uri)
+              : MobileShell(navigationShell: shell),
+        ),
         branches: [
           StatefulShellBranch(
             routes: [
