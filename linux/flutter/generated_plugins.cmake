@@ -6,10 +6,12 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   flutter_secure_storage_linux
   flutter_timezone
+  gtk
   printing
   screen_retriever_linux
   url_launcher_linux
   window_manager
+  yaru_window_linux
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

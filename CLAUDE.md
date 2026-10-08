@@ -34,7 +34,11 @@ milestone (M0, P0, P1a, P1b, P1c, P2, P3, P4).
 ### Conventions
 
 - Screens import `package:devvault/shared/ui.dart` only (bc_ui, Lucide,
-  theme helpers, shared widgets). Colours come from `context.bcTheme` or
+  theme helpers, shared widgets). Desktop screens on the native design
+  (N-frames, docs/design/desktop.md) import
+  `package:devvault/shared/desktop_ui.dart` instead: controls drawn by each
+  OS's kit, colours from `context.desktopColors`, sizes from
+  `DesktopMetrics`. Colours come from `context.bcTheme` or
   `context.appColors`; never hard-code a colour, radius or duration.
 - Use the `bc-ui` skill and read the component reference before writing a
   bc_ui widget. Don't write props from memory.

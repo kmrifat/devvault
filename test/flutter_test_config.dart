@@ -34,13 +34,21 @@ Future<void> _loadAppFonts() async {
     await rootBundle.loadString('FontManifest.json'),
   ) as List<dynamic>;
   for (final entry in manifest.cast<Map<String, dynamic>>()) {
-    final loader = FontLoader(entry['family'] as String);
-    for (final font in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
-      loader.addFont(rootBundle.load(font['asset'] as String));
+    final family = entry['family'] as String;
+    final fonts = (entry['fonts'] as List).cast<Map<String, dynamic>>();
+    // macos_ui asks for the macOS system font, which tests don't have.
+    // Inter stands in for it, as it does in the design frames.
+    for (final name in [family, if (family == 'Inter') _macosSystemFont]) {
+      final loader = FontLoader(name);
+      for (final font in fonts) {
+        loader.addFont(rootBundle.load(font['asset'] as String));
+      }
+      await loader.load();
     }
-    await loader.load();
   }
 }
+
+const _macosSystemFont = '.AppleSystemUIFont';
 
 /// Compares goldens per pixel: a pixel only counts as changed when one of
 /// its channels moves by at least [strongDelta] (out of 255), and the

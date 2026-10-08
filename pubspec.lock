@@ -25,6 +25,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.1"
+  animated_vector:
+    dependency: transitive
+    description:
+      name: animated_vector
+      sha256: "44c09df5b11a8416c49dfd7433cc08714308addda61acdd8b97ea87a7d8e8f76"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.3"
+  animated_vector_annotations:
+    dependency: transitive
+    description:
+      name: animated_vector_annotations
+      sha256: "07c1ea603a2096f7eb6f1c2b8f16c3c330c680843ea78b7782a3217c3c53f979"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
+  appkit_ui_element_colors:
+    dependency: transitive
+    description:
+      name: appkit_ui_element_colors
+      sha256: b88a7c35d440fa3ac75222d0e2b7e3259200e531e33b5d2468e358119f3481dc
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   archive:
     dependency: transitive
     description:
@@ -41,6 +65,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.7.0"
+  assorted_layout_widgets:
+    dependency: transitive
+    description:
+      name: assorted_layout_widgets
+      sha256: "86c6942f569f7f70bfb03b9cb0ada9bf5aee72264aaefdb0e2be0fbee70cfb06"
+      url: "https://pub.dev"
+    source: hosted
+    version: "11.0.0"
   async:
     dependency: transitive
     description:
@@ -185,6 +217,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
+  cupertino_icons:
+    dependency: "direct main"
+    description:
+      name: cupertino_icons
+      sha256: "41e005c33bd814be4d3096aff55b1908d419fde52ca656c8c47719ec745873cd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.9"
   cupertino_ui:
     dependency: transitive
     description:
@@ -213,10 +253,10 @@ packages:
     dependency: transitive
     description:
       name: equatable
-      sha256: ea36e500cbf0ec18361deabca755434f73e42fe53c5130021c7e2d6b5ebe1702
+      sha256: "3bce007a596ff8b3119c45d68aaef631272537c03d30e5d4534dd24bf4c5eaa2"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.0"
+    version: "2.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -297,6 +337,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  fluent_ui:
+    dependency: "direct main"
+    description:
+      name: fluent_ui
+      sha256: "64c2b9dd208f8e3134d3e38db107235ee30c1dd9b792843274687a7ecc063590"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.16.1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -487,6 +535,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "18.0.2"
+  gradient_borders:
+    dependency: transitive
+    description:
+      name: gradient_borders
+      sha256: c65c9b2169cb32fa7164625fc438a597409576e4b5bee498655152abea4a93cc
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.4"
+  gsettings:
+    dependency: transitive
+    description:
+      name: gsettings
+      sha256: "1b0ce661f5436d2db1e51f3c4295a49849f03d304003a7ba177d01e3a858249c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.8"
+  gtk:
+    dependency: transitive
+    description:
+      name: gtk
+      sha256: "4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   hooks:
     dependency: transitive
     description:
@@ -644,6 +716,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.22"
+  macos_ui:
+    dependency: "direct main"
+    description:
+      name: macos_ui
+      sha256: "09fb51d65b6a2d328ba5aa429ba0f7aabad5bc770193ea6e49da9f29bf95d835"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.2"
+  macos_window_utils:
+    dependency: transitive
+    description:
+      name: macos_window_utils
+      sha256: cb918e1ff0b31fdaa5cd8631eded7c24bd72e1025cf1f95c819e483f0057c652
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.9.1"
   matcher:
     dependency: transitive
     description:
@@ -668,6 +756,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
+  math_expressions:
+    dependency: transitive
+    description:
+      name: math_expressions
+      sha256: "22aca3a24e445be5f42ecf186cbded1f9951bf9ec5eb48fcddbd55e102bb11f5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.0"
+  matrix4_transform:
+    dependency: transitive
+    description:
+      name: matrix4_transform
+      sha256: "1346e53517e3081d3e8362377be97e285e2bd348855c177eae2a18aa965cafa0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.1"
   meta:
     dependency: transitive
     description:
@@ -828,6 +932,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.0"
+  platform_linux:
+    dependency: transitive
+    description:
+      name: platform_linux
+      sha256: "907b7c6da6ee6eea61cd1266b7bd72e2d5bbf7e85160221e8ac5583a44e7a1c7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.2+1"
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -900,6 +1012,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.0"
+  recase:
+    dependency: transitive
+    description:
+      name: recase
+      sha256: e4eb4ec2dcdee52dcf99cb4ceabaffc631d7424ee55e56f280bc039737f89213
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.0"
   record_use:
     dependency: transitive
     description:
@@ -956,6 +1076,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
+  scroll_pos:
+    dependency: transitive
+    description:
+      name: scroll_pos
+      sha256: cebf602b2dd939de6832bb902ffefb574608d1b84f420b82b381a4007d3c1e1b
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
   share_plus:
     dependency: "direct main"
     description:
@@ -1297,6 +1425,54 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.4"
+  yaru:
+    dependency: "direct main"
+    description:
+      name: yaru
+      sha256: "95e801c52dfda458bcb772baee6b2575c711fd951616a24910d6d30e70f5fb0d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.2.0"
+  yaru_window:
+    dependency: transitive
+    description:
+      name: yaru_window
+      sha256: "58539a9abe9901891dadce142c7a5d303920b780dd0f7bd21f076a80adeeb744"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
+  yaru_window_linux:
+    dependency: transitive
+    description:
+      name: yaru_window_linux
+      sha256: "885ad0ba5832d350c42862ce02da478599ef550280eb7f6b15285481fcff6f53"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
+  yaru_window_manager:
+    dependency: transitive
+    description:
+      name: yaru_window_manager
+      sha256: "6288fd6ccd8bb9d5be56073c6f277e2da08dd38e346507bf88bc9332b08dd180"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.3"
+  yaru_window_platform_interface:
+    dependency: transitive
+    description:
+      name: yaru_window_platform_interface
+      sha256: d514387cc96750112ecf1933b6f12a1912beca199178d00052c0e87a94e232fa
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.3"
+  yaru_window_web:
+    dependency: transitive
+    description:
+      name: yaru_window_web
+      sha256: cf4d79e0760fbdcb78d4bbca3b5563f99518629224b9e5611f0ebd592befe1d9
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.4"
 sdks:
   dart: ">=3.13.4 <4.0.0"
   flutter: ">=3.47.0"

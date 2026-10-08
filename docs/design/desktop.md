@@ -70,7 +70,7 @@ and exported here under `desktop/`.
 |---|---|---|
 | Text field, secure field | 22 pt high, 5 pt radius | `MacosTextField` (`obscureText`) |
 | Pop-up (fixed choices) | 22 pt, blue arrows | `MacosPopupButton` |
-| Combo box (suggest + type your own) | 22 pt field + 20 pt chevron button | DevVault widget: `MacosTextField` + `MacosPulldownButton` |
+| Combo box (suggest + type your own) | 22 pt field, chevron inside its trailing edge | DevVault widget: `MacosTextField` + a menu in the macOS style (`MenuAnchor`) |
 | Token field (tags) | 22 pt, pill tokens | DevVault widget |
 | Push button / default | 22 pt (24 in the inspector) | `PushButton` (`secondary` for plain) |
 | Segmented control | 22 pt | `MacosSegmentedControl` |
@@ -103,8 +103,27 @@ Light (dark):
 | Conflict | `#8944AB`, badge `#F1E4F8` | `#D49BF5`, badge `#3A2846` |
 
 In code these come from the kit's theme (`MacosTheme`, `MacosColors`) plus
-a small DevVault token set for the badges and group boxes. No colour is
-hard-coded in a screen.
+DevVault's own tokens (`DesktopColors`, read with `context.desktopColors`)
+for the surfaces, fields, badges and group boxes. No colour is hard-coded in
+a screen.
+
+## In code
+
+The desktop layer is `lib/shared/desktop/`, and desktop screens import it
+through `package:devvault/shared/desktop_ui.dart`:
+
+- `DesktopTheme` goes in `MaterialApp.builder` and picks the kit for the
+  OS (`DesktopKit`), so menus the kits push as routes are themed too.
+- `DesktopColors` and `DesktopMetrics` hold the tokens and sizes above.
+- Controls: `DesktopTextField` (also the secure field), `DesktopComboBox`,
+  `DesktopPopup`, `DesktopTokenField`, `DesktopButton`, `DesktopSegmented`,
+  `DesktopSwitch`, `DesktopCheckbox`, and `DesktopForm` / `DesktopFormRow`
+  for sheet forms.
+
+Each control is drawn by the running OS's kit and behaves the same on all
+three (`test/desktop_controls_test.dart`). The macOS kit's goldens are
+`screenshots/desktop-controls-macos-{light,dark}.png` and
+`desktop-combo-menu-macos-light.png`.
 
 ## Menu bar (macOS)
 
