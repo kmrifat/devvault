@@ -163,6 +163,9 @@ void main() {
         findsOneWidget,
       );
 
+      // Let the sheet finish sliding in.
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.text('Copy Pairing Text'));
       await tester.pump();
       await settle(tester, () => clipboard.text != null);
