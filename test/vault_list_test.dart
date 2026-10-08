@@ -8,9 +8,9 @@ import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/import/import_draft.dart';
+import 'package:devvault/features/vault/desktop_item_type.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/services/file_import.dart';
-import 'package:devvault/shared/ui.dart' show BCChip, BCText, MonoText;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -99,15 +99,20 @@ void main() {
     ]);
   });
 
-  testWidgets('shows expiry as a chip when it needs attention', (tester) async {
+  testWidgets('shows expiry as a badge when it needs attention', (
+    tester,
+  ) async {
     await open(tester);
-    expect(inList(find.text('12 days')), findsOneWidget); // Play publisher
-    expect(inList(find.text('20 days')), findsOneWidget); // App Store profile
-    expect(inList(find.text('Expired')), findsOneWidget); // Distribution cert
+    Finder badge(String text) => inList(find.widgetWithText(ItemBadge, text));
+    expect(badge('12 days'), findsOneWidget); // Play publisher
+    expect(badge('20 days'), findsOneWidget); // App Store profile
+    expect(badge('Expired'), findsOneWidget); // Distribution cert
+    // A date far off is just the month.
     expect(inList(find.text('Jan 2051')), findsOneWidget); // Upload keystore
+    expect(find.widgetWithText(ItemBadge, 'Jan 2051'), findsNothing);
   });
 
-  testWidgets('an undated row has no chip and no date', (tester) async {
+  testWidgets('an undated row has no badge and no date', (tester) async {
     await open(tester);
     final undated = index(tester).all
         .where((i) => i.expiresAt == null && i.conflict == null);
@@ -115,29 +120,73 @@ void main() {
     for (final item in undated) {
       final row = inList(
         find.byWidgetPredicate(
-          (w) => w is VaultItemRow && w.item.id == item.id,
+          (w) => w is VaultTableRow && w.item.id == item.id,
         ),
       );
       expect(row, findsOneWidget, reason: item.title);
       expect(
-        find.descendant(of: row, matching: find.byType(BCChip)),
+        find.descendant(of: row, matching: find.byType(ItemBadge)),
         findsNothing,
         reason: item.title,
       );
-      // Title and file name or type, nothing more.
-      expect(
-        find
-                .descendant(of: row, matching: find.byType(BCText))
-                .evaluate()
-                .length +
-            find
-                .descendant(of: row, matching: find.byType(MonoText))
-                .evaluate()
-                .length,
-        1,
-        reason: item.title,
-      );
+      // Title, file name or type, the type column and a dash; nothing more.
+      final texts = [
+        for (final text in tester.widgetList<Text>(
+          find.descendant(of: row, matching: find.byType(Text)),
+        ))
+          text.data,
+      ];
+      expect(texts, [
+        item.title,
+        item.attachments.firstOrNull?.filename ?? item.typeLabel,
+        item.shortTypeLabel,
+        '—',
+      ], reason: item.title);
     }
+  });
+
+  testWidgets('the column headers sort, and again reverse', (tester) async {
+    await open(tester, location: Routes.vault(tag: 'release'));
+    final byName = titles(tester);
+    expect(byName, [...byName]..sort());
+
+    Future<void> sortBy(String column) async {
+      await tester.tap(inList(find.bySemanticsLabel(column)));
+      await tester.pumpAndSettle();
+    }
+
+    await sortBy('Name');
+    expect(titles(tester), byName.reversed);
+    await sortBy('Name');
+    expect(titles(tester), byName);
+
+    // Expires: soonest first, undated last; then latest first.
+    await sortBy('Expires');
+    final dates = [
+      for (final title in titles(tester)) item(tester, title).expiresAt,
+    ];
+    final dated = dates.whereType<DateTime>().toList();
+    expect(dated, [...dated]..sort());
+    expect(dates.skip(dated.length), everyElement(isNull));
+    await sortBy('Expires');
+    final reversed = [
+      for (final title in titles(tester)) item(tester, title).expiresAt,
+    ].whereType<DateTime>();
+    expect(reversed, dated.reversed);
+
+    // Type: by the Type column's name.
+    await sortBy('Type');
+    final types = [
+      for (final title in titles(tester))
+        item(tester, title).shortTypeLabel.toLowerCase(),
+    ];
+    expect(types.toSet(), hasLength(greaterThan(1)));
+    expect(types, [...types]..sort());
+    // The sort survives a change of selection.
+    final before = titles(tester);
+    await tester.tap(inList(find.text(before.last)));
+    await tester.pumpAndSettle();
+    expect(titles(tester), before);
   });
 
   testWidgets('arrow keys move the selection through the list', (tester) async {
@@ -209,7 +258,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(inToolbar(find.text('1000 items')), findsOneWidget);
       // Only what's on screen (and a little beyond) is built.
-      expect(find.byType(VaultItemRow).evaluate().length, lessThan(60));
+      expect(find.byType(VaultTableRow).evaluate().length, lessThan(60));
 
       final list = inList(find.byType(Scrollable)).first;
       for (var i = 0; i < 3; i++) {
@@ -271,7 +320,9 @@ void main() {
     expect(titles(tester), ['GitHub deploy key', 'Play publisher']);
   });
 
-  testWidgets('tabs narrow the list and are part of the link', (tester) async {
+  testWidgets('the kind control narrows the list and is part of the link', (
+    tester,
+  ) async {
     await open(tester);
     await tester.tap(inList(find.text('Expiring')));
     await tester.pumpAndSettle();

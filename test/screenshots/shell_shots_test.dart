@@ -17,7 +17,7 @@ void main() {
   setUpAll(loadAppFonts);
 
   /// Selects Kitchenly › Android › Production › Upload keystore, like the
-  /// D03 frame.
+  /// N03 frame.
   Future<void> selectProduction(WidgetTester tester) async {
     Finder inSidebar(String text) => find.descendant(
       of: find.byType(VaultSidebar),
@@ -35,14 +35,9 @@ void main() {
     );
   }
 
+  shot('N03-vault', Routes.vault(), sample: true, interact: selectProduction);
   shot(
-    'D03-vault-shell',
-    Routes.vault(),
-    sample: true,
-    interact: selectProduction,
-  );
-  shot(
-    'D03-vault-shell-light',
+    'N03-vault-light',
     Routes.vault(),
     sample: true,
     interact: selectProduction,

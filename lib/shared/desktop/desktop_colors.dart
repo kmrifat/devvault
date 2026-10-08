@@ -35,6 +35,8 @@ class DesktopColors {
     required this.warningBadge,
     required this.onWarningBadge,
     required this.danger,
+    required this.dangerBadge,
+    required this.onDangerBadge,
     required this.conflict,
     required this.conflictBadge,
     required this.onConflictBadge,
@@ -99,6 +101,8 @@ class DesktopColors {
   final Color onWarningBadge;
 
   final Color danger;
+  final Color dangerBadge;
+  final Color onDangerBadge;
 
   final Color conflict;
   final Color conflictBadge;
@@ -136,6 +140,8 @@ class DesktopColors {
     warningBadge: Color(0xFFFFF1D6),
     onWarningBadge: Color(0xFFA15C00),
     danger: Color(0xFFD70015),
+    dangerBadge: Color(0xFFFDE8EA),
+    onDangerBadge: Color(0xFFD70015),
     conflict: Color(0xFF8944AB),
     conflictBadge: Color(0xFFF1E4F8),
     onConflictBadge: Color(0xFF8944AB),
@@ -169,6 +175,8 @@ class DesktopColors {
     warningBadge: Color(0xFF3D2E12),
     onWarningBadge: Color(0xFFFFB340),
     danger: Color(0xFFFF6961),
+    dangerBadge: Color(0xFF3D1A1A),
+    onDangerBadge: Color(0xFFFF6961),
     conflict: Color(0xFFD49BF5),
     conflictBadge: Color(0xFF3A2846),
     onConflictBadge: Color(0xFFD49BF5),

@@ -148,7 +148,7 @@ void main() {
       await open(tester);
       await tester.tap(inSidebar('Ledgerly'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Edit app'));
+      await tester.tap(find.text('Edit app…'));
       await tester.pumpAndSettle();
       expect(find.text('Edit app'), findsWidgets);
 

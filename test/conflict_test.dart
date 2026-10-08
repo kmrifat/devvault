@@ -209,11 +209,12 @@ void main() {
       );
       Finder inList(Finder finder) =>
           find.descendant(of: find.byType(VaultListPane), matching: finder);
-      Finder rowOf(String title) => find
-          .ancestor(of: inList(find.text(title)), matching: find.byType(Row))
-          .first;
+      Finder rowOf(String title) => find.ancestor(
+        of: inList(find.text(title)),
+        matching: find.byType(VaultTableRow),
+      );
 
-      // The list row carries a Conflict chip; other rows don't.
+      // The table row carries a Conflict badge; other rows don't.
       expect(
         find.descendant(
           of: rowOf('Maps API key'),
