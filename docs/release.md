@@ -6,7 +6,9 @@ and attaches everything to a **draft** GitHub Release. Nothing is
 published until someone checks the draft against
 [`docs/acceptance/v1.md`](acceptance/v1.md) and presses Publish.
 
-iOS (TestFlight) and Android (Play internal testing) are built by P3-08.
+The phones go to their stores from the same tag (P3-08): iOS to
+TestFlight, Android to Play's internal testing track. Their builds aren't
+attached to the GitHub Release.
 
 ## Cutting a release
 
@@ -70,3 +72,46 @@ runner can't use.
 The tarball gets `devvault-linux-x64.tar.gz.asc`. Users check it with
 `gpg --verify devvault-linux-x64.tar.gz.asc`, and every file with
 `sha256sum -c SHA256SUMS`.
+
+### iOS: TestFlight
+
+| Secret | What |
+|---|---|
+| `APPLE_TEAM_ID` | The same Team ID as macOS. |
+| `IOS_DIST_CERT_P12_BASE64` | An **Apple Distribution** certificate with its private key, exported as `.p12`, base64. |
+| `IOS_DIST_CERT_PASSWORD` | The password chosen when exporting it. |
+| `APP_STORE_CONNECT_KEY_ID` | An App Store Connect API key (Users and Access › Integrations › App Store Connect API), role **App Manager** or higher. |
+| `APP_STORE_CONNECT_ISSUER_ID` | The issuer ID shown above the keys. |
+| `APP_STORE_CONNECT_KEY_P8_BASE64` | The key's `AuthKey_<id>.p8`, base64. It can be downloaded only once. |
+
+Before the first upload, create the app in App Store Connect with bundle
+ID `com.binarycastle.devvault`, and register that bundle ID with Face ID
+in Certificates, Identifiers & Profiles.
+
+`tool/release/ios_testflight.sh` imports the certificate into a throwaway
+keychain, archives with automatic signing (Xcode fetches or creates the
+App Store profile through the API key) and exports with
+`destination: upload`, which sends the build to App Store Connect. It
+appears in TestFlight once Apple has processed it; add testers there.
+Bump the build number (`+N` in `pubspec.yaml`) for every upload.
+
+### Android: Play internal testing
+
+| Secret | What |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | The **upload** keystore (`keytool -genkeypair -keystore upload.jks -alias upload -keyalg RSA -keysize 4096 -validity 10000`), base64. Keep a copy offline. |
+| `ANDROID_KEYSTORE_PASSWORD` | The keystore password. |
+| `ANDROID_KEY_ALIAS` | The key's alias (`upload` above). |
+| `ANDROID_KEY_PASSWORD` | The key's password. |
+| `PLAY_SERVICE_ACCOUNT_JSON` | A Google Cloud service account's JSON key, invited in Play Console › Users and permissions with **Release to testing tracks** for DevVault. |
+
+Play can't create an app over the API: create DevVault in Play Console,
+turn on Play App Signing, and upload the first bundle by hand (a signed
+`devvault-android.aab` from a run of this workflow). After that, every tag
+uploads to the internal testing track as a completed release.
+
+`android/app/build.gradle.kts` signs release builds with the upload key
+from `ANDROID_KEYSTORE_PATH` and the variables above, or from
+`android/key.properties` on a developer's machine (`storeFile`,
+`storePassword`, `keyAlias`, `keyPassword`; git-ignored). Without either it
+keeps the debug key, and the workflow names the bundle `-unsigned`.
