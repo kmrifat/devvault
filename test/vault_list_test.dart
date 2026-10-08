@@ -9,7 +9,9 @@ import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/services/file_import.dart';
+import 'package:devvault/shared/ui.dart' show BCChip, BCText, MonoText;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -99,6 +101,137 @@ void main() {
     expect(inList(find.text('Expired')), findsOneWidget); // Distribution cert
     expect(inList(find.text('Jan 2051')), findsOneWidget); // Upload keystore
   });
+
+  testWidgets('an undated row has no chip and no date', (tester) async {
+    await open(tester);
+    final undated = index(tester).all
+        .where((i) => i.expiresAt == null && i.conflict == null);
+    expect(undated, isNotEmpty);
+    for (final item in undated) {
+      final row = inList(
+        find.byWidgetPredicate(
+          (w) => w is VaultItemRow && w.item.id == item.id,
+        ),
+      );
+      expect(row, findsOneWidget, reason: item.title);
+      expect(
+        find.descendant(of: row, matching: find.byType(BCChip)),
+        findsNothing,
+        reason: item.title,
+      );
+      // Title and file name or type, nothing more.
+      expect(
+        find
+                .descendant(of: row, matching: find.byType(BCText))
+                .evaluate()
+                .length +
+            find
+                .descendant(of: row, matching: find.byType(MonoText))
+                .evaluate()
+                .length,
+        1,
+        reason: item.title,
+      );
+    }
+  });
+
+  testWidgets('arrow keys move the selection through the list', (tester) async {
+    await open(tester, location: Routes.vault(tag: 'release'));
+    final order = titles(tester);
+    expect(order.length, greaterThan(2));
+    String selectedTitle() {
+      final id = Uri.parse(location(tester)).queryParameters['item'];
+      return index(tester).items[id]!.title;
+    }
+
+    Future<void> press(LogicalKeyboardKey key) async {
+      await tester.sendKeyEvent(key);
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(inList(find.text(order.first)));
+    await tester.pumpAndSettle();
+    await press(LogicalKeyboardKey.arrowDown);
+    expect(selectedTitle(), order[1]);
+    expect(location(tester), contains('tag=release'));
+    await press(LogicalKeyboardKey.arrowDown);
+    expect(selectedTitle(), order[2]);
+    await press(LogicalKeyboardKey.arrowUp);
+    await press(LogicalKeyboardKey.arrowUp);
+    expect(selectedTitle(), order.first);
+    // The ends hold.
+    await press(LogicalKeyboardKey.arrowUp);
+    expect(selectedTitle(), order.first);
+    for (var i = 0; i < order.length; i++) {
+      await press(LogicalKeyboardKey.arrowDown);
+    }
+    expect(selectedTitle(), order.last);
+  });
+
+  testWidgets('arrows typed in search stay in the search field', (
+    tester,
+  ) async {
+    await open(tester);
+    final before = location(tester);
+    await tester.tap(find.byType(EditableText).first);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(location(tester), before);
+  });
+
+  testWidgets(
+    '1,000 rows: built lazily, scroll, and the selection stays in view',
+    (tester) async {
+      await open(tester, vault: TestVault.locked);
+      // Written straight to the vault, then loaded the way an unlock does.
+      final vault =
+          (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
+      await tester.runAsync(() async {
+        for (var i = 0; i < 1000; i++) {
+          await vault.putItem(
+            vault.newItem(
+              type: ItemType.genericSecret,
+              title: 'Token ${i.toString().padLeft(4, '0')}',
+            ),
+          );
+        }
+      });
+      final notifier = appContainer(tester).read(vaultSessionProvider.notifier)
+        ..lock();
+      await tester.pumpAndSettle();
+      await tester.runAsync(() => notifier.unlock(testPassword));
+      await tester.pumpAndSettle();
+      expect(inList(find.text('1000')), findsOneWidget);
+      // Only what's on screen (and a little beyond) is built.
+      expect(find.byType(VaultItemRow).evaluate().length, lessThan(60));
+
+      final list = inList(find.byType(Scrollable)).first;
+      for (var i = 0; i < 3; i++) {
+        await tester.fling(list, const Offset(0, -2000), 3000);
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+      expect(inList(find.text('Token 0000')), findsNothing);
+      await tester.fling(list, const Offset(0, 20000), 20000);
+      await tester.pumpAndSettle();
+
+      // Walk down past the bottom of the pane: the selection scrolls along.
+      await tester.tap(inList(find.text('Token 0000')));
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 40; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      final selected = inList(find.text('Token 0040'));
+      expect(selected, findsOneWidget);
+      final view = tester.getRect(list);
+      final row = tester.getRect(selected);
+      expect(view.top <= row.top && row.bottom <= view.bottom, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 
   testWidgets('a tree selection sets the title, path and items', (
     tester,
