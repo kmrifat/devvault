@@ -31,3 +31,10 @@ Future<void> initWindow() async {
     await windowManager.focus();
   });
 }
+
+/// Brings the window forward so the user sees what an AI agent asks
+/// (P5): un-hides and focuses it, activating the app.
+Future<void> bringWindowToFront() async {
+  await windowManager.show();
+  await windowManager.focus();
+}

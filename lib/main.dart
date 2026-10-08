@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:agent_bridge/agent_bridge.dart' show socketPathInContainer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +57,15 @@ Future<void> main() async {
   // Phones export through the share sheet; clear any copy a crash left.
   final phone = AppLayout.current == AppLayout.mobile;
   if (phone) ShareSheetSaver.sweep();
+  // AI agents (P5) reach the app through a socket in its sandbox
+  // container, where `$HOME` points (ADR-0006). macOS only for now.
+  final home = Platform.environment['HOME'];
+  final agentSocket =
+      defaultTargetPlatform == TargetPlatform.macOS &&
+          home != null &&
+          home.contains('/Library/Containers/')
+      ? socketPathInContainer(home)
+      : null;
 
   runApp(
     ProviderScope(
@@ -65,6 +75,8 @@ Future<void> main() async {
         cryptoProvider.overrideWithValue(crypto),
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
+        agentSocketPathProvider.overrideWithValue(agentSocket),
+        if (!phone) bringToFrontProvider.overrideWithValue(bringWindowToFront),
         if (_biometricPlatforms.contains(defaultTargetPlatform))
           biometricKeyStoreProvider.overrideWithValue(
             const ChannelBiometricKeyStore(),

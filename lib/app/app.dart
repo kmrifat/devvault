@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/agent_bridge.dart';
 import '../data/expiry_alerts.dart';
 import '../data/providers.dart';
 import '../data/sync_controller.dart';
@@ -83,6 +84,8 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
     ref.listenManual(syncControllerProvider, (_, _) {});
     // Keeps expiry reminders in step with the vault from here on.
     ref.read(expiryAlertsProvider);
+    // Serves AI agents while Settings › AI Agents is on (P5).
+    ref.listenManual(agentBridgeProvider, (_, _) {});
   }
 
   /// An interrupted key rotation is finished by a password unlock (SPEC

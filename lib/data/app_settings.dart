@@ -11,6 +11,8 @@ class AppSettings {
     this.autoLockAfter = defaultAutoLock,
     this.clipboardClearAfter = defaultClipboardClear,
     this.expiryReminders = true,
+    this.agentsEnabled = false,
+    this.agentMetadataWithoutAsking = true,
   });
 
   static const defaultAutoLock = Duration(minutes: 5);
@@ -44,16 +46,29 @@ class AppSettings {
   /// Whether expiry reminders are scheduled (P4-03): at most two per item.
   final bool expiryReminders;
 
+  /// Whether AI agents may connect through `devvault-mcp` (P5). Off until
+  /// the user turns it on; while off there is no socket.
+  final bool agentsEnabled;
+
+  /// Whether a paired agent may list and read item metadata without
+  /// asking each time. Secret values always ask.
+  final bool agentMetadataWithoutAsking;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     Duration? Function()? autoLockAfter,
     Duration? clipboardClearAfter,
     bool? expiryReminders,
+    bool? agentsEnabled,
+    bool? agentMetadataWithoutAsking,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     autoLockAfter: autoLockAfter == null ? this.autoLockAfter : autoLockAfter(),
     clipboardClearAfter: clipboardClearAfter ?? this.clipboardClearAfter,
     expiryReminders: expiryReminders ?? this.expiryReminders,
+    agentsEnabled: agentsEnabled ?? this.agentsEnabled,
+    agentMetadataWithoutAsking:
+        agentMetadataWithoutAsking ?? this.agentMetadataWithoutAsking,
   );
 
   Map<String, Object?> toJson() => {
@@ -61,6 +76,8 @@ class AppSettings {
     'auto_lock_seconds': autoLockAfter?.inSeconds,
     'clipboard_clear_seconds': clipboardClearAfter.inSeconds,
     'expiry_reminders': expiryReminders,
+    'agents_enabled': agentsEnabled,
+    'agent_metadata_without_asking': agentMetadataWithoutAsking,
   };
 
   /// Reads what it recognises and keeps the default for the rest, so a
@@ -85,6 +102,9 @@ class AppSettings {
           ? clipboard!
           : defaultClipboardClear,
       expiryReminders: json['expiry_reminders'] != false,
+      agentsEnabled: json['agents_enabled'] == true,
+      agentMetadataWithoutAsking:
+          json['agent_metadata_without_asking'] != false,
     );
   }
 
@@ -120,7 +140,9 @@ class AppSettings {
       other.themeMode == themeMode &&
       other.autoLockAfter == autoLockAfter &&
       other.clipboardClearAfter == clipboardClearAfter &&
-      other.expiryReminders == expiryReminders;
+      other.expiryReminders == expiryReminders &&
+      other.agentsEnabled == agentsEnabled &&
+      other.agentMetadataWithoutAsking == agentMetadataWithoutAsking;
 
   @override
   int get hashCode => Object.hash(
@@ -128,5 +150,7 @@ class AppSettings {
     autoLockAfter,
     clipboardClearAfter,
     expiryReminders,
+    agentsEnabled,
+    agentMetadataWithoutAsking,
   );
 }
