@@ -14,6 +14,7 @@ workspace:
   - packages/cred_parsers
   - packages/vault_s3
   - packages/agent_bridge
+  - packages/devvault_mcp
 
 dependencies:
   agent_bridge: ^0.1.0
