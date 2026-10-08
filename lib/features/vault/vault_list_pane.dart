@@ -150,8 +150,9 @@ AppRecord? _selectedApp(VaultFilter filter, VaultIndex index) =>
     ? index.apps[filter.app]
     : null;
 
-/// The selected app's store identifiers, with Edit app… and, under ⋯,
-/// Delete app….
+/// The selected app's organization and kind, when set, over its
+/// identifiers (bundle IDs, package names, domains, URLs, repositories …),
+/// with Edit app… and, under ⋯, Delete app….
 class _AppDetails extends ConsumerWidget {
   const _AppDetails({required this.app, required this.itemCount});
 
@@ -161,7 +162,12 @@ class _AppDetails extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.desktopColors;
-    final ids = [...app.bundleIds, ...app.packageNames];
+    final ids = [for (final id in app.allIdentifiers) id.value];
+    final about = [
+      ?app.organization,
+      if (app.kindName case final kind?)
+        AppKind.fromWireName(kind)?.label ?? kind,
+    ].join(' · ');
     final style = TextStyle(
       fontSize: DesktopMetrics.secondarySize,
       color: colors.secondaryText,
@@ -178,18 +184,32 @@ class _AppDetails extends ConsumerWidget {
           spacing: 8,
           children: [
             Expanded(
-              child: ids.isEmpty
-                  ? Text(
-                      'No bundle IDs or package names',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 2,
+                children: [
+                  if (about.isNotEmpty)
+                    Text(
+                      about,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: style.copyWith(color: colors.text),
+                    ),
+                  if (ids.isEmpty)
+                    Text(
+                      'No identifiers',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: style,
                     )
-                  : MonoText(
+                  else
+                    MonoText(
                       ids.join(' · '),
                       middleEllipsis: true,
                       style: style,
                     ),
+                ],
+              ),
             ),
             DesktopButton(
               label: 'Edit app…',

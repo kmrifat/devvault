@@ -428,7 +428,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
     final session = ref.watch(vaultSessionProvider);
     final apps = session is Unlocked
         ? (session.index.apps.values.toList()..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
           ))
         : <AppRecord>[];
     final replacing = _replacing;
@@ -498,7 +498,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
             label: 'App',
             none: 'No app',
             value: draft.appId,
-            options: {for (final app in apps) app.id: app.name},
+            options: {for (final app in apps) app.id: app.label},
             onChanged: (v) => setState(() => draft.appId = v),
           ),
           platform: PlaceChoice(
@@ -820,7 +820,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
     final session = ref.watch(vaultSessionProvider);
     final unlocked = session is Unlocked ? session : null;
     final apps = [...?unlocked?.index.apps.values]
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
     final items = unlocked?.index.items.values ?? const <Item>[];
     final replacing = _replacing;
     return [
@@ -886,16 +886,21 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           if (replacing == null) ...[
             DesktopFormRow(
               label: 'App',
-              child: SheetNote(
-                width: _controlWidth,
-                control: DesktopPopup<String>(
-                  value: draft.appId ?? '',
-                  choices: [
-                    const DesktopChoice('', 'No app'),
-                    for (final app in apps) DesktopChoice(app.id, app.name),
-                  ],
-                  onChanged: (id) =>
-                      setState(() => draft.appId = id.isEmpty ? null : id),
+              // At least as wide as the controls under it, and wider for an
+              // app whose label carries its organization.
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: _controlWidth),
+                  child: DesktopPopup<String>(
+                    value: draft.appId ?? '',
+                    choices: [
+                      const DesktopChoice('', 'No app'),
+                      for (final app in apps) DesktopChoice(app.id, app.label),
+                    ],
+                    onChanged: (id) =>
+                        setState(() => draft.appId = id.isEmpty ? null : id),
+                  ),
                 ),
               ),
             ),

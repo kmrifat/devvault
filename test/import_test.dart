@@ -493,6 +493,34 @@ void main() {
       expect(find.text('File imported'), findsOneWidget);
     });
 
+    testWidgets('the app pop-up names an app with its organization', (
+      tester,
+    ) async {
+      await open(tester);
+      final notifier = appContainer(tester).read(vaultSessionProvider.notifier);
+      final billing = await tester.runAsync(
+        () => notifier.saveApp(
+          notifier.newApp('Billing API').copyWith(organization: 'Acme Corp'),
+        ),
+      );
+      await tester.runAsync(() => notifier.saveApp(notifier.newApp('Pantry')));
+      await tester.pumpAndSettle();
+      await startImport(tester, fixture('google-services.json'));
+
+      final apps = find.ancestor(
+        of: find.text('No app'),
+        matching: find.byType(DesktopPopup<String>),
+      );
+      expect(
+        tester.widget<DesktopPopup<String>>(apps).choices.map((c) => c.label),
+        ['No app', 'Acme Corp › Billing API', 'Pantry'],
+      );
+      tester.widget<DesktopPopup<String>>(apps).onChanged!(billing!.id);
+      await tester.pumpAndSettle();
+      await tapImport(tester, () => index(tester).all.isNotEmpty);
+      expect(index(tester).all.single.appId, billing.id);
+    });
+
     testWidgets('platform and environment take any value; tags are tokens', (
       tester,
     ) async {

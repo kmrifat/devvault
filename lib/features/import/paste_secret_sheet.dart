@@ -196,7 +196,7 @@ class _PasteSecretSheetState extends ConsumerState<PasteSecretSheet> {
     final session = ref.watch(vaultSessionProvider);
     final apps = session is Unlocked
         ? (session.index.apps.values.toList()..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
           ))
         : <AppRecord>[];
     final expiresAt = _expiresAt;
@@ -243,7 +243,7 @@ class _PasteSecretSheetState extends ConsumerState<PasteSecretSheet> {
             label: 'App',
             none: 'No app',
             value: _appId,
-            options: {for (final app in apps) app.id: app.name},
+            options: {for (final app in apps) app.id: app.label},
             onChanged: (v) => setState(() => _appId = v),
           ),
           platform: PlaceChoice(

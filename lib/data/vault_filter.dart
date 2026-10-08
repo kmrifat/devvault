@@ -43,13 +43,17 @@ enum VaultKind {
 }
 
 /// What the vault list shows, read from and written to the `/vault` query
-/// (`?app=…&platform=…&env=…&tag=…&view=…&kind=…&q=…`), so every selection is a
-/// link that survives a reload and works with back and forward.
+/// (`?org=…&app=…&platform=…&env=…&tag=…&view=…&kind=…&q=…`), so every
+/// selection is a link that survives a reload and works with back and
+/// forward.
 ///
-/// [app], [platform] and [env] take [none] for "items without one", which
-/// is how the sidebar tree's "No app" and "Other" groups link.
+/// [org], [app], [platform] and [env] take [none] for "items without one",
+/// which is how the sidebar tree's "Personal", "No app" and "Other" groups
+/// link. [org] keeps the items of that organization's apps; [none] keeps
+/// the items of apps without an organization (not items without an app).
 class VaultFilter {
   const VaultFilter({
+    this.org,
     this.app,
     this.platform,
     this.env,
@@ -66,6 +70,7 @@ class VaultFilter {
     }
 
     return VaultFilter(
+      org: param('org'),
       app: param('app'),
       platform: param('platform'),
       env: param('env'),
@@ -79,6 +84,7 @@ class VaultFilter {
   /// The query value for "items without an app, platform or environment".
   static const none = 'none';
 
+  final String? org;
   final String? app;
   final String? platform;
   final String? env;
@@ -90,6 +96,7 @@ class VaultFilter {
   /// The sidebar selected nothing: "All items". The list's [kind] tab and
   /// the search don't count.
   bool get isAll =>
+      org == null &&
       app == null &&
       platform == null &&
       env == null &&
@@ -99,6 +106,7 @@ class VaultFilter {
   /// The `/vault` link for this filter, with [item] selected.
   String location({String? item}) => Routes.vault(
     item: item,
+    org: org,
     app: app,
     platform: platform,
     env: env,
@@ -110,6 +118,7 @@ class VaultFilter {
 
   /// This filter with a different search; an empty [query] clears it.
   VaultFilter withQuery(String? query) => VaultFilter(
+    org: org,
     app: app,
     platform: platform,
     env: env,
@@ -121,6 +130,7 @@ class VaultFilter {
 
   /// This filter on a different tab.
   VaultFilter withKind(VaultKind kind) => VaultFilter(
+    org: org,
     app: app,
     platform: platform,
     env: env,
@@ -140,6 +150,8 @@ class VaultFilter {
       for (final item in index.filter(
         appId: withoutApp ? null : app,
         withoutApp: withoutApp,
+        organization: org == none ? null : org,
+        personal: org == none,
         tag: tag,
         query: q,
       ))
@@ -156,6 +168,7 @@ class VaultFilter {
   @override
   bool operator ==(Object other) =>
       other is VaultFilter &&
+      other.org == org &&
       other.app == app &&
       other.platform == platform &&
       other.env == env &&
@@ -165,7 +178,7 @@ class VaultFilter {
       other.q == q;
 
   @override
-  int get hashCode => Object.hash(app, platform, env, tag, view, kind, q);
+  int get hashCode => Object.hash(org, app, platform, env, tag, view, kind, q);
 
   @override
   String toString() => 'VaultFilter(${location()})';

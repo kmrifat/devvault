@@ -123,7 +123,7 @@ class _Header extends ConsumerWidget {
     final type = item.type;
     final app = this.app;
     final place = [
-      if (app != null) app.name,
+      if (app != null) app.label,
       if (item.platform != null) VaultLabels.platform(item.platform),
       if (item.environment != null) VaultLabels.environment(item.environment),
     ].join(' · ');

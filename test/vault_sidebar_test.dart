@@ -4,6 +4,8 @@ import 'package:devvault/app/routes.dart';
 import 'package:devvault/core/expiry.dart';
 import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/vault/vault_heading.dart';
+import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:devvault/shared/desktop/desktop_symbols.dart';
 import 'package:devvault/shared/desktop/desktop_theme.dart';
@@ -293,9 +295,134 @@ void main() {
     expect(find.text('Unlock your vault'), findsOneWidget);
   });
 
+  group('organizations', () {
+    /// Saves [name] with [change] applied, as the app form would.
+    Future<void> editApp(
+      WidgetTester tester,
+      String name,
+      AppRecord Function(AppRecord) change,
+    ) async {
+      final app = index(tester).apps.values.firstWhere((a) => a.name == name);
+      await tester.runAsync(
+        () =>
+            appContainer(tester)
+                .read(vaultSessionProvider.notifier)
+                .saveApp(change(app)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('no organization anywhere: the Apps section is unchanged', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(index(tester).orgGroups, isEmpty);
+      expect(inSidebar('Personal'), findsNothing);
+      // Apps and No app are top-level rows, as before.
+      expect(
+        tester.getTopLeft(row('Kitchenly')).dx,
+        tester.getTopLeft(row('No app')).dx,
+      );
+    });
+
+    testWidgets('apps group under their organization, then Personal; No app '
+        'stays last, outside the groups', (tester) async {
+      await open(tester);
+      await editApp(
+        tester,
+        'Ledgerly',
+        (a) => a.copyWith(organization: 'Acme Corp'),
+      );
+
+      expect(row('Acme Corp, 1 item'), findsOneWidget);
+      expect(row('Personal, 10 items'), findsOneWidget);
+      double y(String label) => tester.getTopLeft(row(label)).dy;
+      expect(y('Acme Corp'), lessThan(y('Ledgerly')));
+      expect(y('Ledgerly'), lessThan(y('Personal')));
+      expect(y('Personal'), lessThan(y('Kitchenly')));
+      expect(y('Kitchenly'), lessThan(y('No app')));
+      double x(String label) => tester.getTopLeft(row(label)).dx;
+      // Rows are full width; their content is indented by depth.
+      double indent(String label) => tester
+          .getTopLeft(
+            find.descendant(of: row(label), matching: find.text(label)).first,
+          )
+          .dx;
+      expect(x('Ledgerly'), x('Acme Corp'));
+      expect(indent('Ledgerly'), greaterThan(indent('Acme Corp')));
+      expect(indent('Kitchenly'), indent('Ledgerly'));
+      expect(indent('No app'), indent('Acme Corp'));
+
+      // An organization is a link to its apps' items.
+      await tap(tester, row('Acme Corp'));
+      expect(location(tester), Routes.vault(org: 'Acme Corp'));
+      expect(isSelected(tester, 'Acme Corp'), isTrue);
+      expect(isSelected(tester, 'Ledgerly'), isFalse);
+      expect(
+        VaultFilter.fromUri(Uri.parse(location(tester)))
+            .apply(index(tester))
+            .map((i) => i.title),
+        ['Stripe secret key'],
+      );
+
+      await tap(tester, row('Personal'));
+      expect(location(tester), Routes.vault(org: VaultFilter.none));
+      expect(
+        VaultFilter.fromUri(Uri.parse(location(tester))).apply(index(tester)),
+        hasLength(10),
+      );
+
+      // Closing a group hides its apps and keeps the list.
+      await tap(
+        tester,
+        chevron('Acme Corp', DesktopSymbol.chevronDown.of(DesktopKit.current)),
+      );
+      expect(inSidebar('Ledgerly'), findsNothing);
+      expect(location(tester), Routes.vault(org: VaultFilter.none));
+    });
+
+    testWidgets('search finds items by their app’s domain or repository', (
+      tester,
+    ) async {
+      await open(tester);
+      await editApp(
+        tester,
+        'Ledgerly',
+        (a) => a.copyWith(
+          identifiers: [
+            AppIdentifier.of(IdentifierKind.domain, 'api.ledgerly.example'),
+            AppIdentifier.of(
+              IdentifierKind.repository,
+              'github.com/ledgerly/server',
+            ),
+          ],
+        ),
+      );
+      for (final q in ['api.ledgerly', 'github.com/ledgerly']) {
+        await tester.enterText(find.byType(EditableText), q);
+        await tester.pumpAndSettle();
+        expect(location(tester), Routes.vault(q: q));
+        expect(
+          VaultFilter.fromUri(Uri.parse(location(tester)))
+              .apply(index(tester))
+              .map((i) => i.title),
+          ['Stripe secret key'],
+        );
+        expect(
+          find.descendant(
+            of: find.byType(VaultListPane),
+            matching: find.text('Stripe secret key'),
+          ),
+          findsOneWidget,
+        );
+      }
+    });
+  });
+
   group('VaultFilter', () {
     test('reads and writes the same location', () {
       const filter = VaultFilter(
+        org: 'Acme Corp',
         app: 'a1',
         platform: 'ios',
         env: VaultFilter.none,
@@ -310,6 +437,36 @@ void main() {
         VaultFilter.fromUri(Uri.parse('/vault?view=bogus&q=')).isAll,
         true,
       );
+    });
+
+    test('an organization titles its list and leads its apps’ paths', () {
+      final billing = AppRecord(
+        id: '00000000-0000-4000-8000-0000000000b1',
+        name: 'Billing API',
+        organization: 'Acme Corp',
+        createdAt: testNow,
+        updatedAt: testNow,
+        rev: Hlc.zero(testDeviceId),
+        deviceId: testDeviceId,
+      );
+      final apps = {billing.id: billing};
+      expect(
+        vaultHeading(const VaultFilter(org: 'Acme Corp'), apps).title,
+        'Acme Corp',
+      );
+      expect(
+        vaultHeading(const VaultFilter(org: VaultFilter.none), apps).title,
+        'Personal',
+      );
+      final app = vaultHeading(VaultFilter(app: billing.id), apps);
+      expect(app.title, 'Billing API');
+      expect(app.path, ['Acme Corp']);
+      final ios = vaultHeading(
+        VaultFilter(app: billing.id, platform: 'ios'),
+        apps,
+      );
+      expect(ios.path, ['Acme Corp', 'Billing API']);
+      expect(const VaultFilter(org: 'Acme Corp').isAll, isFalse);
     });
 
     test('withQuery sets and clears the search only', () {

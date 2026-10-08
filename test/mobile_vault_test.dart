@@ -71,6 +71,42 @@ void main() {
     expect(inList('Maps API key'), findsNothing);
   });
 
+  testWidgets('with an organization: grouped under it, then Personal, then '
+      'No app; organization chips filter', (tester) async {
+    await open(tester);
+    expect(inList('Personal'), findsNothing);
+    final ledgerly = index(tester).apps.values
+        .firstWhere((a) => a.name == 'Ledgerly');
+    await tester.runAsync(
+      () =>
+          appContainer(tester)
+              .read(vaultSessionProvider.notifier)
+              .saveApp(ledgerly.copyWith(organization: 'Acme Corp')),
+    );
+    await tester.pumpAndSettle();
+
+    // Headings (the chips come first, so the last match is the heading).
+    double y(String text) => tester.getTopLeft(inList(text).last).dy;
+    expect(y('Acme Corp'), lessThan(y('Ledgerly')));
+    expect(y('Ledgerly'), lessThan(y('Personal')));
+    expect(y('Personal'), lessThan(y('Kitchenly')));
+    expect(y('Kitchenly'), lessThan(y('No app')));
+    expect(y('No app'), lessThan(y('GitHub deploy key')));
+
+    await tester.tap(inList('Acme Corp').first);
+    await tester.pumpAndSettle();
+    expect(location(tester), Routes.vault(org: 'Acme Corp'));
+    expect(inList('Stripe secret key'), findsOneWidget);
+    expect(inList('Upload keystore'), findsNothing);
+
+    await tester.tap(inList('Personal').first);
+    await tester.pumpAndSettle();
+    expect(location(tester), Routes.vault(org: 'none'));
+    expect(inList('Upload keystore'), findsOneWidget);
+    expect(inList('Stripe secret key'), findsNothing);
+    expect(inList('GitHub deploy key'), findsNothing);
+  });
+
   testWidgets('search narrows the list', (tester) async {
     await open(tester);
     await tester.enterText(

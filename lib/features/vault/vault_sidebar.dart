@@ -20,6 +20,11 @@ enum ShellSection { vault, expiry, settings }
 /// App › Platform › Environment tree, tags, and a footer with Settings and
 /// the auto-lock time.
 ///
+/// Once any app has an organization, the tree's apps are grouped under
+/// their organization, then "Personal" for the apps without one; "No app"
+/// stays last, outside the groups. Clicking an organization lists its
+/// apps' items.
+///
 /// It has no selection state of its own: what is selected is read from
 /// [uri], and every row is a link, so back and forward and a reload all
 /// keep the sidebar in step with the list.
@@ -42,7 +47,8 @@ class VaultSidebar extends ConsumerStatefulWidget {
 }
 
 class _VaultSidebarState extends ConsumerState<VaultSidebar> {
-  /// Apps start open; these were closed by the user.
+  /// Organizations and apps start open; these were closed by the user.
+  final _collapsedOrgs = <String>{};
   final _collapsedApps = <String>{};
 
   /// Platforms start closed unless they hold the selection; these were
@@ -138,8 +144,14 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                 ),
                 if (index == null || index.tree.isEmpty)
                   const _Hint('Items you add are grouped here by app')
-                else
-                  for (final node in index.tree) ..._appRows(node, filter),
+                else if (index.orgGroups.isEmpty)
+                  for (final node in index.tree) ..._appRows(node, filter)
+                else ...[
+                  for (final group in index.orgGroups)
+                    ..._orgRows(group, filter),
+                  for (final node in index.tree)
+                    if (node.app == null) ..._appRows(node, filter),
+                ],
                 if (index != null && index.tagCounts.isNotEmpty) ...[
                   const _SectionLabel('Tags'),
                   for (final MapEntry(key: tag, value: count)
@@ -170,26 +182,61 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
   static int _conflicts(VaultIndex index) =>
       index.items.values.where((i) => i.conflict != null).length;
 
-  /// Whether the tree node at [app] / [platform] / [env] is the selection.
+  /// Whether the tree node at [org] or [app] / [platform] / [env] is the
+  /// selection.
   bool _isSelected(
     VaultFilter filter, {
-    required String app,
+    String? org,
+    String? app,
     String? platform,
     String? env,
   }) =>
       widget.section == ShellSection.vault &&
       filter.tag == null &&
       filter.view == null &&
+      filter.org == org &&
       filter.app == app &&
       filter.platform == platform &&
       filter.env == env;
 
-  List<Widget> _appRows(AppNode node, VaultFilter filter) {
+  /// An organization ("Personal" for apps without one) and, while open,
+  /// its apps one level in.
+  List<Widget> _orgRows(OrgGroup group, VaultFilter filter) {
+    final orgKey = group.organization ?? VaultFilter.none;
+    final open = !_collapsedOrgs.contains(orgKey);
+    return [
+      _SourceRow(
+        tree: true,
+        expanded: open,
+        onToggle: () => setState(
+          () =>
+              open ? _collapsedOrgs.add(orgKey) : _collapsedOrgs.remove(orgKey),
+        ),
+        icon: group.organization == null
+            ? DesktopSymbol.person
+            : DesktopSymbol.organization,
+        label: group.organization ?? 'Personal',
+        count: group.count,
+        selected: _isSelected(filter, org: orgKey),
+        onTap: () {
+          setState(() => _collapsedOrgs.remove(orgKey));
+          _show(VaultFilter(org: orgKey));
+        },
+      ),
+      if (open)
+        for (final node in group.apps) ..._appRows(node, filter, depth: 1),
+    ];
+  }
+
+  /// An app and, while open, its platforms; [depth] is 1 under an
+  /// organization.
+  List<Widget> _appRows(AppNode node, VaultFilter filter, {int depth = 0}) {
     final appKey = node.app?.id ?? VaultFilter.none;
     final open = !_collapsedApps.contains(appKey);
     return [
       _SourceRow(
         tree: true,
+        depth: depth,
         expanded: open,
         onToggle: () => setState(
           () =>
@@ -206,15 +253,16 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
       ),
       if (open)
         for (final platform in node.platforms)
-          ..._platformRows(appKey, platform, filter),
+          ..._platformRows(appKey, platform, filter, depth: depth + 1),
     ];
   }
 
   List<Widget> _platformRows(
     String appKey,
     PlatformNode node,
-    VaultFilter filter,
-  ) {
+    VaultFilter filter, {
+    required int depth,
+  }) {
     final platformKey = node.platform ?? VaultFilter.none;
     final key = '$appKey/$platformKey';
     final holdsSelection =
@@ -223,7 +271,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     return [
       _SourceRow(
         tree: true,
-        depth: 1,
+        depth: depth,
         expanded: open,
         onToggle: () => setState(() => _platformOpen[key] = !open),
         icon: _platformSymbol(node.platform),
@@ -240,7 +288,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
             in node.environments.entries)
           _SourceRow(
             tree: true,
-            depth: 2,
+            depth: depth + 1,
             leading: _EnvDot(env),
             label: VaultLabels.environment(env),
             count: count,
@@ -358,7 +406,8 @@ class _SourceRow extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// A row of the App › Platform › Environment tree, [depth] levels deep.
+  /// A row of the (Organization ›) App › Platform › Environment tree,
+  /// [depth] levels deep.
   final bool tree;
   final int depth;
   final bool expanded;

@@ -166,7 +166,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     final session = ref.watch(vaultSessionProvider);
     final apps = session is Unlocked
         ? (session.index.apps.values.toList()..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
           ))
         : <AppRecord>[];
     final draft = _draft;
@@ -219,7 +219,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                 value: apps.any((a) => a.id == draft.appId)
                     ? draft.appId
                     : null,
-                options: {for (final app in apps) app.id: app.name},
+                options: {for (final app in apps) app.id: app.label},
                 onChanged: (v) => setState(() => draft.appId = v),
               ),
             ),
@@ -335,7 +335,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     final session = ref.watch(vaultSessionProvider);
     final unlocked = session is Unlocked ? session : null;
     final apps = [...?unlocked?.index.apps.values]
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
     final items = unlocked?.index.items.values ?? const <Item>[];
     final draft = _draft;
     final base = draft.base;
@@ -407,7 +407,10 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                   child: Row(
                     spacing: DesktopMetrics.formLabelGap,
                     children: [
+                      // The widest: an app's label carries its
+                      // organization ("Acme Corp › Billing API").
                       Expanded(
+                        flex: 2,
                         child: DesktopPopup<String>(
                           // An app deleted since shows as no app, as in the
                           // sidebar.
@@ -417,7 +420,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                           choices: [
                             const DesktopChoice('', 'No app'),
                             for (final app in apps)
-                              DesktopChoice(app.id, app.name),
+                              DesktopChoice(app.id, app.label),
                           ],
                           onChanged: (id) => setState(
                             () => draft.appId = id.isEmpty ? null : id,

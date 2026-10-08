@@ -17,6 +17,10 @@ import 'vault_item_row.dart';
 /// search, the All / Expiring / Files / Secrets tabs, app chips, and the
 /// items grouped by app. Tapping an item pushes its screen (B3).
 ///
+/// Once any app has an organization, the apps are grouped under their
+/// organization's heading (then "Personal" for the apps without one), and
+/// organization chips come before the app chips.
+///
 /// Everything it shows comes from the `/vault` query, like the desktop
 /// list, so back and forward keep the filters. With sync on, the sync line
 /// sits under the search and pulling the list down syncs (P3-07).
@@ -65,19 +69,39 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
     // Grouped by app unless one app is chosen: apps by name, then no app.
-    final groups = <(AppRecord?, List<Item>)>[];
+    // Once an app has an organization, apps go under an organization
+    // heading (then Personal), and No app gets a heading of its own.
+    final byOrg = index.orgGroups.isNotEmpty;
+    final groups = <({String? heading, AppRecord? app, List<Item> items})>[];
     if (filter.app != null) {
-      groups.add((index.apps[filter.app], items));
+      groups.add((heading: null, app: index.apps[filter.app], items: items));
     } else {
-      for (final app in apps) {
+      final ordered = byOrg
+          ? [
+              for (final group in index.orgGroups)
+                for (final node in group.apps) node.app!,
+            ]
+          : apps;
+      String? lastHeading;
+      for (final app in ordered) {
         final mine = items.where((i) => i.appId == app.id).toList();
-        if (mine.isNotEmpty) groups.add((app, mine));
+        if (mine.isEmpty) continue;
+        final heading = byOrg ? app.organization ?? 'Personal' : null;
+        groups.add((
+          heading: heading == lastHeading ? null : heading,
+          app: app,
+          items: mine,
+        ));
+        lastHeading = heading;
       }
       final none = items
           .where((i) => !index.apps.containsKey(i.appId))
           .toList();
-      if (none.isNotEmpty) groups.add((null, none));
+      if (none.isNotEmpty) {
+        groups.add((heading: byOrg ? 'No app' : null, app: null, items: none));
+      }
     }
+    final personal = apps.any((a) => a.organization == null);
 
     final syncing = ref.watch(syncControllerProvider) is! SyncOff;
 
@@ -144,10 +168,32 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
                     children: [
                       _AppChip(
                         label: 'All apps',
-                        selected: filter.app == null,
+                        selected: filter.app == null && filter.org == null,
                         onPressed: () =>
                             _go(VaultFilter(kind: filter.kind, q: filter.q)),
                       ),
+                      if (index.organizations.isNotEmpty)
+                        for (final org in [
+                          ...index.organizations,
+                          if (personal) VaultFilter.none,
+                        ])
+                          _AppChip(
+                            label: org == VaultFilter.none ? 'Personal' : org,
+                            leading: Icon(
+                              org == VaultFilter.none
+                                  ? LucideIcons.user
+                                  : LucideIcons.building2,
+                              size: 16,
+                            ),
+                            selected: filter.org == org,
+                            onPressed: () => _go(
+                              VaultFilter(
+                                org: org,
+                                kind: filter.kind,
+                                q: filter.q,
+                              ),
+                            ),
+                          ),
                       for (final app in apps)
                         _AppChip(
                           label: app.name,
@@ -188,24 +234,41 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
             ),
           )
         else
-          for (final (app, groupItems) in groups) ...[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-              sliver: SliverToBoxAdapter(
-                child: Row(
-                  spacing: 8,
-                  children: [
-                    AppBadge(app: app, size: 18),
-                    BCText(
-                      app?.name ?? 'No app',
-                      type: BCTextType.bodySm,
-                      weight: BCTextWeight.medium,
-                      color: BCTextColor.muted,
+          for (final (:heading, :app, items: groupItems) in groups) ...[
+            if (heading != null)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(22, 28, 22, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Semantics(
+                    header: true,
+                    child: BCText(
+                      heading,
+                      type: BCTextType.h6,
+                      weight: BCTextWeight.semibold,
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            if (heading == null || app != null)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+                sliver: SliverToBoxAdapter(
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      AppBadge(app: app, size: 18),
+                      BCText(
+                        app?.name ?? 'No app',
+                        type: BCTextType.bodySm,
+                        weight: BCTextWeight.medium,
+                        color: BCTextColor.muted,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(
