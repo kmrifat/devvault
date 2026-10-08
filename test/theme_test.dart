@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/theme.dart';
 import 'package:devvault/app/routes.dart';
@@ -12,9 +14,25 @@ void main() {
   BCThemeExtension tokens(ThemeData theme) =>
       theme.extension<BCThemeExtension>()!;
 
-  test('both themes use the DevVault accent', () {
-    expect(tokens(AppTheme.light()).accent, AppTheme.accent);
+  test('dark uses the DevVault accent, light its AA-contrast shade', () {
     expect(tokens(AppTheme.dark()).accent, AppTheme.accent);
+    final light = tokens(AppTheme.light());
+    expect(light.accent, AppTheme.accentLight);
+    // WCAG AA (4.5:1) for accent text on the light background and on its
+    // own soft tint, and for white labels on accent buttons.
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance(), lb = b.computeLuminance();
+      return (max(la, lb) + 0.05) / (min(la, lb) + 0.05);
+    }
+
+    final soft = Color.alphaBlend(light.accentSoft, light.background);
+    expect(contrast(light.accent, light.background), greaterThanOrEqualTo(4.5));
+    expect(contrast(light.accent, soft), greaterThanOrEqualTo(4.5));
+    expect(
+      contrast(light.accentForeground, light.accent),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(contrast(light.muted, light.background), greaterThanOrEqualTo(4.5));
   });
 
   test('dark fields get a hairline ring in the separator colour', () {

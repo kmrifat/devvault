@@ -240,6 +240,27 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
+  /// Rotates the vault key (SPEC §9): every item, app, tombstone and file
+  /// is re-encrypted under a new key, with a new recovery key, which is
+  /// returned for the caller to show once and dispose. Needs the master
+  /// password. Other synced devices pause until they adopt the new key.
+  Future<RecoveryKey> rotateVaultKey(String password) => exclusive(() async {
+    final current = state;
+    if (current is! Unlocked) throw StateError('The vault is locked');
+    final recoveryKey = await current.vault.rotateVaultKey(password);
+    // The stored key is the old one now (SPEC §9.1).
+    await _forgetBiometricKey(current.vault.vaultId);
+    await _open(current.vault);
+    return recoveryKey;
+  });
+
+  /// The new recovery key of a rotation that was interrupted and finished
+  /// by this unlock, handed over once (null almost always).
+  RecoveryKey? takePendingRecoveryKey() => switch (state) {
+    Unlocked(:final vault) => vault.takePendingRecoveryKey(),
+    _ => null,
+  };
+
   /// Issues a new recovery key; the old one stops working. Writes
   /// `vault.json` only. The caller shows the key once and disposes it.
   Future<RecoveryKey> replaceRecoveryKey() => exclusive(() async {

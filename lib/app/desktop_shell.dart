@@ -214,15 +214,20 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
                       Flexible(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 480),
-                          child: BCSearchField(
-                            controller: _search,
-                            focusNode: widget.searchFocus,
-                            variant: BCInputVariant.secondary,
-                            placeholder:
-                                'Search items, bundle IDs, key IDs, '
-                                'fingerprints',
-                            onChanged: _onSearch,
-                            onClear: () => _onSearch(''),
+                          // bc_ui's field wrapper is tappable but unnamed
+                          // for screen readers; name it.
+                          child: Semantics(
+                            label: 'Search',
+                            child: BCSearchField(
+                              controller: _search,
+                              focusNode: widget.searchFocus,
+                              variant: BCInputVariant.secondary,
+                              placeholder:
+                                  'Search items, bundle IDs, key IDs, '
+                                  'fingerprints',
+                              onChanged: _onSearch,
+                              onClear: () => _onSearch(''),
+                            ),
                           ),
                         ),
                       ),

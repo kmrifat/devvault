@@ -87,11 +87,14 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
         BCSliverAppHeader(
           largeTitle: const Text('Vault'),
           actions: [
+            // 48 px: the touch-target minimum (bc_ui's default is 40).
             BCHeaderIconButton(
+              size: 48,
               icon: const Icon(LucideIcons.filePlus2, semanticLabel: 'Import'),
               onPressed: () => openImport(context),
             ),
             BCHeaderIconButton(
+              size: 48,
               icon: const Icon(LucideIcons.plus, semanticLabel: 'New item'),
               onPressed: () => createItem(context, filter),
             ),
@@ -101,11 +104,14 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           sliver: SliverList.list(
             children: [
-              BCSearchField(
-                controller: _search,
-                placeholder: 'Search items, bundle IDs, key IDs',
-                onChanged: (q) => _go(filter.withQuery(q)),
-                onClear: () => _go(filter.withQuery('')),
+              Semantics(
+                label: 'Search',
+                child: BCSearchField(
+                  controller: _search,
+                  placeholder: 'Search items, bundle IDs, key IDs',
+                  onChanged: (q) => _go(filter.withQuery(q)),
+                  onClear: () => _go(filter.withQuery('')),
+                ),
               ),
               if (syncing) ...[
                 const SizedBox(height: 8),
