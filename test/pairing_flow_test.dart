@@ -12,6 +12,7 @@ import 'package:devvault/features/create_vault/join_vault_screen.dart';
 import 'package:devvault/features/pairing/pair_screen.dart';
 import 'package:devvault/services/clipboard_guard.dart';
 import 'package:devvault/services/credential_store.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -87,7 +88,7 @@ void main() {
       addTearDown(tester.view.reset);
       await pumpUnlockedApp(
         tester,
-        location: Routes.settings,
+        location: Routes.settingsSync,
         layout: AppLayout.desktop,
         overrides: sharedOverrides(),
         clock: () => now,
@@ -117,7 +118,19 @@ void main() {
 
     testWidgets('without sync there is nothing to hand over', (tester) async {
       await open(tester, sync: false);
-      expect(find.text('Pair a device'), findsNothing); // not in Settings
+      // Settings › Sync offers it only once sync is on.
+      expect(find.text('Turn on sync first.'), findsOneWidget);
+      expect(
+        tester
+            .widget<DesktopButton>(
+              find.ancestor(
+                of: find.text('Pair…'),
+                matching: find.byType(DesktopButton),
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
       router(tester).push(Routes.pair);
       await tester.pumpAndSettle();
       expect(find.byType(PairScreen), findsOneWidget);
@@ -131,12 +144,15 @@ void main() {
       final vaultId = (appContainer(
         tester,
       ).read(vaultSessionProvider) as Unlocked).vault.vaultId;
-      expect(find.text('R2 · my-devvault'), findsNothing);
-      expect(find.text('Cloudflare R2 · my-devvault'), findsOneWidget);
-      await tester.ensureVisible(find.text('Pair a device'));
+      expect(find.textContaining('with R2 · my-devvault'), findsNothing);
+      expect(
+        find.textContaining('Cloudflare R2 · my-devvault'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Pair…'));
       // Sync is on, so its status chip keeps animating: no pumpAndSettle.
       await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(find.text('Pair a device'));
+      await tester.tap(find.text('Pair…'));
       await tester.pump();
       await settle(tester, qrShown);
       final code = shownCode(tester);
@@ -146,6 +162,9 @@ void main() {
         findsOneWidget,
       );
 
+      // Let the sheet finish sliding in.
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.text('Copy Pairing Text'));
       await tester.pump();
       await settle(tester, () => clipboard.text != null);

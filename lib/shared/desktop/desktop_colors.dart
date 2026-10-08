@@ -24,6 +24,7 @@ class DesktopColors {
     required this.field,
     required this.fieldStroke,
     required this.toolbarField,
+    required this.selectedSegment,
     required this.text,
     required this.secondaryText,
     required this.tertiaryText,
@@ -83,6 +84,9 @@ class DesktopColors {
   /// The toolbar's search field, which sits on the toolbar without a border.
   final Color toolbarField;
 
+  /// The chosen segment of a segmented control, on a [toolbarField] track.
+  final Color selectedSegment;
+
   final Color text;
   final Color secondaryText;
   final Color tertiaryText;
@@ -101,6 +105,9 @@ class DesktopColors {
   final Color onWarningBadge;
 
   final Color danger;
+
+  /// A band or badge tinted for danger (an expired badge, the Expiry
+  /// table's Expired group), and the text on it.
   final Color dangerBadge;
   final Color onDangerBadge;
 
@@ -127,6 +134,7 @@ class DesktopColors {
     field: Color(0xFFFFFFFF),
     fieldStroke: Color(0xFFD1D1D6),
     toolbarField: Color(0xFFEBEBED),
+    selectedSegment: Color(0xFFFFFFFF),
     text: Color(0xFF1D1D1F),
     // The design's #6E6E73 is 4.25:1 on the sidebar; this is the nearest
     // shade that reaches WCAG AA (4.5:1) there.
@@ -164,6 +172,7 @@ class DesktopColors {
     field: Color(0xFF1C1C1E),
     fieldStroke: Color(0xFF48484A),
     toolbarField: Color(0xFF3A3A3C),
+    selectedSegment: Color(0xFF5A5A5E),
     text: Color(0xFFF5F5F7),
     secondaryText: Color(0xFF98989D),
     tertiaryText: Color(0xFF8D8D93),

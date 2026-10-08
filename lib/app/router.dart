@@ -8,6 +8,7 @@ import '../features/pairing/pair_screen.dart';
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/join_vault_screen.dart';
 import '../features/create_vault/recovery_kit_screen.dart';
+import '../features/settings/settings_layout.dart' show SettingsPane;
 import '../features/settings/settings_screen.dart';
 import '../features/settings/sync_settings_screen.dart';
 import '../features/unlock/recover_screen.dart';
@@ -30,12 +31,16 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// Don't use `GoRoute.builder`: go_router 18 detects the app type by looking
 /// for `material_ui`'s `MaterialApp`, which isn't the Flutter `MaterialApp`
 /// this app (and bc_ui) uses, so it silently falls back to `NoTransitionPage`.
+///
+/// [key] replaces the route's own page key: routes that share one show as
+/// a single page whose content changes in place, with no transition.
 Page<void> materialPage(
   GoRouterState state,
   Widget child, {
   bool fullscreenDialog = false,
+  LocalKey? key,
 }) => MaterialPage<void>(
-  key: state.pageKey,
+  key: key ?? state.pageKey,
   name: state.name ?? state.path,
   arguments: state.extra,
   restorationId: state.pageKey.value,
@@ -128,16 +133,31 @@ GoRouter buildRouter({
             ],
           ),
           StatefulShellBranch(
-            routes: [
-              tab(
-                Routes.settings,
-                (_) => const SettingsScreen(),
-                routes: [
-                  tab('sync', (_) => const SyncSettingsScreen()),
-                  tab('security', (_) => const SettingsScreen()),
-                ],
-              ),
-            ],
+            routes: desktop
+                // Desktop: one Settings page with a tab per pane. The
+                // panes share a page, so a tab swaps its content in place
+                // instead of pushing a screen.
+                ? [
+                    for (final pane in SettingsPane.values)
+                      GoRoute(
+                        path: pane.route,
+                        pageBuilder: (_, s) => materialPage(
+                          s,
+                          SettingsScreen(pane: pane),
+                          key: const ValueKey('settings'),
+                        ),
+                      ),
+                  ]
+                : [
+                    tab(
+                      Routes.settings,
+                      (_) => const SettingsScreen(),
+                      routes: [
+                        tab('sync', (_) => const SyncSettingsScreen()),
+                        tab('security', (_) => const SettingsScreen()),
+                      ],
+                    ),
+                  ],
           ),
         ],
       ),

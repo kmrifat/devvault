@@ -52,7 +52,7 @@ void main() {
     addTearDown(tester.view.reset);
     await pumpUnlockedApp(
       tester,
-      location: Routes.settings,
+      location: Routes.settingsSecurity,
       vault: TestVault.sample,
       layout: AppLayout.desktop,
     );

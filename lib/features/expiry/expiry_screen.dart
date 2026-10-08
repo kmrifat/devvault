@@ -7,7 +7,9 @@ import '../../app/routes.dart';
 import '../../core/expiry.dart';
 import '../../data/providers.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop/desktop_theme.dart' show DesktopTheme;
 import '../../shared/ui.dart';
+import 'desktop_expiry_table.dart';
 
 /// What the expiry dashboard shows, worked out from the vault's items:
 /// expired, expiring within the window, later, and how many items have no
@@ -39,9 +41,10 @@ class ExpiryGroups {
   int noExpiry = 0;
 }
 
-/// The expiry dashboard (design frame D06 on desktop, the Expiry tab on
-/// phones). `?show=expired` narrows it to the expired items, which is
-/// where the sidebar's "Expired" row lands.
+/// The expiry dashboard: a grouped table on desktop (design frame N06,
+/// [DesktopExpiryTable]), the Expiry tab on phones. `?show=expired`
+/// narrows it to the expired items, which is where the sidebar's "Expired"
+/// row lands.
 class ExpiryScreen extends ConsumerWidget {
   const ExpiryScreen({super.key, required this.uri, required this.desktop});
 
@@ -63,6 +66,19 @@ class ExpiryScreen extends ConsumerWidget {
     void open(Item item) => desktop
         ? context.go(Routes.vault(item: item.id))
         : context.push(Routes.item(item.id));
+
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopExpiryTable(
+        groups: groups,
+        apps: session is Unlocked ? session.index.apps : const {},
+        now: now,
+        empty: items.isEmpty,
+        onlyExpired: onlyExpired,
+        onOpen: open,
+        onShowAll: () => context.go(Routes.expiry),
+        onShowNoExpiry: () => context.go(Routes.vault()),
+      );
+    }
 
     final sections = <Widget>[
       if (groups.expired.isNotEmpty || onlyExpired)

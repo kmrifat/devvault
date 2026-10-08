@@ -1,4 +1,19 @@
+import '../../app/routes.dart';
 import '../../shared/ui.dart';
+
+/// The panes of Settings. On desktop each is a tab (design frames N07c,
+/// N07, N07b) with its own path; phones show General and Security on one
+/// page and Sync storage on its own.
+enum SettingsPane {
+  general(Routes.settings, 'General'),
+  security(Routes.settingsSecurity, 'Security'),
+  sync(Routes.settingsSync, 'Sync');
+
+  const SettingsPane(this.route, this.label);
+
+  final String route;
+  final String label;
+}
 
 /// Settings pages on a phone (P3-07): narrower margins, room for the
 /// floating bottom nav, and selects under their row text.
