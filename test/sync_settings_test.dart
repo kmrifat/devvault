@@ -102,6 +102,7 @@ void main() {
     late MemoryCredentialStore keychain;
     late List<String> probes;
     late Object? probeError;
+    late StorageCapabilities probed;
     late MemoryBackend bucket;
 
     Future<void> open(WidgetTester tester) async {
@@ -112,6 +113,12 @@ void main() {
       keychain = MemoryCredentialStore();
       probes = [];
       probeError = null;
+      // MinIO-like: deletes ignore If-Match.
+      probed = const StorageCapabilities(
+        conditionalCreate: true,
+        conditionalUpdate: true,
+        conditionalDelete: false,
+      );
       bucket = MemoryBackend();
       await pumpUnlockedApp(
         tester,
@@ -127,12 +134,7 @@ void main() {
           ) async {
             probes.add(prefix);
             if (probeError case final e?) throw e;
-            // MinIO-like: deletes ignore If-Match.
-            return const StorageCapabilities(
-              conditionalCreate: true,
-              conditionalUpdate: true,
-              conditionalDelete: false,
-            );
+            return probed;
           }),
           storageBackendProvider.overrideWith(
             (ref) => ref.watch(syncSetupProvider) == null ? null : bucket,
@@ -249,6 +251,61 @@ void main() {
       await tester.enterText(input('Bucket'), 'other-bucket');
       await tester.pump();
       expect(turnOnEnabled(tester), isFalse);
+    });
+
+    testWidgets('says what the storage enforces, and keeps saying it', (
+      tester,
+    ) async {
+      const writes = 'doesn’t enforce conditional writes';
+      const deletes = 'ignores conditions on deletes';
+      await open(tester);
+      await fill(tester);
+
+      // Everything enforced: a plain success, no warning.
+      probed = const StorageCapabilities(
+        conditionalCreate: true,
+        conditionalUpdate: true,
+        conditionalDelete: true,
+      );
+      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      expect(
+        find.text('Connected · conditional writes enforced'),
+        findsOneWidget,
+      );
+      expect(find.textContaining(writes), findsNothing);
+      expect(find.textContaining(deletes), findsNothing);
+
+      // Nothing enforced: both warnings, before and after turning sync on.
+      probed = const StorageCapabilities(
+        conditionalCreate: false,
+        conditionalUpdate: false,
+        conditionalDelete: false,
+      );
+      await tapAndRun(tester, 'Test connection', () => probes.length == 2);
+      expect(find.text('Connected, with a limitation'), findsOneWidget);
+      expect(find.textContaining(writes), findsOneWidget);
+      expect(find.textContaining(deletes), findsOneWidget);
+
+      await tapAndRun(
+        tester,
+        'Turn on sync',
+        () => appContainer(tester).read(syncSetupProvider) != null,
+      );
+      // The saved setup's card carries them from now on.
+      final card = find
+          .ancestor(
+            of: find.textContaining('Syncing with Cloudflare R2'),
+            matching: find.byType(BCCard),
+          )
+          .first;
+      for (final warning in [writes, deletes]) {
+        expect(
+          find.descendant(of: card, matching: find.textContaining(warning)),
+          findsOneWidget,
+        );
+      }
+      await settleSync(tester);
+      await tester.pump(const Duration(seconds: 10));
     });
 
     testWidgets('a refused key says so', (tester) async {
