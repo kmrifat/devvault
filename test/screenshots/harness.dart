@@ -5,8 +5,11 @@
 /// the images are (re)generated on a Mac:
 ///
 /// ```sh
-/// flutter test --tags golden --update-goldens
+/// TZ=UTC flutter test --tags golden --update-goldens
 /// ```
+///
+/// In UTC, as on CI: screens that show a time of day (the conflict sheet)
+/// render it in the machine's time zone.
 ///
 /// Images land in `screenshots/<name>.png` at the repo root, named after the
 /// design frame they implement (`D03-vault`, `B2-vault`, …), so they can be

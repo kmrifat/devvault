@@ -1,13 +1,12 @@
 import 'dart:io';
 
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/create_vault/recovery_kit_card.dart';
 import 'package:devvault/features/settings/new_recovery_kit_dialog.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_core/vault_core.dart';
@@ -36,11 +35,11 @@ void main() {
 
   Finder button(String label) => find.descendant(
     of: find.byType(NewRecoveryKitDialog),
-    matching: find.widgetWithText(BCButton, label),
+    matching: find.widgetWithText(DesktopButton, label),
   );
 
   Finder password() => find.descendant(
-    of: find.byType(PasswordField),
+    of: find.byType(NewRecoveryKitDialog),
     matching: find.byType(EditableText),
   );
 
@@ -74,7 +73,7 @@ void main() {
 
     await tester.enterText(password(), 'not my password');
     await tester.pump();
-    await tester.tap(button('Rotate key'));
+    await tester.tap(button('Rotate Key'));
     await settle(
       tester,
       () => find.text("That isn't your master password").evaluate().isNotEmpty,
@@ -88,7 +87,7 @@ void main() {
 
     await tester.enterText(password(), testPassword);
     await tester.pump();
-    await tester.tap(button('Rotate key'));
+    await tester.tap(button('Rotate Key'));
     await settle(
       tester,
       () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,

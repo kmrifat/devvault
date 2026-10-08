@@ -2,19 +2,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../../data/sync_controller.dart';
+import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart';
 
 /// The bucket's vault has a new key (SyncKeyChanged): most likely rotated
 /// on another device, possibly a replaced `vault.json` (SPEC §4.4). The
 /// master password decides: it opens a genuine rotation, and nothing else.
-Future<void> showAdoptKeyDialog(BuildContext context) => BCDialog.show<void>(
-  context,
-  builder: (_) => const BCDialogContent(
-    width: 480,
-    showCloseButton: true,
-    child: AdoptKeyForm(),
-  ),
-);
+///
+/// A sheet on desktop, a bc_ui dialog on phones.
+Future<void> showAdoptKeyDialog(BuildContext context) {
+  if (DesktopTheme.maybeOf(context) != null) {
+    return showDesktopSheet<void>(
+      context,
+      builder: (_) => const AdoptKeyForm(),
+    );
+  }
+  return BCDialog.show<void>(
+    context,
+    builder: (_) => const BCDialogContent(
+      width: 480,
+      showCloseButton: true,
+      child: AdoptKeyForm(),
+    ),
+  );
+}
 
 class AdoptKeyForm extends ConsumerStatefulWidget {
   const AdoptKeyForm({super.key});
@@ -89,6 +100,7 @@ class _AdoptKeyFormState extends ConsumerState<AdoptKeyForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (DesktopTheme.maybeOf(context) != null) return _desktop(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,4 +154,96 @@ class _AdoptKeyFormState extends ConsumerState<AdoptKeyForm> {
       ],
     );
   }
+
+  /// Desktop: a sheet with the warning, then the master password.
+  Widget _desktop(BuildContext context) {
+    final colors = context.desktopColors;
+    return PopScope(
+      canPop: !_busy,
+      child: DesktopSheet(
+        width: 500,
+        icon: _KeyTile(colors: colors),
+        title: 'The vault key changed',
+        message:
+            'The vault in your storage now uses a new key, most likely '
+            'because it was rotated on another device. Sync is paused and '
+            'nothing here has changed.',
+        actions: [
+          if (_busy) const DesktopProgress(semanticLabel: 'Switching'),
+          DesktopButton(
+            label: 'Not Now',
+            onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          ),
+          DesktopButton(
+            label: _busy ? 'Switching…' : 'Use the New Key',
+            kind: DesktopButtonKind.primary,
+            onPressed: _busy ? null : _submit,
+          ),
+        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 16,
+          children: [
+            Text(
+              "If you didn't rotate it, someone with access to your bucket "
+              'may have replaced it. Close this and check your storage '
+              'instead.',
+              style: TextStyle(
+                fontSize: DesktopMetrics.secondarySize + 1,
+                color: colors.secondaryText,
+              ),
+            ),
+            DesktopForm(
+              children: [
+                DesktopFormRow(
+                  label: 'Master password',
+                  note: 'Changes you made here meanwhile are kept.',
+                  error: _error,
+                  child: Semantics(
+                    label: 'Master password',
+                    textField: true,
+                    child: DesktopTextField(
+                      controller: _password,
+                      obscureText: true,
+                      autofocus: true,
+                      enabled: !_busy,
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The key-changed mark, in the warning colours.
+class _KeyTile extends StatelessWidget {
+  const _KeyTile({required this.colors});
+
+  final DesktopColors colors;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.warningBadge,
+        borderRadius: const BorderRadius.all(
+          Radius.circular(DesktopMetrics.menuRadius + 2),
+        ),
+      ),
+      child: SizedBox.square(
+        dimension: DesktopMetrics.toolbarSearchHeight + 8,
+        child: DesktopIcon(
+          DesktopSymbol.keyChanged,
+          size: 18,
+          color: colors.onWarningBadge,
+        ),
+      ),
+    ),
+  );
 }

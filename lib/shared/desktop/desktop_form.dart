@@ -30,18 +30,21 @@ class DesktopForm extends StatelessWidget {
 }
 
 /// One row of a [DesktopForm]: "[label]:" then [child]. [note] is a line of
-/// secondary text under the control (where a value came from, a hint).
+/// secondary text under the control (where a value came from, a hint);
+/// [error], when set, takes its place in the danger colour.
 class DesktopFormRow extends StatelessWidget {
   const DesktopFormRow({
     super.key,
     required this.label,
     required this.child,
     this.note,
+    this.error,
   });
 
   final String label;
   final Widget child;
   final String? note;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +52,8 @@ class DesktopFormRow extends StatelessWidget {
     final labelWidth =
         context.dependOnInheritedWidgetOfExactType<_FormScope>()?.labelWidth ??
         DesktopMetrics.formLabelWidth;
-    final note = this.note;
+    final error = this.error;
+    final note = error ?? this.note;
     final row = Row(
       children: [
         SizedBox(
@@ -81,7 +85,7 @@ class DesktopFormRow extends StatelessWidget {
             note,
             style: TextStyle(
               fontSize: DesktopMetrics.secondarySize,
-              color: colors.secondaryText,
+              color: error != null ? colors.danger : colors.secondaryText,
             ),
           ),
         ),

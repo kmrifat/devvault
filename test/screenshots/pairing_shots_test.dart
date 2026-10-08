@@ -72,14 +72,14 @@ void main() {
   }
 
   shot(
-    'P4-pair-device',
+    'N08-pair-device',
     Routes.settings,
     sample: true,
     overrides: overrides,
     interact: pair,
   );
   shot(
-    'P4-pair-device-light',
+    'N08-pair-device-light',
     Routes.settings,
     sample: true,
     overrides: overrides,
