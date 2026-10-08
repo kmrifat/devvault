@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
 import '../data/vault_session.dart';
+import '../shared/desktop/desktop_menu_bar.dart' show platformMenusActive;
 import '../services/external_ui.dart';
 
 /// Locks the vault on its own: after [autoLockProvider] of no input, when
@@ -105,7 +106,9 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     if (!(keyboard.isMetaPressed || keyboard.isControlPressed) ||
         keyboard.isAltPressed ||
         keyboard.isShiftPressed ||
-        ref.read(vaultSessionProvider) is! Unlocked) {
+        ref.read(vaultSessionProvider) is! Unlocked ||
+        // The macOS menu bar's Vault › Lock owns ⌘L there.
+        platformMenusActive(context)) {
       return false;
     }
     _lock();

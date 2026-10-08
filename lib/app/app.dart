@@ -9,7 +9,9 @@ import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
 import '../features/settings/new_recovery_kit_dialog.dart';
 import '../shared/desktop/desktop_theme.dart';
+import 'app_menus.dart';
 import 'auto_lock.dart';
+import 'desktop_commands.dart';
 import 'incoming_imports.dart';
 import 'layout.dart';
 import 'router.dart';
@@ -45,6 +47,9 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
   final _sessionChanges = ValueNotifier<int>(0);
 
   late final AppLayout _layout = widget.layout ?? AppLayout.current;
+
+  /// What the desktop menu bar asks the open vault window to do.
+  final _commands = DesktopCommands();
 
   late final GoRouter _router = buildRouter(
     layout: _layout,
@@ -101,6 +106,7 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
   void dispose() {
     _router.dispose();
     _sessionChanges.dispose();
+    _commands.dispose();
     super.dispose();
   }
 
@@ -119,9 +125,14 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
         );
         // Desktop controls are drawn by the OS's own kit (ADR-0005). Around
         // the Navigator, so menus the kits open as routes are themed too.
-        return _layout == AppLayout.desktop
-            ? DesktopTheme(nativeWindow: widget.nativeWindow, child: app)
-            : app;
+        if (_layout != AppLayout.desktop) return app;
+        return DesktopTheme(
+          nativeWindow: widget.nativeWindow,
+          child: DesktopCommandsScope(
+            commands: _commands,
+            child: AppMenus(router: _router, commands: _commands, child: app),
+          ),
+        );
       },
     );
   }
