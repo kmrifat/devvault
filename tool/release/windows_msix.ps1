@@ -23,7 +23,9 @@ try {
       '--publisher', $cert.Subject)
     $name = 'devvault-windows-x64.msix'
   } else {
-    $msixArgs += @('--sign-msix', 'false')
+    # msix needs a publisher even unsigned; a signed build takes the
+    # certificate's subject instead.
+    $msixArgs += @('--sign-msix', 'false', '--publisher', 'CN=Binary Castle')
     $name = 'devvault-windows-x64-unsigned.msix'
   }
 
