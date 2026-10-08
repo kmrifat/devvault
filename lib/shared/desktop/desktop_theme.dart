@@ -56,6 +56,10 @@ class DesktopTheme extends StatelessWidget {
 
   final Widget child;
 
+  /// The nearest [DesktopThemeData], or null outside the desktop layout.
+  static DesktopThemeData? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_DesktopScope>()?.data;
+
   /// The nearest [DesktopThemeData].
   static DesktopThemeData of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_DesktopScope>();

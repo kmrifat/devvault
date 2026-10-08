@@ -16,6 +16,7 @@ import '../features/vault/vault_actions.dart';
 import '../features/vault/vault_heading.dart';
 import '../features/vault/vault_sidebar.dart';
 import '../shared/desktop_ui.dart';
+import 'desktop_commands.dart';
 import 'routes.dart';
 
 /// The desktop window (design frame N03): the source list down the left,
@@ -26,7 +27,8 @@ import 'routes.dart';
 /// sidebar links into them by location rather than branch index.
 ///
 /// Keyboard: ⌘F (Ctrl+F) focuses search, ⌘K (Ctrl+K) opens quick-open,
-/// ⌘I imports, ⌘R syncs now.
+/// ⌘I imports, ⌘N adds an item, ⌘R syncs now. On macOS the menu bar
+/// handles these keys; the window binds the commands it runs.
 class DesktopShell extends ConsumerStatefulWidget {
   const DesktopShell({
     super.key,
@@ -55,15 +57,51 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     HardwareKeyboard.instance.addHandler(_onKey);
   }
 
+  DesktopCommands? _commands;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final commands = DesktopCommands.maybeOf(context);
+    if (commands == _commands) return;
+    _commands?.unbind();
+    _commands = commands
+      ?..bind(
+        find: _inFront(_searchFocus.requestFocus),
+        newItem: _inFront(_newItem),
+        importFile: _inFront(() => showImportDialog(context)),
+        quickOpen: _inFront(_quickOpen),
+      );
+  }
+
+  /// [action], run only while the window is in front: not under a dialog
+  /// or another screen.
+  VoidCallback _inFront(VoidCallback action) => () {
+    if (mounted && (ModalRoute.of(context)?.isCurrent ?? true)) action();
+  };
+
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onKey);
+    _commands?.unbind();
     _searchFocus.dispose();
     super.dispose();
   }
 
+  /// A new item where the user is looking: in the selected app, platform,
+  /// environment or tag.
+  void _newItem() => createItem(
+    context,
+    ShellSection.values[widget.navigationShell.currentIndex] ==
+            ShellSection.vault
+        ? VaultFilter.fromUri(widget.uri)
+        : const VaultFilter(),
+  );
+
   bool _onKey(KeyEvent event) {
     if (event is! KeyDownEvent || !mounted) return false;
+    // The macOS menu bar owns these keys there.
+    if (platformMenusActive(context)) return false;
     // Not while a dialog or another screen is on top.
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return false;
     final keyboard = HardwareKeyboard.instance;
@@ -82,6 +120,10 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     }
     if (event.logicalKey == LogicalKeyboardKey.keyI) {
       showImportDialog(context);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.keyN) {
+      _newItem();
       return true;
     }
     if (event.logicalKey == LogicalKeyboardKey.keyR &&

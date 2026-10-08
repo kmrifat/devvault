@@ -159,6 +159,16 @@ Built with `PlatformMenuBar`:
 
 Items are disabled while the vault is locked.
 
+In code: `lib/app/app_menus.dart` (`AppMenus`) above the Navigator, so the
+menu bar is there on the lock screens too. On macOS it's `PlatformMenuBar`,
+which owns the shortcuts. Edit is rebuilt there (Undo, Redo, Cut, Copy,
+Paste, Select All) because the menu bar replaces the default one. Windows
+and Linux get a menu bar along the top of the window (File, Edit, View,
+Vault, Help; Settings and Quit in File, About in Help) and keep their key
+handlers. The vault window binds the commands only it can run (New Item,
+Import, Find, Quick Open) through `DesktopCommands`. Help has no items yet,
+and Settings opens in the main window until it gets its own (⌘,).
+
 ## Per OS
 
 Same layout and regions on every OS; each OS draws them with its own kit:
