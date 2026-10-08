@@ -1,8 +1,16 @@
 /// Sizes from docs/design/desktop.md (macOS points; Windows and Linux use
 /// the same layout). Screens use these instead of literals.
 abstract final class DesktopMetrics {
-  /// Text fields, pop-ups, combo boxes and push buttons.
+  /// Push buttons, menu rows and other small controls.
   static const double controlHeight = 22;
+
+  /// Text fields, pop-ups and combo boxes: one height, so a form's controls
+  /// line up.
+  static const double fieldHeight = 28;
+
+  /// Push buttons: regular (sheets, forms) and large (lock screens).
+  static const double buttonHeight = 26;
+  static const double largeButtonHeight = 32;
 
   /// Corner radius of fields and the token field.
   static const double fieldRadius = 5;
@@ -55,7 +63,7 @@ abstract final class DesktopMetrics {
   /// macOS form rows: a 22 pt control plus the focus-ring room macos_ui
   /// keeps around a text field. Rows this tall sit flush, 31 pt apart, as
   /// in the frames.
-  static const double formRowHeight = 31;
+  static const double formRowHeight = 36;
 
   /// Below a form's in-between lines (a strength meter, a field message) on
   /// macOS, where rows have no gap of their own.

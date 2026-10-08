@@ -19,7 +19,7 @@ enum DesktopButtonKind {
 }
 
 enum DesktopButtonSize {
-  /// 22 pt on macOS: forms, sheets, toolbars.
+  /// 26 pt on macOS: forms, sheets.
   regular,
 
   /// The larger size: lock screens. (Windows and Linux have one size.)
@@ -97,15 +97,20 @@ class DesktopButton extends StatelessWidget {
         ),
       // macOS draws a destructive action as a plain button with a red
       // label; only the default action is filled.
-      DesktopKit.macos => mac.PushButton(
-        controlSize: size == DesktopButtonSize.large
-            ? mac.ControlSize.large
-            : mac.ControlSize.regular,
-        secondary: kind != DesktopButtonKind.primary,
-        onPressed: onPressed,
-        child: danger
-            ? labelled(Text(label, style: TextStyle(color: colors.danger)))
-            : text,
+      // macos_ui's large push button is 26 pt, level with the 28 pt fields
+      // beside it; the large size stretches it to the lock screens' 32 pt.
+      DesktopKit.macos => SizedBox(
+        height: size == DesktopButtonSize.large
+            ? DesktopMetrics.largeButtonHeight
+            : DesktopMetrics.buttonHeight,
+        child: mac.PushButton(
+          controlSize: mac.ControlSize.large,
+          secondary: kind != DesktopButtonKind.primary,
+          onPressed: onPressed,
+          child: danger
+              ? labelled(Text(label, style: TextStyle(color: colors.danger)))
+              : text,
+        ),
       ),
       DesktopKit.fluent when filled => fl.FilledButton(
         style: danger
@@ -155,9 +160,7 @@ class _MacosDefaultButtonState extends State<_MacosDefaultButton> {
     final accent = _down
         ? Color.lerp(colors.accent, const Color(0xFF000000), 0.15)!
         : colors.accent;
-    final radius = BorderRadius.all(
-      Radius.circular(widget.large ? 7 : DesktopMetrics.fieldRadius),
-    );
+    final radius = BorderRadius.all(Radius.circular(widget.large ? 8 : 7));
     return Semantics(
       button: true,
       enabled: true,
@@ -168,7 +171,9 @@ class _MacosDefaultButtonState extends State<_MacosDefaultButton> {
         onTap: widget.onPressed,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minHeight: widget.large ? 28 : DesktopMetrics.controlHeight,
+            minHeight: widget.large
+                ? DesktopMetrics.largeButtonHeight
+                : DesktopMetrics.buttonHeight,
             minWidth: widget.large ? 48 : 60,
           ),
           child: DecoratedBox(
@@ -192,8 +197,8 @@ class _MacosDefaultButtonState extends State<_MacosDefaultButton> {
             ),
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: widget.large ? 16 : 12,
-                vertical: widget.large ? 5 : 3,
+                horizontal: widget.large ? 18 : 14,
+                vertical: widget.large ? 7 : 5,
               ),
               child: DefaultTextStyle.merge(
                 style: TextStyle(
