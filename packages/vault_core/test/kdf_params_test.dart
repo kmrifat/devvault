@@ -92,6 +92,10 @@ void main() {
     final key = await params.deriveKey(crypto, 'correct horse battery staple');
     timer.cancel();
     key.dispose();
-    expect(ticks, greaterThan(3), reason: 'timer ran during Argon2id');
+    // Derived on this isolate, the timer couldn't fire before the await
+    // resumed (0 ticks). Separate callbacks prove the event loop kept
+    // running. Not a count per millisecond: Windows timers fire only every
+    // ~15.6 ms.
+    expect(ticks, greaterThanOrEqualTo(2), reason: 'timer ran during Argon2id');
   });
 }
