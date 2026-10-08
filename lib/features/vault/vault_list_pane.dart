@@ -8,83 +8,135 @@ import '../../core/expiry.dart';
 import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
-import '../../shared/ui.dart';
+import '../../shared/desktop_ui.dart';
+import '../../shared/widgets/mono_text.dart';
+import 'desktop_item_type.dart';
 import 'vault_actions.dart';
 
-/// Design frame D03's middle pane: what the sidebar selected, narrowed by
-/// the All / Expiring / Files / Secrets tabs and the search, with the
-/// selected item highlighted and an import drop zone at the bottom. Its
-/// title, path and count are in the window's toolbar.
+/// Design frame N03's item table: what the sidebar selected, narrowed by
+/// the All / Expiring / Files / Secrets scope bar and the search, sortable by
+/// Name, Type and Expires, with the selected row filled with the accent.
+/// Its title, path and count are in the window's toolbar.
 ///
 /// Like the sidebar, it reads everything from [uri] and changes it by
-/// navigating, so the selection is a link.
-class VaultListPane extends ConsumerWidget {
+/// navigating, so the selection is a link. Only the sort order is the
+/// table's own.
+///
+/// Beyond the frame it keeps the kind filter (as a scope bar), the selected app's details
+/// (store IDs, Edit app…, Delete app…), the Unreadable list and the empty
+/// states. Files are imported by dropping them anywhere on the window.
+class VaultListPane extends ConsumerStatefulWidget {
   const VaultListPane({super.key, required this.uri});
 
   final Uri uri;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VaultListPane> createState() => _VaultListPaneState();
+}
+
+/// The table's columns, which are also what it sorts by.
+enum VaultColumn {
+  name('Name'),
+  type('Type'),
+  expires('Expires');
+
+  const VaultColumn(this.label);
+
+  final String label;
+}
+
+class _VaultListPaneState extends ConsumerState<VaultListPane> {
+  var _sortBy = VaultColumn.name;
+  var _ascending = true;
+
+  /// Clicking the sorted column reverses it; another column sorts by it,
+  /// ascending.
+  void _sort(VaultColumn column) => setState(() {
+    _ascending = column == _sortBy ? !_ascending : true;
+    _sortBy = column;
+  });
+
+  /// [items] (already in title order) sorted by the chosen column; ties
+  /// keep title order. Undated items come after dated ones either way.
+  List<Item> _sorted(List<Item> items) {
+    if (_sortBy == VaultColumn.name) {
+      return _ascending ? items : items.reversed.toList();
+    }
+    final order = {for (final (i, item) in items.indexed) item.id: i};
+    int byKey(Item a, Item b) => switch (_sortBy) {
+      VaultColumn.type => a.shortTypeLabel.toLowerCase().compareTo(
+        b.shortTypeLabel.toLowerCase(),
+      ),
+      _ => switch ((a.expiresAt, b.expiresAt)) {
+        (null, null) => 0,
+        (null, _) => _ascending ? 1 : -1,
+        (_, null) => _ascending ? -1 : 1,
+        (final x?, final y?) => x.compareTo(y),
+      },
+    };
+    return [...items]..sort((a, b) {
+      final key = byKey(a, b) * (_ascending ? 1 : -1);
+      return key != 0 ? key : order[a.id]!.compareTo(order[b.id]!);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(vaultSessionProvider);
     if (session is! Unlocked) return const SizedBox.shrink();
     final index = session.index;
     final now = ref.watch(clockProvider)();
-    final filter = VaultFilter.fromUri(uri);
-    final selected = uri.queryParameters['item'];
-    final matching = filter.apply(index);
+    final filter = VaultFilter.fromUri(widget.uri);
+    final selected = widget.uri.queryParameters['item'];
     final shown = [
-      for (final item in matching)
+      for (final item in filter.apply(index))
         if (filter.kind.includes(item, now)) item,
     ];
     final quarantine = filter.view == VaultView.quarantine;
+    final app = _selectedApp(filter, index);
 
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_selectedApp(filter, index) case final app?) ...[
-            _AppDetails(
-              app: app,
-              itemCount: index.items.values
-                  .where((i) => i.appId == app.id)
-                  .length,
-            ),
-          ],
-          if (!quarantine) ...[
-            if (_selectedApp(filter, index) != null) const SizedBox(height: 14),
-            BCTabs<VaultKind>(
-              fullWidth: true,
-              value: filter.kind,
-              onValueChange: (kind) =>
-                  context.go(filter.withKind(kind).location(item: selected)),
-              items: [
-                for (final kind in VaultKind.values)
-                  BCTabItem(value: kind, label: kind.label),
-              ],
-            ),
-          ],
-          const SizedBox(height: 16),
-          Expanded(
-            child: quarantine
-                ? _QuarantineList(slots: index.quarantined)
-                : shown.isEmpty
-                ? _Empty(filter: filter, vaultEmpty: index.items.isEmpty)
-                : Align(
-                    alignment: Alignment.topCenter,
-                    child: _ItemList(
-                      items: shown,
-                      selected: selected,
-                      now: now,
-                      onSelect: (item) =>
-                          context.go(filter.location(item: item.id)),
-                    ),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (app != null)
+          _AppDetails(
+            app: app,
+            itemCount: index.items.values
+                .where((i) => i.appId == app.id)
+                .length,
           ),
-          const SizedBox(height: 16),
-          const _DropZone(),
-        ],
-      ),
+        if (!quarantine)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Center(
+              child: DesktopScopeBar<VaultKind>(
+                value: filter.kind,
+                onChanged: (kind) =>
+                    context.go(filter.withKind(kind).location(item: selected)),
+                choices: [
+                  for (final kind in VaultKind.values)
+                    DesktopChoice(kind, kind.label),
+                ],
+              ),
+            ),
+          ),
+        Expanded(
+          child: quarantine
+              ? _QuarantineList(slots: index.quarantined)
+              : shown.isEmpty
+              ? _Empty(filter: filter, vaultEmpty: index.items.isEmpty)
+              : _ItemTable(
+                  items: _sorted(shown),
+                  sortBy: _sortBy,
+                  ascending: _ascending,
+                  onSort: _sort,
+                  selected: selected,
+                  now: now,
+                  onSelect: (item) =>
+                      context.go(filter.location(item: item.id)),
+                ),
+        ),
+      ],
     );
   }
 }
@@ -98,7 +150,8 @@ AppRecord? _selectedApp(VaultFilter filter, VaultIndex index) =>
     ? index.apps[filter.app]
     : null;
 
-/// The selected app's store identifiers, with Edit and Delete.
+/// The selected app's store identifiers, with Edit app… and, under ⋯,
+/// Delete app….
 class _AppDetails extends ConsumerWidget {
   const _AppDetails({required this.app, required this.itemCount});
 
@@ -107,113 +160,119 @@ class _AppDetails extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
     final ids = [...app.bundleIds, ...app.packageNames];
-    return Row(
-      spacing: BCSpacing.xs,
-      children: [
-        Expanded(
-          child: ids.isEmpty
-              ? const BCText(
-                  'No bundle IDs or package names',
-                  type: BCTextType.bodyXs,
-                  color: BCTextColor.muted,
-                )
-              : MonoText(
-                  ids.join(' · '),
-                  middleEllipsis: true,
-                  style: TextStyle(
-                    fontSize: BCTypography.sizeXs,
-                    color: bc.muted,
-                  ),
-                ),
+    final style = TextStyle(
+      fontSize: DesktopMetrics.secondarySize,
+      color: colors.secondaryText,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: colors.innerSeparator, width: 0.5),
         ),
-        BCButton(
-          size: BCButtonSize.sm,
-          variant: BCButtonVariant.ghost,
-          onPressed: () => editApp(context, app),
-          startContent: const Icon(LucideIcons.pencil, size: 14),
-          child: const Text('Edit app'),
-        ),
-        BCMenu(
-          alignment: BCOverlayAlignment.end,
-          trigger: (context, controller) => BCButton(
-            size: BCButtonSize.sm,
-            variant: BCButtonVariant.ghost,
-            isIconOnly: true,
-            onPressed: controller.toggle,
-            child: const Icon(
-              LucideIcons.ellipsis,
-              size: 16,
-              semanticLabel: 'App actions',
-            ),
-          ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+        child: Row(
+          spacing: 8,
           children: [
-            BCMenuItem(
-              title: 'Delete app…',
-              icon: const Icon(LucideIcons.trash2),
-              variant: BCMenuItemVariant.danger,
-              onSelected: () =>
-                  deleteApp(context, ref, app, itemCount: itemCount),
+            Expanded(
+              child: ids.isEmpty
+                  ? Text(
+                      'No bundle IDs or package names',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
+                    )
+                  : MonoText(
+                      ids.join(' · '),
+                      middleEllipsis: true,
+                      style: style,
+                    ),
+            ),
+            DesktopButton(
+              label: 'Edit app…',
+              onPressed: () => editApp(context, app),
+            ),
+            DesktopPullDownButton(
+              label: 'App actions',
+              actions: [
+                DesktopMenuAction(
+                  'Delete app…',
+                  () => deleteApp(context, ref, app, itemCount: itemCount),
+                  destructive: true,
+                ),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
 
-/// Where the list is (app › platform), what it is, how many, and Import.
-/// The rounded group of item rows, scrolling when it outgrows the pane.
-/// Once a row is clicked the list has focus, and ↑/↓ move the selection,
-/// keeping the selected row in view.
-class _ItemList extends StatefulWidget {
-  const _ItemList({
+/// The item table: a header that sorts, then one 40 pt row per item,
+/// built lazily. Once a row is clicked the table has focus, and ↑/↓ move
+/// the selection, scrolling it into view.
+class _ItemTable extends StatefulWidget {
+  const _ItemTable({
     required this.items,
+    required this.sortBy,
+    required this.ascending,
+    required this.onSort,
     required this.selected,
     required this.now,
     required this.onSelect,
   });
 
   final List<Item> items;
+  final VaultColumn sortBy;
+  final bool ascending;
+  final ValueChanged<VaultColumn> onSort;
   final String? selected;
   final DateTime now;
   final ValueChanged<Item> onSelect;
 
   @override
-  State<_ItemList> createState() => _ItemListState();
+  State<_ItemTable> createState() => _ItemTableState();
 }
 
-class _ItemListState extends State<_ItemList> {
-  final _focus = FocusNode(debugLabel: 'Vault list');
-  final _selectedRow = GlobalKey();
+class _ItemTableState extends State<_ItemTable> {
+  final _focus = FocusNode(debugLabel: 'Vault table');
+  final _scroll = ScrollController();
 
-  /// Set by an arrow key, so only keyboard moves scroll the list; a link or
-  /// click leaves it where it is.
-  bool? _movedDown;
+  /// Set by an arrow key, so only keyboard moves scroll the table; a link
+  /// or click leaves it where it is.
+  bool _moved = false;
 
   @override
-  void didUpdateWidget(_ItemList old) {
+  void didUpdateWidget(_ItemTable old) {
     super.didUpdateWidget(old);
-    if (old.selected == widget.selected) return;
-    final down = _movedDown;
-    _movedDown = null;
-    if (down == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final row = _selectedRow.currentContext;
-      if (row == null || !row.mounted) return;
-      Scrollable.ensureVisible(
-        row,
-        alignmentPolicy: down
-            ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
-            : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-      );
-    });
+    if (old.selected == widget.selected || !_moved) return;
+    _moved = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+  }
+
+  /// Scrolls just enough to show the selected row.
+  void _reveal() {
+    final at = widget.items.indexWhere((i) => i.id == widget.selected);
+    if (at == -1 || !_scroll.hasClients) return;
+    final position = _scroll.position;
+    const extent = DesktopMetrics.tableRowHeight;
+    final top = at * extent;
+    final bottom = top + extent;
+    if (top < position.pixels) {
+      _scroll.jumpTo(top);
+    } else if (bottom > position.pixels + position.viewportDimension) {
+      _scroll.jumpTo(bottom - position.viewportDimension);
+    }
   }
 
   @override
   void dispose() {
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -224,161 +283,247 @@ class _ItemListState extends State<_ItemList> {
         ? (by > 0 ? 0 : items.length - 1)
         : (at + by).clamp(0, items.length - 1);
     if (next == at) return;
-    _movedDown = by > 0;
+    _moved = true;
     widget.onSelect(items[next]);
   }
 
   @override
   Widget build(BuildContext context) {
     final items = widget.items;
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(1),
-        const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(-1),
-      },
-      child: Focus(
-        focusNode: _focus,
-        child: _Group(
-          count: items.length,
-          builder: (i) => VaultItemRow(
-            key: items[i].id == widget.selected ? _selectedRow : null,
-            item: items[i],
-            selected: items[i].id == widget.selected,
-            now: widget.now,
-            onTap: () {
-              _focus.requestFocus();
-              widget.onSelect(items[i]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Header(
+          sortBy: widget.sortBy,
+          ascending: widget.ascending,
+          onSort: widget.onSort,
+        ),
+        Expanded(
+          child: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+                  _move(1),
+              const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+                  _move(-1),
             },
+            child: Focus(
+              focusNode: _focus,
+              child: ListView.builder(
+                controller: _scroll,
+                padding: EdgeInsets.zero,
+                itemExtent: DesktopMetrics.tableRowHeight,
+                itemCount: items.length,
+                itemBuilder: (_, i) => VaultTableRow(
+                  item: items[i],
+                  zebra: i.isOdd,
+                  selected: items[i].id == widget.selected,
+                  now: widget.now,
+                  onTap: () {
+                    _focus.requestFocus();
+                    widget.onSelect(items[i]);
+                  },
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
 
-/// bc_ui's list group look (one rounded surface, hairline separators) with
-/// separators inset past the type icon, as in the design, and lazy rows.
-class _Group extends StatelessWidget {
-  const _Group({required this.count, required this.builder});
+/// Lays out a header or row: the name, then the fixed Type and Expires
+/// columns.
+Widget _columns({
+  required Widget name,
+  required Widget type,
+  required Widget expires,
+}) => Padding(
+  padding: const EdgeInsets.only(left: 12, right: 4),
+  child: Row(
+    children: [
+      Expanded(child: name),
+      const SizedBox(width: 8),
+      SizedBox(width: DesktopMetrics.tableTypeColumnWidth, child: type),
+      SizedBox(width: DesktopMetrics.tableExpiresColumnWidth, child: expires),
+    ],
+  ),
+);
 
-  final int count;
-  final Widget Function(int index) builder;
+/// The table header: a sort button per column, the sorted one with an
+/// arrow for its direction.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.sortBy,
+    required this.ascending,
+    required this.onSort,
+  });
+
+  final VaultColumn sortBy;
+  final bool ascending;
+  final ValueChanged<VaultColumn> onSort;
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final shape = BCShapes.continuous(BCRadius.xxxl);
-    return ClipPath(
-      clipper: ShapeBorderClipper(shape: shape),
-      child: DecoratedBox(
-        decoration: ShapeDecoration(color: bc.surface, shape: shape),
-        child: ListView.separated(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          itemCount: count,
-          itemBuilder: (_, i) => builder(i),
-          separatorBuilder: (_, _) => Padding(
-            padding: const EdgeInsets.only(left: 66),
-            child: Divider(height: 1, thickness: 1, color: bc.separator),
+    final colors = context.desktopColors;
+    Widget cell(VaultColumn column) {
+      final sorted = column == sortBy;
+      return Semantics(
+        button: true,
+        label: column.label,
+        value: sorted
+            ? (ascending ? 'sorted ascending' : 'sorted descending')
+            : null,
+        onTap: () => onSort(column),
+        excludeSemantics: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onSort(column),
+          child: SizedBox(
+            height: DesktopMetrics.tableHeaderHeight,
+            child: Row(
+              spacing: 3,
+              children: [
+                Flexible(
+                  child: Text(
+                    column.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: DesktopMetrics.secondarySize,
+                      fontWeight: FontWeight.w600,
+                      color: colors.secondaryText,
+                    ),
+                  ),
+                ),
+                if (sorted)
+                  DesktopIcon(
+                    ascending
+                        ? DesktopSymbol.sortAscending
+                        : DesktopSymbol.sortDescending,
+                    size: 10,
+                    color: colors.secondaryText,
+                  ),
+              ],
+            ),
           ),
         ),
+      );
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.bar,
+        border: Border(
+          bottom: BorderSide(color: colors.innerSeparator, width: 0.5),
+        ),
+      ),
+      child: _columns(
+        name: cell(VaultColumn.name),
+        type: cell(VaultColumn.type),
+        expires: cell(VaultColumn.expires),
       ),
     );
   }
 }
 
-/// One item in a list: type tile, title, file name or type, and a
-/// conflict or expiry chip. Used by the desktop list and the phone list.
-class VaultItemRow extends StatefulWidget {
-  const VaultItemRow({
+/// One item in the table: its type icon, title and file name (or type),
+/// the type, and when it expires: a badge when that needs attention, the
+/// month otherwise. A conflict shows instead of the expiry.
+class VaultTableRow extends StatelessWidget {
+  const VaultTableRow({
     super.key,
     required this.item,
+    required this.zebra,
     required this.selected,
     required this.now,
     required this.onTap,
   });
 
   final Item item;
+
+  /// Every other row is shaded.
+  final bool zebra;
   final bool selected;
   final DateTime now;
   final VoidCallback onTap;
 
   @override
-  State<VaultItemRow> createState() => _VaultItemRowState();
-}
-
-class _VaultItemRowState extends State<VaultItemRow> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final item = widget.item;
+    final colors = context.desktopColors;
     final file = item.attachments.firstOrNull?.filename;
-    final typeLabel = item.type?.label ?? item.typeName;
+    final text = selected ? colors.onAccent : colors.text;
+    final secondary = selected ? colors.onAccent : colors.secondaryText;
+    final small = TextStyle(
+      fontSize: DesktopMetrics.secondarySize,
+      color: secondary,
+    );
 
     return Semantics(
       button: true,
-      selected: widget.selected,
-      label: '${item.title}, $typeLabel',
+      selected: selected,
+      label: '${item.title}, ${item.typeLabel}',
       excludeSemantics: true,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          child: ColoredBox(
-            color: widget.selected
-                ? bc.accentSoft
-                : _hovered
-                ? bc.surfaceHover
-                : bc.surface.withValues(alpha: 0),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                spacing: 12,
-                children: [
-                  TypeIconTile(type: item.type ?? ItemType.genericFile),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 3,
-                      children: [
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ColoredBox(
+          color: selected
+              ? colors.accent
+              : zebra
+              ? colors.zebra
+              : colors.window,
+          child: _columns(
+            name: Row(
+              spacing: 7,
+              children: [
+                SizedBox(
+                  width: 16,
+                  child: DesktopIcon(
+                    item.typeSymbol,
+                    size: 14,
+                    color: secondary,
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: DesktopMetrics.bodySize,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                          color: text,
+                        ),
+                      ),
+                      if (file != null)
+                        MonoText(file, middleEllipsis: true, style: small)
+                      else
                         Text(
-                          item.title,
+                          item.typeLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.2,
-                            fontWeight: BCTypography.semiBold,
-                            color: bc.foreground,
-                          ),
+                          style: small,
                         ),
-                        if (file != null)
-                          MonoText(
-                            file,
-                            middleEllipsis: true,
-                            style: TextStyle(
-                              fontSize: BCTypography.sizeXs,
-                              color: bc.muted,
-                            ),
-                          )
-                        else
-                          BCText(
-                            typeLabel,
-                            type: BCTextType.bodyXs,
-                            color: BCTextColor.muted,
-                            maxLines: 1,
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-                  ?_trailing(context),
-                ],
-              ),
+                ),
+              ],
+            ),
+            type: Text(
+              item.shortTypeLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: small,
+            ),
+            expires: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _expires(colors, small),
             ),
           ),
         ),
@@ -386,40 +531,73 @@ class _VaultItemRowState extends State<VaultItemRow> {
     );
   }
 
-  /// A conflict first, then the expiry: a chip when it needs attention,
-  /// the month otherwise.
-  Widget? _trailing(BuildContext context) {
-    final item = widget.item;
+  /// A conflict first, then the expiry.
+  Widget _expires(DesktopColors colors, TextStyle style) {
     if (item.conflict != null) {
-      return const BCChip(
-        size: BCChipSize.sm,
-        variant: BCChipVariant.secondary,
-        color: BCChipColor.defaultColor,
-        startContent: Icon(LucideIcons.gitMerge, size: 12),
-        child: Text('Conflict'),
+      return ItemBadge(
+        'Conflict',
+        background: colors.conflictBadge,
+        foreground: colors.onConflictBadge,
       );
     }
     final expiresAt = item.expiresAt;
-    return switch (ExpiryState.of(item, widget.now)) {
-      ExpiryState.none => null,
-      ExpiryState.expired => const BCChip(
-        size: BCChipSize.sm,
-        variant: BCChipVariant.soft,
-        color: BCChipColor.danger,
-        child: Text('Expired'),
+    return switch (ExpiryState.of(item, now)) {
+      ExpiryState.none => ExcludeSemantics(child: Text('—', style: style)),
+      ExpiryState.expired => ItemBadge(
+        'Expired',
+        background: colors.dangerBadge,
+        foreground: colors.onDangerBadge,
       ),
-      ExpiryState.soon => BCChip(
-        size: BCChipSize.sm,
-        variant: BCChipVariant.soft,
-        color: BCChipColor.warning,
-        child: Text(daysLeft(expiresAt!, widget.now)),
+      ExpiryState.soon => ItemBadge(
+        daysLeft(expiresAt!, now),
+        background: colors.warningBadge,
+        foreground: colors.onWarningBadge,
       ),
-      ExpiryState.valid => BCText(
+      ExpiryState.valid => Text(
         DateFormat.yMMM().format(expiresAt!.toLocal()),
-        type: BCTextType.bodyXs,
-        color: BCTextColor.muted,
+        maxLines: 1,
+        style: style,
       ),
     };
+  }
+}
+
+/// A small status pill in the table: days left, Expired, Conflict.
+class ItemBadge extends StatelessWidget {
+  const ItemBadge(
+    this.label, {
+    super.key,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: const BorderRadius.all(
+          Radius.circular(DesktopMetrics.tokenRadius),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          style: TextStyle(
+            fontSize: DesktopMetrics.secondarySize,
+            fontWeight: FontWeight.w600,
+            color: foreground,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -432,66 +610,82 @@ class _QuarantineList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
     if (slots.isEmpty) {
-      return const BCEmptyState(
-        icon: Icon(LucideIcons.shieldCheck),
+      return const _Message(
+        symbol: DesktopSymbol.check,
         title: 'Everything is readable',
       );
     }
+    final small = TextStyle(
+      fontSize: DesktopMetrics.secondarySize,
+      color: colors.secondaryText,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const BCText(
-          "These couldn't be decrypted on this device. They're left as they "
-          'are on disk; another device or a backup may hold a good copy.',
-          type: BCTextType.bodySm,
-          color: BCTextColor.muted,
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            "These couldn't be decrypted on this device. They're left as they "
+            'are on disk; another device or a backup may hold a good copy.',
+            style: small,
+          ),
         ),
-        const SizedBox(height: 14),
-        Flexible(
-          child: _Group(
-            count: slots.length,
-            builder: (i) => Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                spacing: 12,
-                children: [
-                  DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: bc.dangerSoft,
-                      shape: BCShapes.continuous(BCRadius.xl),
-                    ),
-                    child: SizedBox.square(
-                      dimension: 40,
-                      child: Icon(
-                        LucideIcons.shieldAlert,
-                        size: 20,
-                        color: bc.dangerSoftForeground,
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: colors.innerSeparator, width: 0.5),
+            ),
+          ),
+          child: const SizedBox(width: double.infinity),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.zero,
+            itemExtent: DesktopMetrics.tableRowHeight,
+            itemCount: slots.length,
+            itemBuilder: (_, i) => ColoredBox(
+              color: i.isOdd ? colors.zebra : colors.window,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  spacing: 7,
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      child: DesktopIcon(
+                        DesktopSymbol.unreadable,
+                        size: 14,
+                        color: colors.danger,
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 3,
-                      children: [
-                        BCText(
-                          'Unreadable ${slots[i].type.wireName}',
-                          weight: BCTextWeight.semibold,
-                        ),
-                        MonoText(
-                          slots[i].objectId,
-                          middleEllipsis: true,
-                          style: TextStyle(
-                            fontSize: BCTypography.sizeXs,
-                            color: bc.muted,
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Unreadable ${slots[i].type.wireName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: DesktopMetrics.bodySize,
+                              fontWeight: FontWeight.w600,
+                              height: 1.25,
+                              color: colors.text,
+                            ),
                           ),
-                        ),
-                      ],
+                          MonoText(
+                            slots[i].objectId,
+                            middleEllipsis: true,
+                            style: small,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -510,78 +704,81 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final q = filter.q;
-    final (icon, title, description) = vaultEmpty && q == null
-        ? (
-            LucideIcons.vault,
-            'Your vault is empty',
-            'Import a credential file, or drop one below.',
-          )
-        : q != null
-        ? (LucideIcons.searchX, 'No matches', 'Nothing here matches “$q”.')
-        : (LucideIcons.layers, 'Nothing here', null);
-    return Center(
-      child: BCEmptyState(
-        icon: Icon(icon),
-        title: title,
-        description: description,
-        actions: [
-          if (vaultEmpty && q == null)
-            BCButton(
-              size: BCButtonSize.sm,
-              onPressed: () => openImport(context),
-              startContent: const Icon(LucideIcons.filePlus2, size: 15),
-              child: const Text('Import'),
-            ),
-        ],
-      ),
+    if (vaultEmpty && q == null) {
+      return _Message(
+        symbol: DesktopSymbol.importFile,
+        title: 'Your vault is empty',
+        description:
+            'Import a credential file, or drop one anywhere on this window.',
+        action: DesktopButton(
+          label: 'Import',
+          kind: DesktopButtonKind.primary,
+          onPressed: () => openImport(context),
+        ),
+      );
+    }
+    if (q != null) {
+      return _Message(
+        symbol: DesktopSymbol.search,
+        title: 'No matches',
+        description: 'Nothing here matches “$q”.',
+      );
+    }
+    return const _Message(
+      symbol: DesktopSymbol.allItems,
+      title: 'Nothing here',
     );
   }
 }
 
-/// Where files are dropped to import them (drag and drop lands with P1-18).
-/// Clicking it opens the import dialog.
-class _DropZone extends StatelessWidget {
-  const _DropZone();
+/// A centred icon, title, description and optional action, for empty
+/// lists.
+class _Message extends StatelessWidget {
+  const _Message({
+    required this.symbol,
+    required this.title,
+    this.description,
+    this.action,
+  });
+
+  final DesktopSymbol symbol;
+  final String title;
+  final String? description;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final shape = BCShapes.continuous(
-      BCRadius.xxxl,
-      side: BorderSide(color: bc.border, width: 1.5),
-    );
-    return Semantics(
-      button: true,
-      label: 'Import a file',
-      excludeSemantics: true,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => openImport(context),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(shape: shape),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                spacing: 8,
-                children: [
-                  Icon(LucideIcons.download, size: 20, color: bc.muted),
-                  const BCText(
-                    'Drop a file to import',
-                    type: BCTextType.bodySm,
-                    weight: BCTextWeight.medium,
-                  ),
-                  MonoText(
-                    '.p8 .p12 .cer .mobileprovision .jks .json .plist',
-                    style: TextStyle(
-                      fontSize: BCTypography.sizeXs,
-                      color: bc.muted,
-                    ),
-                  ),
-                ],
+    final colors = context.desktopColors;
+    final description = this.description;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 6,
+          children: [
+            DesktopIcon(symbol, size: 28, color: colors.secondaryText),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: DesktopMetrics.bodySize,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
               ),
             ),
-          ),
+            if (description != null)
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize,
+                  color: colors.secondaryText,
+                ),
+              ),
+            if (action != null) ...[const SizedBox(height: 6), action!],
+          ],
         ),
       ),
     );

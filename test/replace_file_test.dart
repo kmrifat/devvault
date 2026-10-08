@@ -288,7 +288,14 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Unlock file'));
       await settle(tester, () => find.text('Details').evaluate().isNotEmpty);
-      expect(find.text('Name'), findsNothing); // the item keeps its own
+      // The item keeps its own name.
+      expect(
+        find.descendant(
+          of: find.byType(ImportDialog),
+          matching: find.text('Name'),
+        ),
+        findsNothing,
+      );
 
       await tester.tap(
         find.descendant(

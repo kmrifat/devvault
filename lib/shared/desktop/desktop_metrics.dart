@@ -25,6 +25,17 @@ abstract final class DesktopMetrics {
   static const double tableRowHeight = 40;
   static const double tableWidth = 400;
 
+  /// The item table's fixed Type and Expires columns; Name takes the rest.
+  static const double tableTypeColumnWidth = 100;
+  static const double tableExpiresColumnWidth = 62;
+
+  /// The inspector: its type tile, and the rows of its Fields box.
+  static const double inspectorTileSize = 40;
+  static const double inspectorFieldRowHeight = 31;
+
+  /// The inspector's item name.
+  static const double inspectorTitleSize = 18;
+
   /// The expiry table's one-line rows.
   static const double expiryRowHeight = 32;
 
@@ -46,4 +57,8 @@ abstract final class DesktopMetrics {
   /// Body text and secondary text.
   static const double bodySize = 13;
   static const double secondarySize = 11;
+
+  /// Secondary text and mono values at the larger size: the inspector's
+  /// path, field names and values.
+  static const double labelSize = 12;
 }

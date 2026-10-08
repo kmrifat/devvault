@@ -3,7 +3,7 @@ import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/item_editor/item_draft.dart';
-import 'package:devvault/features/vault/item_detail_pane.dart';
+import 'package:devvault/features/vault/desktop_inspector.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -229,7 +229,7 @@ void main() {
       expect(router(tester).state.uri.queryParameters['item'], created.id);
       expect(
         find.descendant(
-          of: find.byType(ItemDetailPane),
+          of: find.byType(DesktopInspector),
           matching: find.text('Sign in with Apple key'),
         ),
         findsOneWidget,
@@ -267,7 +267,7 @@ void main() {
       expect(router(tester).state.uri.queryParameters['item'], keystore.id);
       expect(
         find.descendant(
-          of: find.byType(ItemDetailPane),
+          of: find.byType(DesktopInspector),
           matching: find.text('Play upload keystore'),
         ),
         findsOneWidget,

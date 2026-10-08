@@ -523,7 +523,13 @@ void main() {
       await tester.pumpAndSettle();
       // Replace opens the replace form for that item; nothing changes yet.
       expect(find.text('Replace file'), findsWidgets);
-      expect(find.text('Name'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(ImportDialog),
+          matching: find.text('Name'),
+        ),
+        findsNothing,
+      );
       expect(replacedOne(), isFalse);
       await tester.tap(
         find.descendant(
