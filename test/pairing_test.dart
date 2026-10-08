@@ -83,6 +83,39 @@ void main() {
     );
 
     test(
+      'the box holds the storage settings and keys, never a vault key',
+      () async {
+        // Opened by hand, as docs/format/pairing.md describes it, so the
+        // check doesn't rely on what Pairing.open chooses to return.
+        const code = 'ABCDEFGH';
+        final envelope = Pairing.read(await seal(code));
+        final key = await testCrypto.argon2idIsolated(
+          password: VaultCrypto.utf8Bytes(code),
+          salt: envelope.salt,
+          opsLimit: envelope.ops,
+          memLimit: envelope.mem,
+        );
+        final plain = testCrypto.aeadDecrypt(
+          cipherText: envelope.box,
+          additionalData: VaultCrypto.utf8Bytes(
+            'devvault/v1/pair|${envelope.vaultId}|${envelope.expiresAtText}'
+            '|${envelope.ops}|${envelope.mem}',
+          ),
+          nonce: envelope.nonce,
+          key: key,
+        );
+        key.dispose();
+        final json = jsonDecode(utf8.decode(plain)) as Map<String, Object?>;
+        expect(json.keys.toSet(), {
+          'settings',
+          'access_key_id',
+          'secret_access_key',
+        });
+        expect(json['settings'], settings.toJson());
+      },
+    );
+
+    test(
       'the envelope says which vault and until when, nothing more',
       () async {
         final text = await seal('ABCDEFGH');

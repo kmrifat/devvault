@@ -15,18 +15,22 @@ import 'test_overrides.dart';
 void main() {
   setUpAll(loadTestCrypto);
 
-  /// Opens [location] with an unlocked vault.
-  Future<void> open(
-    WidgetTester tester,
-    AppLayout layout,
-    String location,
-  ) async {
+  void setView(WidgetTester tester, AppLayout layout) {
     tester.view
       ..physicalSize = layout == AppLayout.desktop
           ? const Size(1440, 900)
           : const Size(390 * 3, 844 * 3)
       ..devicePixelRatio = layout == AppLayout.desktop ? 1 : 3;
     addTearDown(tester.view.reset);
+  }
+
+  /// Opens [location] with an unlocked vault.
+  Future<void> open(
+    WidgetTester tester,
+    AppLayout layout,
+    String location,
+  ) async {
+    setView(tester, layout);
     await pumpUnlockedApp(tester, location: location, layout: layout);
   }
 
@@ -34,7 +38,61 @@ void main() {
       GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
           .toString();
 
+  /// Every page on every navigator (root and shell branches) is a
+  /// [MaterialPage], so each screen gets the platform's push transition and
+  /// back gesture.
+  void expectOnlyMaterialPages(WidgetTester tester) {
+    final pages = [
+      for (final navigator in tester.widgetList<Navigator>(
+        find.byType(Navigator),
+      ))
+        ...navigator.pages,
+    ];
+    expect(pages, isNotEmpty);
+    for (final page in pages) {
+      expect(page, isA<MaterialPage<void>>(), reason: '${page.name}');
+    }
+  }
+
   for (final layout in AppLayout.values) {
+    group('${layout.name} layout: every route is a MaterialPage', () {
+      for (final path in [
+        Routes.vault(),
+        Routes.item('abc'),
+        Routes.expiry,
+        Routes.settings,
+        Routes.settingsSync,
+        Routes.settingsSecurity,
+        Routes.pair,
+      ]) {
+        testWidgets(path, (tester) async {
+          await open(tester, layout, path);
+          expectOnlyMaterialPages(tester);
+        });
+      }
+
+      // The lock screens, reached the way the session sends people there.
+      for (final (vault, path) in [
+        (null, Routes.create),
+        (null, Routes.joinVault),
+        (TestVault.locked, Routes.unlock),
+        (TestVault.locked, Routes.recover),
+      ]) {
+        testWidgets(path, (tester) async {
+          setView(tester, layout);
+          final dir = await tester.runAsync(
+            () => vault == null ? testSupportDir() : testSupportDir(vault),
+          );
+          await tester.pumpWidget(
+            testApp(location: path, supportDir: dir!, layout: layout),
+          );
+          await tester.pumpAndSettle();
+          expect(location(tester), path);
+          expectOnlyMaterialPages(tester);
+        });
+      }
+    });
+
     group('${layout.name} layout', () {
       testWidgets('/pair opens the pairing screen in a MaterialPage', (
         tester,
