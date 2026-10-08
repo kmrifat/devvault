@@ -45,7 +45,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build libgtk-3-dev libsecret-1-dev xvfb
       - run: flutter pub get
-      - run: xvfb-run -a flutter test integration_test -d linux --reporter expanded
+      # Desktop runs one file per launch: a second app launched in the same
+      # `flutter test` never gets a debug connection.
+      - run: |
+          for test in integration_test/*_test.dart; do
+            xvfb-run -a flutter test "$test" -d linux --reporter expanded
+          done
 
   windows:
     name: Windows
@@ -59,7 +64,11 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter test integration_test -d windows --reporter expanded
+      - shell: bash
+        run: |
+          for test in integration_test/*_test.dart; do
+            flutter test "$test" -d windows --reporter expanded
+          done
 
   android:
     name: Android (emulator)
@@ -108,7 +117,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter test integration_test -d macos --reporter expanded
+      - run: |
+          for test in integration_test/*_test.dart; do
+            flutter test "$test" -d macos --reporter expanded
+          done
       - name: iOS simulator
         run: |
           udid=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in d.values() for x in r if x['name'].startswith('iPhone')))")
