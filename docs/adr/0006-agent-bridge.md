@@ -37,8 +37,9 @@ The socket path is 74 bytes for this user, against the 104-byte
 1. **Transport:** a Unix domain socket at
    `~/Library/Containers/com.binarycastle.devvault/Data/tmp/dv.sock`. The
    app derives the path from `$HOME`; the helper builds it from the bundle
-   id. The app creates the socket with mode 0600, and only while
-   *Settings → AI agents* is on. No new entitlement is needed.
+   id. The container's `tmp` folder is mode 0700, so
+   only the user's own processes reach the socket. The app creates it only
+   while *Settings → AI agents* is on. No new entitlement is needed.
 2. **One server:** if the socket exists, the app first tries to connect.
    If that succeeds, another instance (for example a Debug build sharing
    the container) already serves the socket, and this one does not. If it

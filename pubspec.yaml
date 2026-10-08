@@ -13,6 +13,7 @@ workspace:
   - packages/vault_core
   - packages/cred_parsers
   - packages/vault_s3
+  - packages/agent_bridge
 
 dependencies:
   bc_ui: ^0.7.0
