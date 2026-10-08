@@ -14,13 +14,20 @@ import 'harness.dart';
 void main() {
   setUpAll(loadAppFonts);
 
-  shot('D00-unlock', Routes.unlock, vault: TestVault.locked, realKdf: true);
+  shot('N00-unlock', Routes.unlock, vault: TestVault.locked, realKdf: true);
+  // As in the frame: Touch ID is on and its prompt was dismissed.
   shot(
-    'D00-unlock-light',
+    'N00-unlock-light',
     Routes.unlock,
     vault: TestVault.locked,
     realKdf: true,
     brightness: Brightness.light,
+    overrides: [
+      biometricKeyStoreProvider.overrideWithValue(
+        _Dismissed(kind: Biometry.touchId),
+      ),
+    ],
+    interact: (tester) => tester.tap(find.byType(EditableText)),
   );
   shot(
     'B1-unlock',
@@ -40,12 +47,20 @@ void main() {
     // happens depends on timing, so focus it here, the same every time.
     interact: (tester) => tester.tap(find.byType(EditableText)),
   );
-  shot('D00-recover', Routes.recover, vault: TestVault.locked);
+  shot('N00-recover', Routes.recover, vault: TestVault.locked);
+  shot(
+    'N00-recover-light',
+    Routes.recover,
+    vault: TestVault.locked,
+    brightness: Brightness.light,
+  );
 }
 
 /// Face ID is on and the user dismissed the automatic prompt: the screen
 /// as it stays.
 class _Dismissed extends MemoryBiometricKeyStore {
+  _Dismissed({super.kind});
+
   @override
   Future<bool> has(String vaultId) async => true;
 

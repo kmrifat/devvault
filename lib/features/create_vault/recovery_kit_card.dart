@@ -9,9 +9,11 @@ import '../../shared/ui.dart';
 /// The recovery key, shown large, with the ways to keep it: a PDF, a
 /// printout, a text file or the clipboard (cleared after 30 s).
 ///
-/// Used on first run (design frame D02) and when the user makes a new kit
-/// from Settings (P4-05). Documents are built in memory and handed straight
-/// to the save or print dialog; the PDF bytes are wiped afterwards.
+/// Used on a phone's first run and when the user makes a new kit from
+/// Settings (P4-05); the desktop first run (N02) has its own layout and
+/// shares the actions through [RecoveryKitActions]. Documents are built in
+/// memory and handed straight to the save or print dialog; the PDF bytes
+/// are wiped afterwards.
 class RecoveryKitCard extends ConsumerStatefulWidget {
   const RecoveryKitCard({super.key, required this.kit});
 
@@ -21,75 +23,10 @@ class RecoveryKitCard extends ConsumerStatefulWidget {
   ConsumerState<RecoveryKitCard> createState() => _RecoveryKitCardState();
 }
 
-class _RecoveryKitCardState extends ConsumerState<RecoveryKitCard> {
-  bool _busy = false;
-
-  void _toast(String title, {String? description, bool ok = true}) {
-    BCToast.show(
-      context,
-      BCToastData(
-        title: title,
-        description: description,
-        variant: ok ? BCToastVariant.success : BCToastVariant.danger,
-      ),
-    );
-  }
-
-  Future<void> _copy() async {
-    await ref.read(clipboardGuardProvider).copySecret(widget.kit.recoveryKey);
-    if (mounted) {
-      _toast(
-        'Recovery key copied',
-        description: 'It clears from the clipboard in 30 seconds.',
-      );
-    }
-  }
-
-  Future<void> _saveText() async {
-    final saved = await ref
-        .read(fileSaverProvider)
-        .save(
-          fileName: '${RecoveryKitDocument.fileStem}.txt',
-          bytes: widget.kit.toTextBytes(),
-          mimeType: 'text/plain',
-        );
-    if (mounted && saved) _toast('Recovery kit saved');
-  }
-
-  /// Builds the PDF, hands it to [use], then wipes the bytes.
-  Future<void> _withPdf(Future<void> Function(Uint8List pdf) use) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    Uint8List? pdf;
-    try {
-      pdf = await widget.kit.toPdf(await RecoveryKitFonts.load());
-      await use(pdf);
-    } on Object {
-      if (mounted) {
-        _toast("Couldn't make the PDF", ok: false);
-      }
-    } finally {
-      pdf?.fillRange(0, pdf.length, 0);
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _savePdf() => _withPdf((pdf) async {
-    final saved = await ref
-        .read(fileSaverProvider)
-        .save(
-          fileName: '${RecoveryKitDocument.fileStem}.pdf',
-          bytes: pdf,
-          mimeType: 'application/pdf',
-        );
-    if (mounted && saved) _toast('Recovery kit saved as PDF');
-  });
-
-  Future<void> _print() => _withPdf((pdf) async {
-    await ref
-        .read(documentPrinterProvider)
-        .printPdf(pdf, name: RecoveryKitDocument.fileStem);
-  });
+class _RecoveryKitCardState extends ConsumerState<RecoveryKitCard>
+    with RecoveryKitActions {
+  @override
+  RecoveryKitDocument get kit => widget.kit;
 
   @override
   Widget build(BuildContext context) {
@@ -144,30 +81,30 @@ class _RecoveryKitCardState extends ConsumerState<RecoveryKitCard> {
             children: [
               BCButton(
                 size: BCButtonSize.sm,
-                isDisabled: _busy,
-                onPressed: _savePdf,
+                isDisabled: kitBusy,
+                onPressed: saveKitPdf,
                 startContent: const Icon(LucideIcons.fileDown, size: 15),
                 child: const Text('Save PDF'),
               ),
               BCButton(
                 size: BCButtonSize.sm,
                 variant: BCButtonVariant.secondary,
-                isDisabled: _busy,
-                onPressed: _print,
+                isDisabled: kitBusy,
+                onPressed: printKit,
                 startContent: const Icon(LucideIcons.printer, size: 15),
                 child: const Text('Print'),
               ),
               BCButton(
                 size: BCButtonSize.sm,
                 variant: BCButtonVariant.secondary,
-                onPressed: _saveText,
+                onPressed: saveKitText,
                 startContent: const Icon(LucideIcons.fileText, size: 15),
                 child: const Text('Save as text'),
               ),
               BCButton(
                 size: BCButtonSize.sm,
                 variant: BCButtonVariant.secondary,
-                onPressed: _copy,
+                onPressed: copyKit,
                 startContent: const Icon(LucideIcons.copy, size: 15),
                 child: const Text('Copy'),
               ),
@@ -209,4 +146,85 @@ class _KeyGrid extends StatelessWidget {
       },
     );
   }
+}
+
+/// What can be done with a recovery kit: copy the key (through the
+/// clipboard guard, cleared after 30 s), save it as text or PDF, or print
+/// it. Shared by [RecoveryKitCard] and the desktop recovery kit (N02).
+///
+/// PDFs are built in memory and handed straight to the save or print
+/// dialog; their bytes are wiped afterwards. Feedback names the action,
+/// never the key.
+mixin RecoveryKitActions<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  RecoveryKitDocument get kit;
+
+  /// A PDF is being made.
+  bool kitBusy = false;
+
+  void _toast(String title, {String? description, bool ok = true}) {
+    BCToast.show(
+      context,
+      BCToastData(
+        title: title,
+        description: description,
+        variant: ok ? BCToastVariant.success : BCToastVariant.danger,
+      ),
+    );
+  }
+
+  Future<void> copyKit() async {
+    await ref.read(clipboardGuardProvider).copySecret(kit.recoveryKey);
+    if (mounted) {
+      _toast(
+        'Recovery key copied',
+        description: 'It clears from the clipboard in 30 seconds.',
+      );
+    }
+  }
+
+  Future<void> saveKitText() async {
+    final saved = await ref
+        .read(fileSaverProvider)
+        .save(
+          fileName: '${RecoveryKitDocument.fileStem}.txt',
+          bytes: kit.toTextBytes(),
+          mimeType: 'text/plain',
+        );
+    if (mounted && saved) _toast('Recovery kit saved');
+  }
+
+  /// Builds the PDF, hands it to [use], then wipes the bytes.
+  Future<void> _withPdf(Future<void> Function(Uint8List pdf) use) async {
+    if (kitBusy) return;
+    setState(() => kitBusy = true);
+    Uint8List? pdf;
+    try {
+      pdf = await kit.toPdf(await RecoveryKitFonts.load());
+      await use(pdf);
+    } on Object {
+      if (mounted) {
+        _toast("Couldn't make the PDF", ok: false);
+      }
+    } finally {
+      pdf?.fillRange(0, pdf.length, 0);
+      if (mounted) setState(() => kitBusy = false);
+    }
+  }
+
+  Future<void> saveKitPdf() => _withPdf((pdf) async {
+    final saved = await ref
+        .read(fileSaverProvider)
+        .save(
+          fileName: '${RecoveryKitDocument.fileStem}.pdf',
+          bytes: pdf,
+          mimeType: 'application/pdf',
+        );
+    if (mounted && saved) _toast('Recovery kit saved as PDF');
+  });
+
+  Future<void> printKit() => _withPdf((pdf) async {
+    await ref
+        .read(documentPrinterProvider)
+        .printPdf(pdf, name: RecoveryKitDocument.fileStem);
+  });
 }

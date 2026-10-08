@@ -9,6 +9,8 @@ import 'package:devvault/features/import/import_dialog.dart';
 import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/import/paste_secret_sheet.dart';
 import 'package:devvault/services/file_import.dart';
+import 'package:devvault/shared/desktop_ui.dart'
+    show DesktopTextField, DesktopTokenField;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -53,7 +55,7 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
       );
       await tester.pump();
-      if (find.text('Used for').evaluate().isNotEmpty) break;
+      if (find.textContaining('Used for').evaluate().isNotEmpty) break;
     }
     expect(find.byType(ImportDialog), findsOneWidget);
   }
@@ -64,19 +66,44 @@ void main() {
     ),
   ];
 
+  /// Fills the sheet in as the N04 frame shows it: a name, a typed
+  /// platform and environment, and a tag. The Team ID is left for the
+  /// user, so its "Required" note shows.
+  Future<void> fillLikeTheFrame(WidgetTester tester) async {
+    await importFile(tester);
+    Finder input(Finder within) =>
+        find.descendant(of: within, matching: find.byType(EditableText));
+    await tester.enterText(
+      input(find.byType(DesktopTextField)).first,
+      'APNs key',
+    );
+    await tester.enterText(
+      input(find.byKey(const ValueKey('import-platform'))),
+      'ios',
+    );
+    await tester.enterText(
+      input(find.byKey(const ValueKey('import-environment'))),
+      'production',
+    );
+    await tester.enterText(input(find.byType(DesktopTokenField)), 'push');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    // Nothing focused, as in the frame.
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
   shot(
-    'D04-import',
+    'N04-import',
     Routes.vault(),
     sample: true,
     overrides: overrides,
-    interact: importFile,
+    interact: fillLikeTheFrame,
   );
   shot(
-    'D04-import-light',
+    'N04-import-light',
     Routes.vault(),
     sample: true,
     overrides: overrides,
-    interact: importFile,
+    interact: fillLikeTheFrame,
     brightness: Brightness.light,
   );
   shot(

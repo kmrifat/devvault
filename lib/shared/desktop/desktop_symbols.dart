@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/widgets.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:yaru/yaru.dart' as yaru;
 
 import 'desktop_theme.dart';
@@ -58,7 +59,23 @@ enum DesktopSymbol {
   calendar,
   person,
   sortAscending,
-  sortDescending;
+  sortDescending,
+  verified,
+  info,
+  alert,
+  privacy,
+  document,
+  remove,
+
+  // Lock screens (N00–N02).
+  fingerprint,
+  faceId,
+  submit,
+  keyDerivation,
+  encrypted,
+  savePdf,
+  saveText,
+  printer;
 
   IconData of(DesktopKit kit) => switch (kit) {
     DesktopKit.macos => _macos,
@@ -113,6 +130,22 @@ enum DesktopSymbol {
     person => CupertinoIcons.person,
     sortAscending => CupertinoIcons.arrow_up,
     sortDescending => CupertinoIcons.arrow_down,
+    verified => CupertinoIcons.checkmark_circle,
+    info => CupertinoIcons.info_circle,
+    alert => CupertinoIcons.exclamationmark_circle,
+    privacy => CupertinoIcons.checkmark_shield,
+    document => CupertinoIcons.doc,
+    remove => CupertinoIcons.minus_circle,
+    // CupertinoIcons has no Touch ID or Face ID glyph; the app's own
+    // Lucide set stands in for them.
+    fingerprint => LucideIcons.fingerprint,
+    faceId => LucideIcons.scanFace,
+    submit => CupertinoIcons.arrow_right_circle_fill,
+    keyDerivation => CupertinoIcons.lock_shield,
+    encrypted => CupertinoIcons.checkmark_shield,
+    savePdf => CupertinoIcons.arrow_down_doc,
+    saveText => CupertinoIcons.doc_text,
+    printer => CupertinoIcons.printer,
   };
 
   IconData get _fluent => switch (this) {
@@ -162,6 +195,20 @@ enum DesktopSymbol {
     person => fl.FluentIcons.contact,
     sortAscending => fl.FluentIcons.up,
     sortDescending => fl.FluentIcons.down,
+    verified => fl.FluentIcons.completed,
+    info => fl.FluentIcons.info,
+    alert => fl.FluentIcons.error,
+    privacy => fl.FluentIcons.shield,
+    document => fl.FluentIcons.page,
+    remove => fl.FluentIcons.remove,
+    fingerprint => fl.FluentIcons.fingerprint,
+    faceId => fl.FluentIcons.contact,
+    submit => fl.FluentIcons.forward,
+    keyDerivation => fl.FluentIcons.processing,
+    encrypted => fl.FluentIcons.shield,
+    savePdf => fl.FluentIcons.pdf,
+    saveText => fl.FluentIcons.page,
+    printer => fl.FluentIcons.print,
   };
 
   IconData get _yaru => switch (this) {
@@ -211,6 +258,20 @@ enum DesktopSymbol {
     person => yaru.YaruIcons.user,
     sortAscending => yaru.YaruIcons.pan_up,
     sortDescending => yaru.YaruIcons.pan_down,
+    verified => yaru.YaruIcons.ok,
+    info => yaru.YaruIcons.information,
+    alert => yaru.YaruIcons.error,
+    privacy => yaru.YaruIcons.shield,
+    document => yaru.YaruIcons.document,
+    remove => yaru.YaruIcons.minus,
+    fingerprint => yaru.YaruIcons.fingerprint,
+    faceId => yaru.YaruIcons.user,
+    submit => yaru.YaruIcons.go_next,
+    keyDerivation => yaru.YaruIcons.chip,
+    encrypted => yaru.YaruIcons.shield,
+    savePdf => yaru.YaruIcons.save,
+    saveText => yaru.YaruIcons.document,
+    printer => yaru.YaruIcons.printer,
   };
 }
 

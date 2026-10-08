@@ -43,15 +43,24 @@ void main() {
     interact: selectProduction,
     brightness: Brightness.light,
   );
+  Future<void> editKeystore(WidgetTester tester) async {
+    await selectProduction(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Edit'));
+  }
+
   shot(
-    'D03-item-editor',
+    'N03e-item-editor',
     Routes.vault(),
     sample: true,
-    interact: (tester) async {
-      await selectProduction(tester);
-      await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('Edit'));
-    },
+    interact: editKeystore,
+  );
+  shot(
+    'N03e-item-editor-light',
+    Routes.vault(),
+    sample: true,
+    interact: editKeystore,
+    brightness: Brightness.light,
   );
   shot('B2-vault', Routes.vault(), device: ShotDevice.mobile, sample: true);
   shot(

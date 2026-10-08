@@ -5,11 +5,13 @@ import 'package:vault_core/vault_core.dart';
 
 import '../../app/routes.dart';
 import '../../data/join_vault.dart';
+import '../../shared/desktop_ui.dart' show DesktopTheme;
 import '../../shared/ui.dart';
 import '../../core/pairing.dart';
 import '../../data/providers.dart';
 import '../pairing/scan_pairing_code.dart';
 import '../settings/storage_form.dart';
+import 'desktop_join_vault_view.dart';
 import 'setup_layout.dart';
 
 /// Joins a vault that already syncs to a bucket (P2-10): enter the
@@ -185,6 +187,28 @@ class _JoinVaultScreenState extends ConsumerState<JoinVaultScreen> {
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
     final found = _foundIsCurrent ? _found! : null;
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopJoinVaultView(
+        form: _form,
+        canScan: canScanPairingCode,
+        pairText: _pairText,
+        pairCode: _pairCode,
+        pairError: _pairError,
+        found: found,
+        chosen: _chosen,
+        password: _password,
+        passwordError: _passwordError,
+        error: _error,
+        busy: _busy,
+        onScan: _scan,
+        onUsePairing: _usePairing,
+        onFind: _find,
+        onChoose: (id) =>
+            setState(() => _chosen = found!.firstWhere((v) => v.id == id)),
+        onJoin: _join,
+        onCreate: () => context.go(Routes.create),
+      );
+    }
     return SetupLayout(
       step: 3,
       child: Column(

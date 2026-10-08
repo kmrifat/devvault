@@ -48,6 +48,15 @@ abstract final class DesktopMetrics {
   static const double formLabelGap = 8;
   static const double formRowGap = 10;
 
+  /// macOS form rows: a 22 pt control plus the focus-ring room macos_ui
+  /// keeps around a text field. Rows this tall sit flush, 31 pt apart, as
+  /// in the frames.
+  static const double formRowHeight = 31;
+
+  /// Below a form's in-between lines (a strength meter, a field message) on
+  /// macOS, where rows have no gap of their own.
+  static const double formNoteGap = 6;
+
   /// Floating panels (quick open): corner radius, width, and how far below
   /// the top of the window they sit.
   static const double panelRadius = 12;

@@ -86,9 +86,12 @@ class DesktopTheme extends StatelessWidget {
   }
 
   Widget _macos(Brightness brightness, Widget child) {
+    // A main window: without it macos_ui draws a ticked checkbox as an
+    // empty one in light mode (it only drops its white inner shadow when
+    // isMainWindow is true, not null).
     final theme = brightness == Brightness.dark
-        ? mac.MacosThemeData.dark()
-        : mac.MacosThemeData.light();
+        ? mac.MacosThemeData.dark(isMainWindow: true)
+        : mac.MacosThemeData.light(isMainWindow: true);
     return mac.MacosTheme(
       data: theme,
       child: DefaultTextStyle(style: theme.typography.body, child: child),

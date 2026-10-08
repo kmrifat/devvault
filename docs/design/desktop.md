@@ -123,11 +123,13 @@ through `package:devvault/shared/desktop_ui.dart`:
   `DesktopPopup`, `DesktopTokenField`, `DesktopButton`, `DesktopSegmented`,
   `DesktopSwitch`, `DesktopCheckbox`, `DesktopIconButton`,
   `DesktopSearchField`, and `DesktopForm` / `DesktopFormRow` for sheet
-  forms.
+  forms (on macOS, rows sit at a fixed 31 pt pitch, since a text field
+  keeps room for its focus ring).
 - `showDesktopSheet` + `DesktopSheet` (title, optional icon tile and
-  message, content, buttons bottom right, Escape closes) and
-  `DesktopGroupBox` for the sheets and the inspector's boxes.
-  `DesktopFormRow` takes an `error` that replaces its note in red.
+  message or subtitle, content, buttons bottom right, Escape closes; on
+  macOS it hangs from the toolbar) and `DesktopGroupBox` for the sheets
+  and the inspector's boxes. `DesktopFormRow` takes an `error` that
+  replaces its note in red.
 - `showDesktopPanel` + `DesktopPanel`: a floating panel near the top of the
   window, like Spotlight (quick open, ⌘K). `DesktopRadio` (the conflict
   sheet's choices) and `DesktopProgress` (a spinner).
@@ -136,8 +138,14 @@ through `package:devvault/shared/desktop_ui.dart`:
   Delete item…). `DesktopScopeBar`: recessed scope buttons that narrow a
   list (the table's All / Expiring / Files / Secrets); a segmented control
   is for settings.
+- `DesktopLockWindow` for the lock screens (unlock, create, recovery kit,
+  recover, join): a centred `lockWidth` column on the lock-window colour,
+  with the app mark, and a footer row for a link and the default button.
+  `DesktopLink` is a text link (Fluent `HyperlinkButton`, Yaru
+  `TextButton`); `DesktopButton` can lead with a symbol.
 - `DesktopSymbol` / `DesktopIcon`: icons by meaning, drawn from each OS's
-  own set (Cupertino, Fluent, Yaru).
+  own set (Cupertino, Fluent, Yaru). CupertinoIcons has no Touch ID or
+  Face ID glyph, so macOS uses the app's Lucide ones for those two.
 - `DesktopWindow`: the main window's frame. In the app on macOS it is
   `MacosWindow` + `Sidebar`, so the sidebar runs under the traffic lights
   with the system's vibrancy and can be resized; `macos_window_utils` sets

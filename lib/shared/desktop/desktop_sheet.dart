@@ -36,6 +36,7 @@ class DesktopSheet extends StatelessWidget {
     this.leadingAction,
     this.icon,
     this.message,
+    this.subtitle,
   });
 
   final String title;
@@ -46,6 +47,10 @@ class DesktopSheet extends StatelessWidget {
   /// A line or two of secondary text under the title: what the sheet is
   /// about, what happens next.
   final String? message;
+
+  /// A richer line under the title than [message] (what the file was read
+  /// as, with a check mark), in secondary text.
+  final Widget? subtitle;
 
   final Widget child;
 
@@ -60,7 +65,12 @@ class DesktopSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
-    final header = _SheetHeader(title: title, icon: icon, message: message);
+    final header = _SheetHeader(
+      title: title,
+      icon: icon,
+      message: message,
+      subtitle: subtitle,
+    );
     final buttons = Row(
       spacing: 8,
       children: [?leadingAction, const Spacer(), ...actions],
@@ -85,25 +95,33 @@ class DesktopSheet extends StatelessWidget {
       ),
     );
     return switch (context.desktopKit) {
-      DesktopKit.macos => Center(
-        child: SizedBox(
-          width: width,
-          child: mac.MacosSheet(
-            insetPadding: EdgeInsets.zero,
-            // The frames draw sheets a shade darker than the window, so the
-            // white fields and tables inside stand out.
-            backgroundColor: colors.groupBox,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 16,
-                children: [
-                  header,
-                  Flexible(child: body),
-                  buttons,
-                ],
+      // Sheets hang from the toolbar, as in the frames.
+      DesktopKit.macos => Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            top: DesktopMetrics.toolbarHeight + 2,
+            bottom: DesktopMetrics.toolbarHeight,
+          ),
+          child: SizedBox(
+            width: width,
+            child: mac.MacosSheet(
+              insetPadding: EdgeInsets.zero,
+              // The frames draw sheets a shade darker than the window, so the
+              // white fields and tables inside stand out.
+              backgroundColor: colors.groupBox,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 16,
+                  children: [
+                    header,
+                    Flexible(child: body),
+                    buttons,
+                  ],
+                ),
               ),
             ),
           ),
@@ -126,11 +144,17 @@ class DesktopSheet extends StatelessWidget {
 
 /// The sheet's title in bold, with its [icon] tile and [message] if any.
 class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({required this.title, this.icon, this.message});
+  const _SheetHeader({
+    required this.title,
+    this.icon,
+    this.message,
+    this.subtitle,
+  });
 
   final String title;
   final Widget? icon;
   final String? message;
+  final Widget? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +183,14 @@ class _SheetHeader extends StatelessWidget {
               fontSize: DesktopMetrics.secondarySize,
               color: colors.secondaryText,
             ),
+          ),
+        if (subtitle case final subtitle?)
+          DefaultTextStyle.merge(
+            style: TextStyle(
+              fontSize: DesktopMetrics.secondarySize,
+              color: colors.secondaryText,
+            ),
+            child: subtitle,
           ),
       ],
     );

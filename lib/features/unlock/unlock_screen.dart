@@ -7,12 +7,15 @@ import 'package:vault_core/vault_core.dart';
 import '../../app/routes.dart';
 import '../../data/vault_session.dart';
 import '../../services/biometric_key_store.dart';
+import '../../shared/desktop_ui.dart' show DesktopTheme;
 import '../../shared/ui.dart';
+import 'desktop_unlock_view.dart';
 
-/// Design frames D00 (desktop) and B1 (phone): unlock with the master
-/// password, or with Face ID, Touch ID or a fingerprint where it's turned
-/// on (SPEC §9.1). The biometric prompt opens by itself once the app is in
-/// front; the password is always there as the way back in.
+/// Design frames N00 (desktop, [DesktopUnlockView]) and B1 (phone): unlock
+/// with the master password, or with Face ID, Touch ID or a fingerprint
+/// where it's turned on (SPEC §9.1). The biometric prompt opens by itself
+/// once the app is in front; the password is always there as the way back
+/// in.
 ///
 /// Shows only facts it can read without the key: the vault id and the
 /// Argon2id settings from `vault.json`. After repeated wrong passwords it
@@ -166,6 +169,23 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final biometry = biometric != null && biometric.enabled
         ? biometric.biometry
         : null;
+
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopUnlockView(
+        header: header,
+        password: _password,
+        focusNode: _focus,
+        notice: _notice,
+        error: _error,
+        busy: _busy,
+        wait: _wait,
+        biometry: biometry,
+        onChanged: () => setState(() {}),
+        onUnlock: _unlock,
+        onBiometrics: _unlockWithBiometrics,
+        onRecover: () => context.go(Routes.recover),
+      );
+    }
 
     return Scaffold(
       backgroundColor: bc.background,

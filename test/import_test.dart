@@ -10,9 +10,12 @@ import 'package:devvault/data/vault_session.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:devvault/features/import/import_dialog.dart';
 import 'package:devvault/features/import/import_draft.dart';
+import 'package:devvault/features/import/place_fields.dart'
+    show placeSuggestions, typedPlace;
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/services/file_import.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
+import 'package:devvault/shared/desktop_ui.dart'
+    show DesktopButton, DesktopPopup, DesktopProgress, DesktopTokenField;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,6 +172,30 @@ void main() {
       expect(replaced.attachments, [attachment]);
     });
 
+    test('combo boxes suggest SPEC values, then the vault’s own', () {
+      expect(
+        placeSuggestions(
+          ['production', 'staging'],
+          ['qa', null, 'production', ' ', 'beta', 'qa'],
+        ),
+        ['production', 'staging', 'beta', 'qa'],
+      );
+      // Stored as typed, or nothing; never a default.
+      expect(typedPlace('  watchos '), 'watchos');
+      expect(typedPlace('   '), isNull);
+    });
+
+    test('tags go on a new item; a replaced one keeps its own', () {
+      final file = fixture('google-services.json');
+      final draft = ImportDraft(file, parse(file))..tags = ['firebase'];
+      expect(draft.toItem(fresh, attachment).tags, ['firebase']);
+      final existing = fresh(
+        ItemType.firebaseConfig,
+        'Old',
+      ).copyWith(tags: ['mine']);
+      expect(draft.replace(existing, attachment).tags, ['mine']);
+    });
+
     test('duplicates are found by sha256', () {
       final a = fresh(
         ItemType.genericFile,
@@ -278,6 +305,14 @@ void main() {
 
     Finder field(String key) => find.byKey(ValueKey('import-field-$key'));
 
+    Finder secret(String key) => find.byKey(ValueKey('import-secret-$key'));
+
+    /// The sheet's default action (N04 says "Add to Vault").
+    Finder addButton() => find.descendant(
+      of: find.byType(ImportDialog),
+      matching: find.widgetWithText(DesktopButton, 'Add to Vault'),
+    );
+
     /// Lets the isolate parse or the vault write behind the dialog finish,
     /// until [done].
     Future<void> settle(
@@ -309,16 +344,18 @@ void main() {
         () => find.byType(ImportDialog).evaluate().isNotEmpty,
         andSettle: false,
       );
-      await settle(tester, () => find.byType(BCSpinner).evaluate().isEmpty);
+      await settle(
+        tester,
+        () => find.byType(DesktopProgress).evaluate().isEmpty,
+        andSettle: false,
+      );
+      await tester.pumpAndSettle();
     }
 
     Future<void> tapImport(WidgetTester tester, bool Function() done) async {
-      await tester.tap(
-        find.descendant(
-          of: find.byType(ImportDialog),
-          matching: find.widgetWithText(BCButton, 'Import'),
-        ),
-      );
+      await tester.ensureVisible(addButton());
+      await tester.pumpAndSettle();
+      await tester.tap(addButton());
       await tester.pump();
       await settle(tester, done);
     }
@@ -403,27 +440,40 @@ void main() {
       await open(tester);
       await startImport(tester, fixture('AuthKey_TESTKEY123.p8'));
 
-      expect(find.text('Import file'), findsOneWidget);
+      expect(find.text('Import AuthKey_TESTKEY123.p8'), findsOneWidget);
       expect(find.text('Details'), findsOneWidget);
       expect(find.text('TESTKEY123'), findsOneWidget);
       expect(find.text('EC P-256'), findsOneWidget);
-      expect(find.text('Team ID *', findRichText: true), findsOneWidget);
+      expect(find.text('Team ID:'), findsOneWidget);
+      expect(find.text('Required · not in the file'), findsOneWidget);
       // The filename gave the Key ID, so it isn't asked for.
-      expect(find.text('Key ID *', findRichText: true), findsNothing);
+      expect(find.text('Key ID:'), findsNothing);
+      // Nothing is chosen for the user.
+      expect(find.text('Not set'), findsOneWidget);
+      expect(find.textContaining('No expiry date in the file'), findsOneWidget);
 
       // Importing without the Team ID says what's missing.
-      await tester.tap(
-        find.descendant(
-          of: find.byType(ImportDialog),
-          matching: find.widgetWithText(BCButton, 'Import'),
-        ),
-      );
+      await tester.tap(addButton());
       await tester.pumpAndSettle();
       expect(find.text('Team ID is required'), findsOneWidget);
+      expect(index(tester).all, isEmpty);
       await tester.enterText(input(field('team_id')), 'TESTTEAM01');
       await tester.pump();
-      await tester.tap(find.text('APNs'));
-      await tester.pump();
+      // Pick APNs. (macos_ui draws its menu rows in the test font, which
+      // is too wide for them, so pick through the pop-up's callback.)
+      final usedFor = find.ancestor(
+        of: find.text('Not set'),
+        matching: find.byType(DesktopPopup<String>),
+      );
+      expect(
+        tester
+            .widget<DesktopPopup<String>>(usedFor)
+            .choices
+            .map((c) => c.label),
+        ['Not set', 'App Store Connect API', 'APNs', 'Sign in with Apple'],
+      );
+      tester.widget<DesktopPopup<String>>(usedFor).onChanged!('apns');
+      await tester.pumpAndSettle();
       await tapImport(tester, () => index(tester).all.isNotEmpty);
 
       final item = index(tester).all.single;
@@ -432,10 +482,51 @@ void main() {
       expect(item.fields['key_id']!.source, FieldSource.file);
       expect(item.fields['team_id']!.source, FieldSource.user);
       expect(item.fields['purpose']!.value, 'APNs');
+      // Nothing the user left empty is filled in for them.
+      expect(item.appId, isNull);
+      expect(item.platform, isNull);
+      expect(item.environment, isNull);
+      expect(item.tags, isEmpty);
       expect(item.attachments.single.filename, 'AuthKey_TESTKEY123.p8');
       expect(find.byType(ImportDialog), findsNothing);
       expect(router(tester).state.uri.queryParameters['item'], item.id);
       expect(find.text('File imported'), findsOneWidget);
+    });
+
+    testWidgets('platform and environment take any value; tags are tokens', (
+      tester,
+    ) async {
+      await open(tester);
+      await startImport(tester, fixture('google-services.json'));
+      Finder inSheet(Finder f) =>
+          find.descendant(of: find.byType(ImportDialog), matching: f);
+
+      // Platform: typed, not in the suggestions, stored as typed.
+      await tester.enterText(
+        input(find.byKey(const ValueKey('import-platform'))),
+        '  watchos ',
+      );
+      // Environment: picked from SPEC §6.1's suggestions.
+      await tester.tap(find.bySemanticsLabel('Environment suggestions'));
+      await tester.pumpAndSettle();
+      expect(find.text('development'), findsOneWidget);
+      await tester.tap(find.text('staging').last);
+      await tester.pumpAndSettle();
+      // Tags: Return makes each one a token.
+      final tags = input(inSheet(find.byType(DesktopTokenField)));
+      await tester.enterText(tags, 'firebase');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.enterText(tags, 'ci');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      await tapImport(tester, () => index(tester).all.isNotEmpty);
+      final item = index(tester).all.single;
+      expect(item.platform, 'watchos');
+      expect(item.environment, 'staging');
+      expect(item.tags, ['firebase', 'ci']);
+      expect(item.appId, isNull);
     });
 
     testWidgets('a .p12 asks for its password and says when it is wrong', (
@@ -443,10 +534,10 @@ void main() {
     ) async {
       await open(tester);
       await startImport(tester, fixture('legacy.p12'));
-      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Password:'), findsOneWidget);
       expect(find.text('Details'), findsNothing);
 
-      await tester.enterText(input(find.byType(PasswordField)), 'nope');
+      await tester.enterText(input(secret('password')), 'nope');
       await tester.pump();
       await tester.tap(find.text('Unlock file'));
       await settle(
@@ -457,10 +548,7 @@ void main() {
             .isNotEmpty,
       );
 
-      await tester.enterText(
-        input(find.byType(PasswordField)),
-        'test-password',
-      );
+      await tester.enterText(input(secret('password')), 'test-password');
       await tester.pump();
       await tester.tap(find.text('Unlock file'));
       await settle(tester, () => find.text('Details').evaluate().isNotEmpty);
@@ -523,18 +611,12 @@ void main() {
       await tester.pumpAndSettle();
       // Replace opens the replace form for that item; nothing changes yet.
       expect(find.text('Replace file'), findsWidgets);
-      expect(
-        find.descendant(
-          of: find.byType(ImportDialog),
-          matching: find.text('Name'),
-        ),
-        findsNothing,
-      );
+      expect(find.text('Name:'), findsNothing);
       expect(replacedOne(), isFalse);
       await tester.tap(
         find.descendant(
           of: find.byType(ImportDialog),
-          matching: find.widgetWithText(BCButton, 'Replace file'),
+          matching: find.widgetWithText(DesktopButton, 'Replace file'),
         ),
       );
       await settle(tester, replacedOne);
@@ -559,7 +641,7 @@ void main() {
       await tester.pump();
       await settle(
         tester,
-        () => find.text('Store password').evaluate().isNotEmpty,
+        () => find.text('Store password:').evaluate().isNotEmpty,
       );
       expect(find.byType(ImportDialog), findsOneWidget);
     });

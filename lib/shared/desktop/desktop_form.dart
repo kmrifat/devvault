@@ -17,13 +17,27 @@ class DesktopForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final macos = context.desktopKit == DesktopKit.macos;
     return _FormScope(
       labelWidth: labelWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
-        spacing: DesktopMetrics.formRowGap,
-        children: children,
+        // macOS rows are a fixed pitch instead (see DesktopFormRow); other
+        // children (a strength meter, a message) get a gap below them so the
+        // next field's focus ring doesn't touch them.
+        spacing: macos ? 0 : DesktopMetrics.formRowGap,
+        children: [
+          for (final child in children)
+            macos && child is! DesktopFormRow
+                ? Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: DesktopMetrics.formNoteGap,
+                    ),
+                    child: child,
+                  )
+                : child,
+        ],
       ),
     );
   }
@@ -56,6 +70,12 @@ class DesktopFormRow extends StatelessWidget {
     final note = error ?? this.note;
     final row = Row(
       children: [
+        // macos_ui keeps room for the focus ring around a text field, so a
+        // field is taller than a pop-up of the same visible height. Every
+        // row is at least this tall, so rows keep an even pitch whatever
+        // control they hold.
+        if (context.desktopKit == DesktopKit.macos)
+          const SizedBox(height: DesktopMetrics.formRowHeight),
         SizedBox(
           width: labelWidth,
           child: Text(

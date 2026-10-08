@@ -20,6 +20,11 @@ void main() {
                 context,
                 builder: (context) => DesktopSheet(
                   title: 'Import',
+                  icon: const SizedBox.square(
+                    key: ValueKey('tile'),
+                    dimension: 36,
+                  ),
+                  subtitle: const Text('Apple Auth Key · 241 bytes'),
                   actions: [
                     DesktopButton(
                       label: 'Cancel',
@@ -51,6 +56,13 @@ void main() {
         expect(find.text('File'), findsOneWidget);
         expect(find.text('AuthKey_TESTKEY123.p8'), findsOneWidget);
         expect(find.text('Cancel'), findsOneWidget);
+        // The tile and the line under the title.
+        expect(find.byKey(const ValueKey('tile')), findsOneWidget);
+        expect(find.text('Apple Auth Key · 241 bytes'), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.text('Apple Auth Key · 241 bytes')).dy,
+          greaterThan(tester.getTopLeft(find.text('Import')).dy),
+        );
       });
 
       testWidgets('the default action pops its result', (tester) async {
