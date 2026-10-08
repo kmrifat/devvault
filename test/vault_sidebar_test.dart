@@ -5,6 +5,7 @@ import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 
+import 'dart:io';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
@@ -100,6 +101,43 @@ void main() {
     // Nothing to resolve or recover: those rows stay out of the way.
     expect(inSidebar('Conflicts'), findsNothing);
     expect(inSidebar('Unreadable'), findsNothing);
+  });
+
+  testWidgets('an unreadable object gets a row, and the row lists it', (
+    tester,
+  ) async {
+    await open(tester);
+    // Copy one item's ciphertext over another's: the copy no longer
+    // matches where it is, so the next unlock quarantines it.
+    final vault =
+        (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
+    final ids = index(tester).items.keys.toList()..sort();
+    final items = '${vault.store.root.path}/items';
+    File('$items/${ids[0]}.enc').copySync('$items/${ids[1]}.enc');
+    final notifier = appContainer(tester).read(vaultSessionProvider.notifier)
+      ..lock();
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => notifier.unlock(testPassword));
+    await tester.pumpAndSettle();
+
+    expect(index(tester).quarantined.single.objectId, ids[1]);
+    expect(inSidebar('Unreadable'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find
+            .ancestor(of: inSidebar('Unreadable'), matching: find.byType(Row))
+            .first,
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+    expect(inSidebar('Conflicts'), findsNothing);
+
+    await tap(tester, inSidebar('Unreadable'));
+    expect(location(tester), contains('view=quarantine'));
+    expect(isSelected(tester, 'Unreadable'), isTrue);
+    expect(find.text('Unreadable item'), findsOneWidget);
+    expect(find.text(ids[1]), findsOneWidget);
   });
 
   testWidgets('shows apps open and platforms closed', (tester) async {

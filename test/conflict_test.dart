@@ -5,6 +5,7 @@ import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/conflict/conflict_dialog.dart';
 import 'package:devvault/features/conflict/conflict_resolution.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
+import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -197,6 +198,75 @@ void main() {
       expect(done(), isTrue);
       await tester.pumpAndSettle();
     }
+
+    testWidgets('a conflict shows in the list, the sidebar and the item', (
+      tester,
+    ) async {
+      final mine = await open(tester);
+      Finder inSidebar(String text) => find.descendant(
+        of: find.byType(VaultSidebar),
+        matching: find.text(text),
+      );
+      Finder inList(Finder finder) =>
+          find.descendant(of: find.byType(VaultListPane), matching: finder);
+      Finder rowOf(String title) => find
+          .ancestor(of: inList(find.text(title)), matching: find.byType(Row))
+          .first;
+
+      // The list row carries a Conflict chip; other rows don't.
+      expect(
+        find.descendant(
+          of: rowOf('Maps API key'),
+          matching: find.text('Conflict'),
+        ),
+        findsOneWidget,
+      );
+      expect(inList(find.text('Conflict')), findsOneWidget);
+      // The sidebar row appears, with its count.
+      expect(inSidebar('Conflicts'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find
+              .ancestor(of: inSidebar('Conflicts'), matching: find.byType(Row))
+              .first,
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+      // The item says what happened.
+      expect(
+        find.textContaining('Another device changed this item'),
+        findsOneWidget,
+      );
+
+      // The sidebar row filters the list down to it.
+      expect(inList(find.text('Upload keystore')), findsOneWidget);
+      await tester.tap(inSidebar('Conflicts'));
+      await tester.pumpAndSettle();
+      expect(
+        GoRouter.of(tester.element(find.byType(VaultListPane)))
+            .state
+            .uri
+            .queryParameters['view'],
+        'conflicts',
+      );
+      expect(inList(find.text('Maps API key')), findsOneWidget);
+      expect(inList(find.text('Upload keystore')), findsNothing);
+
+      // Resolved, the row and the chip go away.
+      GoRouter.of(tester.element(find.byType(VaultListPane)))
+          .go(Routes.vault(item: mine.id));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Resolve…'));
+      await tester.pumpAndSettle();
+      await tapAndWrite(
+        tester,
+        find.text('Keep both'),
+        () => index(tester).items[mine.id]!.conflict == null,
+      );
+      expect(inSidebar('Conflicts'), findsNothing);
+      expect(inList(find.text('Conflict')), findsNothing);
+    });
 
     testWidgets('resolving needs every choice, then applies it', (
       tester,
