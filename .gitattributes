@@ -1,0 +1,5 @@
+# Files compared byte for byte (format vectors, parser fixtures) must never
+# have their line endings converted, or a Windows checkout gets CRLF and the
+# byte-exact tests fail.
+docs/format/vectors/** -text
+packages/cred_parsers/test/fixtures/** -text
