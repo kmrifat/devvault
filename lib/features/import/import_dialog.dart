@@ -12,6 +12,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import 'import_draft.dart';
+import 'place_fields.dart';
 
 /// Imports files into the vault (design frame D04): asks for [files], or
 /// lets the user choose them, then opens the import dialog for each one and
@@ -359,10 +360,10 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           onCancel: () => Navigator.of(context).pop(),
         ),
       ] else if (result.needsChoice) ...[
-        const _Label('Which app is this for?'),
+        const SheetLabel('Which app is this for?'),
         BCSelect<String>(
           listLabel: 'App in this file',
-          presentation: _Actions.narrow(context)
+          presentation: isNarrowSheet(context)
               ? BCSelectPresentation.bottomSheet
               : BCSelectPresentation.popover,
           value: draft.choice,
@@ -408,7 +409,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           ))
         : <AppRecord>[];
     final replacing = _replacing;
-    final narrow = _Actions.narrow(context);
+    final narrow = isNarrowSheet(context);
     return [
       if (result.facts.isNotEmpty || result.expiresAt != null) ...[
         _Facts(facts: result.facts, expiresAt: result.expiresAt),
@@ -436,7 +437,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       ],
       if (draft.asksPurpose &&
           replacing?.fields[ImportDraft.purposeKey] == null) ...[
-        const _Label('Used for'),
+        const SheetLabel('Used for'),
         // One choice, or none. Not a BCToggleButtonGroup: in bc_ui 0.7.0
         // its buttons centre their label in all the width the Wrap allows,
         // so in a wide dialog each option fills a row of its own.
@@ -469,16 +470,15 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           ],
         ),
         const SizedBox(height: BCSpacing.md),
-        _Place(
-          narrow: narrow,
-          app: _Choice(
+        PlaceFields(
+          app: PlaceChoice(
             label: 'App',
             none: 'No app',
             value: draft.appId,
             options: {for (final app in apps) app.id: app.name},
             onChanged: (v) => setState(() => draft.appId = v),
           ),
-          platform: _Choice(
+          platform: PlaceChoice(
             label: 'Platform',
             none: 'None',
             value: draft.platform,
@@ -488,7 +488,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
             },
             onChanged: (v) => setState(() => draft.platform = v),
           ),
-          environment: _Choice(
+          environment: PlaceChoice(
             label: 'Environment',
             none: 'None',
             value: draft.environment,
@@ -600,7 +600,7 @@ class _Facts extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(child: _Label('Details')),
+            const Expanded(child: SheetLabel('Details')),
             const ProvenanceLabel(source: ExpirySource.file),
           ],
         ),
@@ -761,12 +761,9 @@ class _Actions extends StatelessWidget {
   /// A phone (B4): one full-width button, and the sheet's close button
   /// or a swipe down to cancel. Wider screens (D04): Cancel and the action
   /// side by side.
-  static bool narrow(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 600;
-
   @override
   Widget build(BuildContext context) {
-    if (narrow(context)) {
+    if (isNarrowSheet(context)) {
       return switch (primary) {
         final label? => BCButton(
           size: BCButtonSize.lg,
@@ -801,97 +798,6 @@ class _Actions extends StatelessWidget {
             startContent: busy ? const BCSpinner(size: BCSpinnerSize.sm) : null,
             child: Text(label),
           ),
-      ],
-    );
-  }
-}
-
-/// App, platform and environment: one row on a wide screen; on a phone the
-/// app gets its own row, as in B4, so no select is too narrow to read.
-class _Place extends StatelessWidget {
-  const _Place({
-    required this.narrow,
-    required this.app,
-    required this.platform,
-    required this.environment,
-  });
-
-  final bool narrow;
-  final Widget app;
-  final Widget platform;
-  final Widget environment;
-
-  @override
-  Widget build(BuildContext context) {
-    final pair = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: BCSpacing.sm,
-      children: [
-        if (!narrow) Expanded(child: app),
-        Expanded(child: platform),
-        Expanded(child: environment),
-      ],
-    );
-    if (!narrow) return pair;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: BCSpacing.md,
-      children: [app, pair],
-    );
-  }
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      // Lines up with bc_ui's own field labels.
-      padding: const EdgeInsets.only(left: 6, bottom: BCSpacing.xs),
-      child: BCText(text, type: BCTextType.bodySm, weight: BCTextWeight.medium),
-    );
-  }
-}
-
-/// A select over [options] (value → label) with a "none" choice first.
-class _Choice extends StatelessWidget {
-  const _Choice({
-    required this.label,
-    required this.none,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String none;
-  final String? value;
-  final Map<String, String> options;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Label(label),
-        BCSelect<String>(
-          listLabel: label,
-          // Phones pick from a sheet (B4), wider screens from a popover.
-          presentation: _Actions.narrow(context)
-              ? BCSelectPresentation.bottomSheet
-              : BCSelectPresentation.popover,
-          value: value ?? '',
-          items: [
-            BCSelectItem(value: '', label: none),
-            for (final MapEntry(:key, value: text) in options.entries)
-              BCSelectItem(value: key, label: text),
-          ],
-          onValueChange: (v) => onChanged(v.isEmpty ? null : v),
-        ),
       ],
     );
   }

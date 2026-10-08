@@ -7,6 +7,7 @@ import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/features/import/import_dialog.dart';
 import 'package:devvault/features/import/import_draft.dart';
+import 'package:devvault/features/import/paste_secret_sheet.dart';
 import 'package:devvault/services/file_import.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,13 +36,18 @@ void main() {
   /// Opens the import dialog on [name] and waits for it to be read (the
   /// parse runs on an isolate, which needs real time).
   Future<void> importFile(WidgetTester tester) async {
-    // Desktop has an Import button; phones an icon in the header.
+    // Desktop has an Import button; phones an icon in the header, then
+    // B4a's choice.
     final button = find.text('Import');
-    await tester.tap(
-      button.evaluate().isNotEmpty
-          ? button.first
-          : find.bySemanticsLabel('Import').first,
-    );
+    if (button.evaluate().isNotEmpty) {
+      await tester.tap(button.first);
+    } else {
+      await tester.tap(find.bySemanticsLabel('Import').first);
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.tap(find.text('Pick a file'));
+    }
     for (var i = 0; i < 300; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -89,7 +95,46 @@ void main() {
     overrides: overrides,
     interact: (tester) async {
       await importFile(tester);
-      await tester.ensureVisible(find.text('Add to vault'));
+      await tester.ensureVisible(
+        find.descendant(
+          of: find.byType(ImportDialog),
+          matching: find.text('Add to vault'),
+        ),
+      );
+    },
+  );
+  shot(
+    'B4a-add',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      await tester.tap(find.bySemanticsLabel('Import').first);
+    },
+  );
+  shot(
+    'B4b-paste-secret',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      await tester.tap(find.bySemanticsLabel('Import').first);
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.tap(find.text('Paste a secret'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.enterText(
+        find
+            .descendant(
+              of: find.byType(PasteSecretSheet),
+              matching: find.byType(EditableText),
+            )
+            .first,
+        'Stripe secret key',
+      );
     },
   );
 }
