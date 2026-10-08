@@ -5,7 +5,7 @@ import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
-import 'package:devvault/features/vault/item_detail_pane.dart';
+import 'package:devvault/features/vault/desktop_inspector.dart';
 import 'package:devvault/services/file_export.dart';
 import 'package:devvault/services/file_saver.dart';
 import 'package:flutter/material.dart';
@@ -52,8 +52,8 @@ void main() {
       (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
 
   Finder saveButtons() => find.descendant(
-    of: find.byType(ItemDetailPane),
-    matching: find.text('Save as…'),
+    of: find.byType(DesktopInspector),
+    matching: find.text('Save As…'),
   );
 
   /// Opens an empty unlocked vault on the desktop layout.
@@ -90,13 +90,13 @@ void main() {
             .copyWith(attachments: attachments),
       );
     });
-    GoRouter.of(tester.element(find.byType(ItemDetailPane)))
+    GoRouter.of(tester.element(find.byType(DesktopInspector)))
         .go(Routes.vault(item: item!.id));
     await tester.pumpAndSettle();
     return item;
   }
 
-  /// Taps the [index]th "Save as…" and waits for the export to finish,
+  /// Taps the [index]th "Save As…" and waits for the export to finish,
   /// which decrypts on a real event loop.
   Future<void> saveAs(WidgetTester tester, [int index = 0]) async {
     final button = saveButtons().at(index);
@@ -111,6 +111,8 @@ void main() {
       await tester.pump();
       if (saver.saves.length > before) break;
     }
+    // The toast that follows the save.
+    await tester.pump();
   }
 
   Future<void> dismissToasts(WidgetTester tester) =>
@@ -142,7 +144,7 @@ void main() {
     await addItem(tester, {'upload.jks': keystore});
     await tester.tap(
       find.descendant(
-        of: find.byType(ItemDetailPane),
+        of: find.byType(DesktopInspector),
         matching: find.text('Export'),
       ),
     );
@@ -265,6 +267,8 @@ void main() {
         reason: saved.fileName,
       );
       expect(hex(VaultCrypto.sha256(saved.bytes)), attachment.sha256);
+      // The toast would cover the last row's button.
+      await dismissToasts(tester);
     }
     expect(saver.saves, hasLength(fixtures.length));
     await dismissToasts(tester);

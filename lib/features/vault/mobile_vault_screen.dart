@@ -11,7 +11,7 @@ import '../../shared/ui.dart';
 import '../sync/sync_status_chip.dart';
 import '../import/paste_secret_sheet.dart';
 import 'vault_actions.dart';
-import 'vault_list_pane.dart';
+import 'vault_item_row.dart';
 
 /// Design frame B2: the vault on a phone. A large title that collapses,
 /// search, the All / Expiring / Files / Secrets tabs, app chips, and the

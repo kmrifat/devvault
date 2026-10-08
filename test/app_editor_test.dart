@@ -1,4 +1,3 @@
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_filter.dart';
@@ -89,12 +88,12 @@ void main() {
       matching: find.text(text),
     );
 
-    Finder input(int i) => find
-        .descendant(
-          of: find.byType(BCTextFieldInput),
-          matching: find.byType(EditableText),
-        )
-        .at(i);
+    Finder input(int i) => find.descendant(
+      of: find.byKey(
+        ValueKey(['app-name', 'app-bundle-ids', 'app-package-names'][i]),
+      ),
+      matching: find.byType(EditableText),
+    );
 
     Future<void> settleWrite(
       WidgetTester tester,
@@ -149,7 +148,7 @@ void main() {
       await open(tester);
       await tester.tap(inSidebar('Ledgerly'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Edit app'));
+      await tester.tap(find.text('Edit app…'));
       await tester.pumpAndSettle();
       expect(find.text('Edit app'), findsWidgets);
 

@@ -3,7 +3,8 @@ import 'package:devvault/app/routes.dart';
 import 'package:devvault/core/format.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
-import 'package:devvault/features/vault/item_detail_pane.dart';
+import 'package:devvault/app/desktop_shell.dart' show ShellStatusBar;
+import 'package:devvault/features/vault/desktop_inspector.dart';
 import 'package:devvault/services/clipboard_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,13 +20,16 @@ void main() {
   late FakeClipboard clipboard;
 
   Finder inDetail(Finder finder) =>
-      find.descendant(of: find.byType(ItemDetailPane), matching: finder);
+      find.descendant(of: find.byType(DesktopInspector), matching: finder);
+
+  Finder inStatusBar(Finder finder) =>
+      find.descendant(of: find.byType(ShellStatusBar), matching: finder);
 
   Future<void> select(WidgetTester tester, String title) async {
     final index =
         (appContainer(tester).read(vaultSessionProvider) as Unlocked).index;
     final item = index.all.firstWhere((i) => i.title == title);
-    GoRouter.of(tester.element(find.byType(ItemDetailPane)))
+    GoRouter.of(tester.element(find.byType(DesktopInspector)))
         .go(Routes.vault(item: item.id));
     await tester.pumpAndSettle();
   }
@@ -57,7 +61,8 @@ void main() {
   ) async {
     await open(tester);
     expect(inDetail(find.text('No item selected')), findsOneWidget);
-    GoRouter.of(tester.element(find.byType(ItemDetailPane)))
+    expect(inStatusBar(find.textContaining('Created')), findsNothing);
+    GoRouter.of(tester.element(find.byType(DesktopInspector)))
         .go(Routes.vault(item: '00000000-0000-4000-8000-00000000dead'));
     await tester.pumpAndSettle();
     expect(inDetail(find.text('This item isn’t in the vault')), findsOneWidget);
@@ -68,9 +73,10 @@ void main() {
   ) async {
     await open(tester, 'Upload keystore');
     expect(inDetail(find.text('Upload keystore')), findsOneWidget);
-    expect(inDetail(find.text('Android Keystore')), findsOneWidget);
     expect(
-      inDetail(find.text('Kitchenly · Android · Production')),
+      inDetail(
+        find.text('Android Keystore · Kitchenly › Android › Production'),
+      ),
       findsOneWidget,
     );
     expect(inDetail(find.text('#release')), findsOneWidget);
@@ -81,11 +87,12 @@ void main() {
     );
     expect(inDetail(find.textContaining('24 years left')), findsOneWidget);
     expect(inDetail(find.text('From file')), findsOneWidget);
+    // When it was made, and where, is in the window's status bar.
     expect(
-      inDetail(find.textContaining('Created Oct 7, 2026 on this device')),
+      inStatusBar(find.text('Created Oct 7, 2026 on this device')),
       findsOneWidget,
     );
-    expect(inDetail(find.text('End-to-end encrypted')), findsOneWidget);
+    expect(inStatusBar(find.text('End-to-end encrypted')), findsOneWidget);
   });
 
   testWidgets('expiring, expired and undated items say so', (tester) async {
@@ -194,7 +201,7 @@ void main() {
     );
 
     // Saving it is covered in export_test.dart.
-    expect(inDetail(find.text('Save as…')), findsOneWidget);
+    expect(inDetail(find.text('Save As…')), findsOneWidget);
   });
 
   testWidgets('items without a file have no Export button', (tester) async {

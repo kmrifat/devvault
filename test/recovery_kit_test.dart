@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
@@ -60,8 +61,9 @@ void main() {
   late FakePrinter printer;
   late String keyText;
 
-  /// Creates a vault the way D01 does and lands on the recovery kit.
-  Future<void> openKit(WidgetTester tester) async {
+  /// Creates a vault the way the create screen does and lands on the
+  /// recovery kit.
+  Future<void> openKit(WidgetTester tester, AppLayout layout) async {
     tester.view
       ..physicalSize = const Size(1440, 900)
       ..devicePixelRatio = 1;
@@ -74,6 +76,7 @@ void main() {
       testApp(
         location: Routes.create,
         supportDir: dir!,
+        layout: layout,
         overrides: [
           clipboardGuardProvider.overrideWithValue(
             ClipboardGuard(clipboard: clipboard),
@@ -99,52 +102,6 @@ void main() {
       GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
           .toString();
 
-  testWidgets('shows the key as two rows of seven groups', (tester) async {
-    await openKit(tester);
-    final groups = keyText.split('-');
-    expect(groups, hasLength(14));
-    expect(find.text(groups.take(7).join('  ')), findsOneWidget);
-    expect(find.text(groups.skip(7).join('  ')), findsOneWidget);
-  });
-
-  testWidgets('the vault stays closed until the user confirms', (tester) async {
-    await openKit(tester);
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    expect(location(tester), Routes.createRecoveryKit);
-
-    await tester.tap(find.text("I've saved my recovery key"));
-    await tester.pump();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    expect(location(tester), Routes.vault());
-    expect(appContainer(tester).read(pendingRecoveryKeyProvider), isNull);
-  });
-
-  testWidgets('copy goes through the clipboard guard', (tester) async {
-    await openKit(tester);
-    await tester.tap(find.text('Copy'));
-    await tester.pumpAndSettle();
-    expect(clipboard.text, keyText);
-    // Not the key, nor any group of it.
-    expectNoSecretInToasts(tester, [keyText, ...keyText.split(RegExp('[- ]'))]);
-    await tester.pump(const Duration(seconds: 30));
-    expect(clipboard.text, '');
-  });
-
-  testWidgets('saves a text kit with the key and the vault id', (tester) async {
-    await openKit(tester);
-    await tester.tap(find.text('Save as text'));
-    await tester.pumpAndSettle();
-    final kit = saver.saved['DevVault Recovery Key.txt']!;
-    expect(kit, contains(keyText));
-    expectNoSecretInToasts(tester, [keyText, ...keyText.split(RegExp('[- ]'))]);
-    final vault =
-        (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
-    expect(kit, contains(vault.vaultId));
-    expect(kit, contains("Don't store it inside DevVault"));
-  });
-
   /// PDF work (font loading, rendering) is real async work.
   Future<void> settle(WidgetTester tester, bool Function() done) async {
     for (var i = 0; i < 1000 && !done(); i++) {
@@ -162,35 +119,144 @@ void main() {
       text.startsWith('%PDF-') &&
       text.trimRight().endsWith('%%EOF');
 
-  testWidgets('saves a one-page PDF, then wipes its bytes', (tester) async {
-    await openKit(tester);
-    await tester.tap(find.text('Save PDF'));
-    await settle(
-      tester,
-      () => saver.saved.containsKey('DevVault Recovery Key.pdf'),
-    );
-    final pdf = saver.saved['DevVault Recovery Key.pdf'];
-    expect(isPdf(pdf), isTrue);
-    expect(saver.mimeTypes['DevVault Recovery Key.pdf'], 'application/pdf');
-    // One page: the page tree counts a single page.
-    expect(RegExp(r'/Type\s*/Pages\b').hasMatch(pdf!), isTrue);
-    expect(RegExp(r'/Count\s*1\b').hasMatch(pdf), isTrue);
-    expect(RegExp(r'/Count\s*([2-9]|\d\d)').hasMatch(pdf), isFalse);
-    // Nothing kept: the buffer handed to the save dialog is zeroed after.
-    expect(
-      saver.buffers['DevVault Recovery Key.pdf']!.every((b) => b == 0),
-      isTrue,
-    );
-    expect(find.text('Recovery kit saved as PDF'), findsOneWidget);
+  for (final layout in AppLayout.values) {
+    final l = _Labels.of(layout);
+    group(layout.name, () {
+      testWidgets('shows the key as two rows of seven groups', (tester) async {
+        await openKit(tester, layout);
+        final groups = keyText.split('-');
+        expect(groups, hasLength(14));
+        expect(
+          find.text(groups.take(7).join(l.groupSeparator)),
+          findsOneWidget,
+        );
+        expect(
+          find.text(groups.skip(7).join(l.groupSeparator)),
+          findsOneWidget,
+        );
+      });
+
+      testWidgets('the vault stays closed until the user confirms', (
+        tester,
+      ) async {
+        await openKit(tester, layout);
+        await tester.tap(find.text(l.confirm));
+        await tester.pumpAndSettle();
+        expect(location(tester), Routes.createRecoveryKit);
+
+        await tester.tap(find.text(l.saved));
+        await tester.pump();
+        await tester.tap(find.text(l.confirm));
+        await tester.pumpAndSettle();
+        expect(location(tester), Routes.vault());
+        expect(appContainer(tester).read(pendingRecoveryKeyProvider), isNull);
+      });
+
+      testWidgets('copy goes through the clipboard guard', (tester) async {
+        await openKit(tester, layout);
+        await tester.tap(find.text(l.copy));
+        await tester.pumpAndSettle();
+        expect(clipboard.text, keyText);
+        // Not the key, nor any group of it.
+        expectNoSecretInToasts(tester, [
+          keyText,
+          ...keyText.split(RegExp('[- ]')),
+        ]);
+        await tester.pump(const Duration(seconds: 30));
+        expect(clipboard.text, '');
+      });
+
+      testWidgets('saves a text kit with the key and the vault id', (
+        tester,
+      ) async {
+        await openKit(tester, layout);
+        await tester.tap(find.text(l.saveText));
+        await tester.pumpAndSettle();
+        final kit = saver.saved['DevVault Recovery Key.txt']!;
+        expect(kit, contains(keyText));
+        expectNoSecretInToasts(tester, [
+          keyText,
+          ...keyText.split(RegExp('[- ]')),
+        ]);
+        final vault =
+            (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
+        expect(kit, contains(vault.vaultId));
+        expect(kit, contains("Don't store it inside DevVault"));
+      });
+
+      testWidgets('saves a one-page PDF, then wipes its bytes', (tester) async {
+        await openKit(tester, layout);
+        await tester.tap(find.text(l.savePdf));
+        await settle(
+          tester,
+          () => saver.saved.containsKey('DevVault Recovery Key.pdf'),
+        );
+        final pdf = saver.saved['DevVault Recovery Key.pdf'];
+        expect(isPdf(pdf), isTrue);
+        expect(saver.mimeTypes['DevVault Recovery Key.pdf'], 'application/pdf');
+        // One page: the page tree counts a single page.
+        expect(RegExp(r'/Type\s*/Pages\b').hasMatch(pdf!), isTrue);
+        expect(RegExp(r'/Count\s*1\b').hasMatch(pdf), isTrue);
+        expect(RegExp(r'/Count\s*([2-9]|\d\d)').hasMatch(pdf), isFalse);
+        // Nothing kept: the buffer handed to the save dialog is zeroed after.
+        expect(
+          saver.buffers['DevVault Recovery Key.pdf']!.every((b) => b == 0),
+          isTrue,
+        );
+        expect(find.text('Recovery kit saved as PDF'), findsOneWidget);
+      });
+
+      testWidgets('prints the PDF through the system dialog', (tester) async {
+        await openKit(tester, layout);
+        await tester.tap(find.text(l.print));
+        await settle(tester, () => printer.printed != null);
+        expect(isPdf(printer.printed), isTrue);
+        expect(printer.name, 'DevVault Recovery Key');
+        expect(printer.buffer!.every((b) => b == 0), isTrue);
+        expect(saver.saved, isEmpty);
+      });
+    });
+  }
+}
+
+/// What the kit's controls say: the phone's (B) and desktop's (N02).
+class _Labels {
+  const _Labels({
+    required this.groupSeparator,
+    required this.saved,
+    required this.confirm,
+    required this.savePdf,
+    required this.print,
+    required this.saveText,
+    required this.copy,
   });
 
-  testWidgets('prints the PDF through the system dialog', (tester) async {
-    await openKit(tester);
-    await tester.tap(find.text('Print'));
-    await settle(tester, () => printer.printed != null);
-    expect(isPdf(printer.printed), isTrue);
-    expect(printer.name, 'DevVault Recovery Key');
-    expect(printer.buffer!.every((b) => b == 0), isTrue);
-    expect(saver.saved, isEmpty);
-  });
+  final String groupSeparator;
+  final String saved;
+  final String confirm;
+  final String savePdf;
+  final String print;
+  final String saveText;
+  final String copy;
+
+  static _Labels of(AppLayout layout) => switch (layout) {
+    AppLayout.mobile => const _Labels(
+      groupSeparator: '  ',
+      saved: "I've saved my recovery key",
+      confirm: 'Continue',
+      savePdf: 'Save PDF',
+      print: 'Print',
+      saveText: 'Save as text',
+      copy: 'Copy',
+    ),
+    AppLayout.desktop => const _Labels(
+      groupSeparator: '-',
+      saved: "I've saved my recovery key somewhere safe",
+      confirm: 'Open Vault',
+      savePdf: 'Save PDF…',
+      print: 'Print…',
+      saveText: 'Save as Text…',
+      copy: 'Copy',
+    ),
+  };
 }

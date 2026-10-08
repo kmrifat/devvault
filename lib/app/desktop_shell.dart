@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart' show VaultIndex;
 
 import '../core/shortcuts.dart';
+import '../data/providers.dart' show deviceIdProvider;
 import '../data/sync_controller.dart';
 import '../data/vault_filter.dart';
 import '../data/vault_session.dart';
@@ -12,6 +13,7 @@ import '../features/import/drop_import.dart';
 import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
 import '../features/sync/desktop_sync_status.dart';
+import '../features/vault/desktop_inspector.dart' show itemHistory;
 import '../features/vault/vault_actions.dart';
 import '../features/vault/vault_heading.dart';
 import '../features/vault/vault_sidebar.dart';
@@ -352,8 +354,9 @@ class _ToolbarState extends ConsumerState<ShellToolbar> {
   }
 }
 
-/// The window's status bar: how many items the list holds, and that the vault is
-/// end-to-end encrypted.
+/// The window's status bar: how many items the list holds, when the
+/// selected item was created and changed (and on which device), and that
+/// the vault is end-to-end encrypted.
 class ShellStatusBar extends ConsumerWidget {
   const ShellStatusBar({super.key, required this.section, required this.uri});
 
@@ -366,6 +369,11 @@ class ShellStatusBar extends ConsumerWidget {
     final session = ref.watch(vaultSessionProvider);
     final index = session is Unlocked ? session.index : null;
     final count = _describe(section, uri, index).count;
+    final itemId = section == ShellSection.vault
+        ? uri.queryParameters['item']
+        : null;
+    final item = itemId == null ? null : index?.items[itemId];
+    final thisDevice = ref.watch(deviceIdProvider);
     final style = TextStyle(
       fontSize: DesktopMetrics.secondarySize,
       color: colors.secondaryText,
@@ -382,7 +390,25 @@ class ShellStatusBar extends ConsumerWidget {
           child: Row(
             children: [
               if (count != null) Text(_items(count), style: style),
-              const Spacer(),
+              // The selected item's history, right-aligned beside the
+              // encryption note (as in N03).
+              Expanded(
+                child: item == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 24),
+                        child: Text(
+                          itemHistory(
+                            item,
+                            onThisDevice: item.deviceId == thisDevice,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: style,
+                        ),
+                      ),
+              ),
               Text('End-to-end encrypted', style: style),
               const SizedBox(width: 5),
               DesktopIcon(DesktopSymbol.lock, size: 10),
@@ -394,12 +420,9 @@ class ShellStatusBar extends ConsumerWidget {
   }
 }
 
-/// The vault branch on desktop: item list and detail side by side.
+/// The vault branch on desktop: the item table and the inspector side by
+/// side.
 class VaultPanes extends StatelessWidget {
-  /// The list pane's width until it becomes the N03 item table
-  /// ([DesktopMetrics.tableWidth]): its tabs need this much.
-  static const double listWidth = 420;
-
   const VaultPanes({super.key, required this.list, required this.detail});
 
   final Widget list;
@@ -411,7 +434,7 @@ class VaultPanes extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(width: listWidth, child: list),
+        SizedBox(width: DesktopMetrics.tableWidth, child: list),
         VerticalDivider(width: 1, thickness: 0.5, color: colors.separator),
         Expanded(child: detail),
       ],

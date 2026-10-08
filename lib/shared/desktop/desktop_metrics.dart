@@ -25,6 +25,17 @@ abstract final class DesktopMetrics {
   static const double tableRowHeight = 40;
   static const double tableWidth = 400;
 
+  /// The item table's fixed Type and Expires columns; Name takes the rest.
+  static const double tableTypeColumnWidth = 100;
+  static const double tableExpiresColumnWidth = 62;
+
+  /// The inspector: its type tile, and the rows of its Fields box.
+  static const double inspectorTileSize = 40;
+  static const double inspectorFieldRowHeight = 31;
+
+  /// The inspector's item name.
+  static const double inspectorTitleSize = 18;
+
   /// The expiry table's one-line rows.
   static const double expiryRowHeight = 32;
 
@@ -40,6 +51,15 @@ abstract final class DesktopMetrics {
   static const double formLabelWidth = 120;
   static const double formLabelGap = 8;
   static const double formRowGap = 10;
+
+  /// macOS form rows: a 22 pt control plus the focus-ring room macos_ui
+  /// keeps around a text field. Rows this tall sit flush, 31 pt apart, as
+  /// in the frames.
+  static const double formRowHeight = 31;
+
+  /// Below a form's in-between lines (a strength meter, a field message) on
+  /// macOS, where rows have no gap of their own.
+  static const double formNoteGap = 6;
 
   /// Floating panels (quick open): corner radius, width, and how far below
   /// the top of the window they sit.
@@ -57,4 +77,8 @@ abstract final class DesktopMetrics {
 
   /// Table cells beside the name column, and row descriptions (Settings).
   static const double cellSize = 12;
+
+  /// Secondary text and mono values at the larger size: the inspector's
+  /// path, field names and values.
+  static const double labelSize = 12;
 }

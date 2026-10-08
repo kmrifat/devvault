@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 class DesktopColors {
   const DesktopColors({
     required this.window,
+    required this.lockWindow,
     required this.sidebar,
     required this.toolbar,
     required this.bar,
@@ -36,6 +37,7 @@ class DesktopColors {
     required this.onWarningBadge,
     required this.danger,
     required this.dangerBadge,
+    required this.onDangerBadge,
     required this.conflict,
     required this.conflictBadge,
     required this.onConflictBadge,
@@ -44,6 +46,9 @@ class DesktopColors {
 
   /// Window and content background.
   final Color window;
+
+  /// The lock screens' compact window (unlock, create, recovery kit).
+  final Color lockWindow;
 
   /// Source-list sidebar (the vibrancy tint on macOS).
   final Color sidebar;
@@ -101,9 +106,10 @@ class DesktopColors {
 
   final Color danger;
 
-  /// A band or badge tinted for danger (the Expiry table's Expired group);
-  /// [danger] text on it stays AA.
+  /// A band or badge tinted for danger (an expired badge, the Expiry
+  /// table's Expired group), and the text on it.
   final Color dangerBadge;
+  final Color onDangerBadge;
 
   final Color conflict;
   final Color conflictBadge;
@@ -114,6 +120,7 @@ class DesktopColors {
 
   static const light = DesktopColors(
     window: Color(0xFFFFFFFF),
+    lockWindow: Color(0xFFF6F6F8),
     sidebar: Color(0xFFECEAEF),
     toolbar: Color(0xFFFAFAFA),
     bar: Color(0xFFFAFAFA),
@@ -142,6 +149,7 @@ class DesktopColors {
     onWarningBadge: Color(0xFFA15C00),
     danger: Color(0xFFD70015),
     dangerBadge: Color(0xFFFDE8EA),
+    onDangerBadge: Color(0xFFD70015),
     conflict: Color(0xFF8944AB),
     conflictBadge: Color(0xFFF1E4F8),
     onConflictBadge: Color(0xFF8944AB),
@@ -150,6 +158,7 @@ class DesktopColors {
 
   static const dark = DesktopColors(
     window: Color(0xFF1E1E1E),
+    lockWindow: Color(0xFF1E1E1E),
     sidebar: Color(0xFF29272E),
     toolbar: Color(0xFF2B2B2D),
     bar: Color(0xFF252527),
@@ -160,7 +169,7 @@ class DesktopColors {
     groupBoxInner: Color(0xFF252527),
     groupBoxStroke: Color(0xFF3A3A3C),
     menu: Color(0xFF2A2A2C),
-    field: Color(0xFF2A2A2C),
+    field: Color(0xFF1C1C1E),
     fieldStroke: Color(0xFF48484A),
     toolbarField: Color(0xFF3A3A3C),
     selectedSegment: Color(0xFF5A5A5E),
@@ -175,7 +184,8 @@ class DesktopColors {
     warningBadge: Color(0xFF3D2E12),
     onWarningBadge: Color(0xFFFFB340),
     danger: Color(0xFFFF6961),
-    dangerBadge: Color(0xFF3A1E1E),
+    dangerBadge: Color(0xFF3D1A1A),
+    onDangerBadge: Color(0xFFFF6961),
     conflict: Color(0xFFD49BF5),
     conflictBadge: Color(0xFF3A2846),
     onConflictBadge: Color(0xFFD49BF5),

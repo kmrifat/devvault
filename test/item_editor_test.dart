@@ -1,10 +1,10 @@
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/item_editor/item_draft.dart';
-import 'package:devvault/features/vault/item_detail_pane.dart';
+import 'package:devvault/features/vault/desktop_inspector.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopTokenField;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -208,10 +208,31 @@ void main() {
       expect(find.text('Give it a name'), findsOneWidget);
 
       await tester.enterText(
-        input(find.byType(BCTextFieldInput)).first,
+        input(find.byKey(const ValueKey('item-name'))),
         'Sign in with Apple key',
       );
       await tester.enterText(input(labelled('Value value')), 'secret-123');
+      // The environment is a combo box: any value, stored as typed.
+      await tester.enterText(
+        input(find.byKey(const ValueKey('item-environment'))),
+        ' qa-eu ',
+      );
+      // Tags are tokens.
+      await tester.enterText(input(find.byType(DesktopTokenField)), 'siwa');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      // An expiry typed by the user is checked, then saved as theirs.
+      final expiry = input(find.byKey(const ValueKey('item-expiry')));
+      await tester.enterText(expiry, 'next year');
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      expect(find.text('Type the date as YYYY-MM-DD'), findsOneWidget);
+      await tester.enterText(expiry, '2027-02-30');
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      expect(find.text('No such date'), findsOneWidget);
+      expect(index(tester).all.any((i) => i.title.contains('Apple')), isFalse);
+      await tester.enterText(expiry, '2027-03-01');
       await settleWrite(
         tester,
         find.text('Add item'),
@@ -222,14 +243,17 @@ void main() {
           .firstWhere((i) => i.title == 'Sign in with Apple key');
       expect(created.appId, kitchenly.id);
       expect(created.platform, 'ios');
-      expect(created.environment, 'staging');
+      expect(created.environment, 'qa-eu');
+      expect(created.tags, ['siwa']);
+      expect(created.expiresAt, DateTime.utc(2027, 3, 1));
+      expect(created.expiresSource, ExpirySource.user);
       expect(created.typeName, ItemType.genericSecret.wireName);
       expect(created.fields['value']!.value, 'secret-123');
       expect(created.fields['value']!.secret, isTrue);
       expect(router(tester).state.uri.queryParameters['item'], created.id);
       expect(
         find.descendant(
-          of: find.byType(ItemDetailPane),
+          of: find.byType(DesktopInspector),
           matching: find.text('Sign in with Apple key'),
         ),
         findsOneWidget,
@@ -246,11 +270,13 @@ void main() {
 
       await tester.tap(find.bySemanticsLabel('Edit'));
       await tester.pumpAndSettle();
-      expect(find.text('Edit item'), findsOneWidget);
+      expect(find.text('Edit “Upload keystore”'), findsOneWidget);
       // The expiry came from the file: shown, not editable.
-      expect(find.byType(BCDateField), findsNothing);
+      expect(find.byKey(const ValueKey('item-expiry')), findsNothing);
+      // So did some fields: shown, not editable.
+      expect(find.text('From file'), findsWidgets);
 
-      final name = input(find.byType(BCTextFieldInput)).first;
+      final name = input(find.byKey(const ValueKey('item-name')));
       await tester.enterText(name, 'Play upload keystore');
       await settleWrite(
         tester,
@@ -267,7 +293,7 @@ void main() {
       expect(router(tester).state.uri.queryParameters['item'], keystore.id);
       expect(
         find.descendant(
-          of: find.byType(ItemDetailPane),
+          of: find.byType(DesktopInspector),
           matching: find.text('Play upload keystore'),
         ),
         findsOneWidget,
