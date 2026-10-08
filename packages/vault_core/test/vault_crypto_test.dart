@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart';
 
 import 'package:test/test.dart';
 import 'package:vault_core/vault_core.dart';
@@ -65,6 +68,111 @@ void main() {
     );
     ikm.dispose();
     key.dispose();
+  });
+
+  group('HKDF-SHA256 (RFC 5869)', () {
+    /// HKDF straight from RFC 5869 §2 on package:crypto's HMAC: an
+    /// implementation independent of libsodium, for inputs our API can't
+    /// pass (libsodium's expand takes its info as a String).
+    Uint8List reference(List<int> ikm, List<int> salt, List<int> info, int l) {
+      final prk = Hmac(
+        sha256,
+        salt.isEmpty ? List.filled(32, 0) : salt,
+      ).convert(ikm).bytes;
+      final okm = <int>[];
+      var t = <int>[];
+      for (var i = 1; okm.length < l; i++) {
+        t = Hmac(sha256, prk).convert([...t, ...info, i]).bytes;
+        okm.addAll(t);
+      }
+      return Uint8List.fromList(okm.sublist(0, l));
+    }
+
+    final ikm22 = Uint8List.fromList(List.filled(22, 0x0b));
+    // RFC 5869 Appendix A, test cases 1–3 (also checked with `openssl kdf`).
+    final cases = [
+      (
+        ikm: ikm22,
+        salt: seq(13),
+        info: seq(10, 0xf0),
+        okm:
+            '3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf'
+            '34007208d5b887185865',
+      ),
+      (
+        ikm: seq(80),
+        salt: seq(80, 0x60),
+        info: seq(80, 0xb0),
+        okm:
+            'b11e398dc80327a1c8e7f78c596a49344f012eda2d4efad8a050cc4c19afa97c'
+            '59045a99cac7827271cb41c65e590e09da3275600c2f09b8367793a9aca3db71'
+            'cc30c58179ec3e87c14c01d5c1f3434f1d87',
+      ),
+      (
+        ikm: ikm22,
+        salt: Uint8List(0),
+        info: Uint8List(0),
+        okm:
+            '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d'
+            '9d201395faa4b61a96c8',
+      ),
+    ];
+
+    test('the reference reproduces test cases 1–3', () {
+      for (final c in cases) {
+        expect(hex(reference(c.ikm, c.salt, c.info, c.okm.length ~/ 2)), c.okm);
+      }
+    });
+
+    test('test case 3 (no salt, no info) through hkdfSha256', () {
+      final c = cases.last;
+      final ikm = crypto.keyFromBytes(c.ikm);
+      final okm = crypto.hkdfSha256(
+        ikm: ikm,
+        salt: c.salt,
+        info: '',
+        outLength: 42,
+      );
+      expect(keyHex(okm), c.okm);
+      ikm.dispose();
+      okm.dispose();
+    });
+
+    test('hkdfSha256 equals the reference on the inputs DevVault passes', () {
+      // Any salt, a UTF-8 info string, key-sized and longer outputs.
+      final random = Random(5869);
+      const infos = [
+        'devvault/v1/recovery-kek',
+        '',
+        'pässwörd · ключ · 鍵',
+        'x',
+      ];
+      for (var run = 0; run < 64; run++) {
+        final ikmBytes = Uint8List.fromList([
+          for (var i = 0; i < 32; i++) random.nextInt(256),
+        ]);
+        final saltLength = random.nextInt(65);
+        final salt = Uint8List.fromList([
+          for (var i = 0; i < saltLength; i++) random.nextInt(256),
+        ]);
+        final info = infos[run % infos.length];
+        final length = const [32, 42, 64, 100][run % 4];
+        final ikm = crypto.keyFromBytes(ikmBytes);
+        final okm = crypto.hkdfSha256(
+          ikm: ikm,
+          salt: salt,
+          info: info,
+          outLength: length,
+        );
+        expect(
+          keyHex(okm),
+          hex(reference(ikmBytes, salt, utf8.encode(info), length)),
+          reason: 'run $run',
+        );
+        ikm.dispose();
+        okm.dispose();
+      }
+    });
   });
 
   test('keyed BLAKE2b-256 matches Go', () {
