@@ -5,7 +5,9 @@ import 'package:vault_core/vault_core.dart';
 import '../../app/routes.dart';
 import '../../core/password_policy.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart' show DesktopTheme;
 import '../../shared/ui.dart';
+import 'desktop_recover_view.dart';
 
 /// Forgot the master password: unlock with the recovery key, then choose a
 /// new password before the vault opens. Setting it rewrites `vault.json`
@@ -113,6 +115,23 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
     final unlocked = ref.watch(vaultSessionProvider) is Unlocked;
+
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopRecoverView(
+        unlocked: unlocked,
+        recoveryKey: _recoveryKey,
+        keyError: _keyError,
+        password: _password,
+        passwordError: _passwordError,
+        confirm: _confirm,
+        confirmError: _confirmError,
+        busy: _busy,
+        onChanged: () => setState(() {}),
+        onUnlockWithKey: _unlockWithKey,
+        onSetPassword: _setPassword,
+        onBack: () => context.go(Routes.unlock),
+      );
+    }
 
     return Scaffold(
       backgroundColor: bc.background,

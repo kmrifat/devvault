@@ -42,6 +42,16 @@ abstract final class DesktopMetrics {
   /// in the frames.
   static const double formRowHeight = 31;
 
+  /// Below a form's in-between lines (a strength meter, a field message) on
+  /// macOS, where rows have no gap of their own.
+  static const double formNoteGap = 6;
+
+  /// Floating panels (quick open): corner radius, width, and how far below
+  /// the top of the window they sit.
+  static const double panelRadius = 12;
+  static const double panelWidth = 600;
+  static const double panelTop = 120;
+
   /// Body text and secondary text.
   static const double bodySize = 13;
   static const double secondarySize = 11;

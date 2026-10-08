@@ -9,7 +9,20 @@ import '../../core/pairing.dart';
 import '../../data/providers.dart';
 import '../../data/sync_setup.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart';
+
+/// Opens Pair a device: a sheet on desktop (frame N08), the full-screen
+/// [Routes.pair] on phones.
+Future<void> showPairDevice(BuildContext context) {
+  if (DesktopTheme.maybeOf(context) != null) {
+    return showDesktopSheet<void>(
+      context,
+      builder: (_) => const PairScreen(inSheet: true),
+    );
+  }
+  return context.push<void>(Routes.pair);
+}
 
 /// Pair a device (P4-06): a QR code holding this vault's sync storage
 /// settings and keys, sealed under the 8-character code shown beside it.
@@ -18,8 +31,15 @@ import '../../shared/ui.dart';
 /// never in the QR.
 ///
 /// Nothing is stored: the code and the payload live in this screen only.
+///
+/// On desktop it is drawn as a sheet: inside a real one when opened with
+/// [showPairDevice], or over an empty window when [Routes.pair] is opened
+/// directly.
 class PairScreen extends ConsumerStatefulWidget {
-  const PairScreen({super.key});
+  const PairScreen({super.key, this.inSheet = false});
+
+  /// Shown by [showPairDevice] in a desktop sheet, rather than as a route.
+  final bool inSheet;
 
   @override
   ConsumerState<PairScreen> createState() => _PairScreenState();
@@ -103,16 +123,31 @@ class _PairScreenState extends ConsumerState<PairScreen> {
     );
   }
 
-  void _close() =>
+  void _close() {
+    if (widget.inSheet) {
+      Navigator.of(context).pop();
+    } else {
       context.canPop() ? context.pop() : context.go(Routes.settings);
+    }
+  }
+
+  /// Closes, then opens Settings › Sync to set up storage.
+  void _setUpSync() {
+    final router = GoRouter.of(context);
+    if (widget.inSheet) Navigator.of(context).pop();
+    router.go(Routes.settingsSync);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
     final setup = ref.watch(syncSetupProvider);
     final expiresAt = _expiresAt;
     final left = expiresAt?.difference(_now.toUtc());
     final expired = left != null && left <= Duration.zero;
+    if (DesktopTheme.maybeOf(context) != null) {
+      return _desktop(context, setup: setup, left: left, expired: expired);
+    }
+    final bc = context.bcTheme;
 
     return Scaffold(
       backgroundColor: bc.background,
@@ -202,6 +237,250 @@ class _PairScreenState extends ConsumerState<PairScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Desktop (frame N08): the QR beside the instructions, the code and its
+  /// countdown; New Code and Copy Pairing Text bottom left, Done bottom
+  /// right.
+  Widget _desktop(
+    BuildContext context, {
+    required SyncSetup? setup,
+    required Duration? left,
+    required bool expired,
+  }) {
+    final colors = context.desktopColors;
+    final code = _code;
+    final payload = _payload;
+    final ready = setup != null && code != null && payload != null;
+
+    final Widget content;
+    if (setup == null) {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        spacing: 4,
+        children: [
+          const Text(
+            'Set up sync first',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            "Pairing hands over where this vault syncs. It doesn't sync "
+            'anywhere yet.',
+            style: TextStyle(color: colors.secondaryText),
+          ),
+        ],
+      );
+    } else if (_error case final error?) {
+      content = Text(error, style: TextStyle(color: colors.danger));
+    } else if (!ready) {
+      content = const SizedBox(
+        height: _DesktopQr.extent,
+        child: Center(
+          child: DesktopProgress(
+            size: 20,
+            semanticLabel: 'Making a pairing code',
+          ),
+        ),
+      );
+    } else {
+      content = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 20,
+        children: [
+          _DesktopQr(payload: payload, expired: expired),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 12,
+              children: [
+                Text(
+                  'On the new device, choose “Join your vault”, then scan '
+                  'this code (or paste the text) and type the code below. It '
+                  'hands over where this vault syncs and the keys to that '
+                  'storage, never the vault key: the new device still needs '
+                  'your master password.',
+                  style: TextStyle(
+                    fontSize: DesktopMetrics.secondarySize + 1,
+                    height: 1.45,
+                    color: colors.text,
+                  ),
+                ),
+                _DesktopCode(code: code, expired: expired),
+                _Countdown(left: left!, expired: expired),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    final sheet = DesktopSheet(
+      width: 640,
+      title: 'Pair a device',
+      leadingAction: setup == null
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                DesktopButton(
+                  label: 'New Code',
+                  onPressed: _making ? null : _make,
+                ),
+                if (ready && !expired)
+                  DesktopButton(label: 'Copy Pairing Text', onPressed: _copy),
+              ],
+            ),
+      actions: setup == null
+          ? [
+              DesktopButton(label: 'Cancel', onPressed: _close),
+              DesktopButton(
+                label: 'Set Up Sync…',
+                kind: DesktopButtonKind.primary,
+                onPressed: _setUpSync,
+              ),
+            ]
+          : [
+              DesktopButton(
+                label: 'Done',
+                kind: DesktopButtonKind.primary,
+                onPressed: _close,
+              ),
+            ],
+      child: content,
+    );
+    if (widget.inSheet) return sheet;
+    // Opened as a route (a link, or Settings today): the same sheet, over
+    // an empty window.
+    return ColoredBox(color: colors.sidebar, child: sheet);
+  }
+}
+
+/// The QR on desktop: dark on white whatever the app's appearance, so any
+/// camera reads it, in a white rounded box.
+class _DesktopQr extends StatelessWidget {
+  const _DesktopQr({required this.payload, required this.expired});
+
+  final String payload;
+  final bool expired;
+
+  static const double _padding = 12;
+  static const double _size = 232;
+
+  /// The box's edge.
+  static const double extent = _size + 2 * _padding;
+
+  @override
+  Widget build(BuildContext context) {
+    // Always the light palette: a camera needs dark on light.
+    const light = DesktopColors.light;
+    return Semantics(
+      label: expired ? 'Expired pairing QR code' : 'Pairing QR code',
+      image: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: light.groupBoxInner,
+          border: Border.all(color: light.groupBoxStroke, width: 0.5),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(DesktopMetrics.menuRadius + 2),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(_padding),
+          child: Opacity(
+            opacity: expired ? 0.08 : 1,
+            child: QrImageView(
+              data: payload,
+              size: _size,
+              padding: EdgeInsets.zero,
+              errorCorrectionLevel: QrErrorCorrectLevel.M,
+              eyeStyle: QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: light.text,
+              ),
+              dataModuleStyle: QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: light.text,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The code to type on the other device, large, in a field-like box.
+class _DesktopCode extends StatelessWidget {
+  const _DesktopCode({required this.code, required this.expired});
+
+  final String code;
+  final bool expired;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    return Semantics(
+      label: 'Pairing code',
+      value: Pairing.display(code),
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.field,
+          border: Border.all(color: colors.fieldStroke, width: 0.5),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(DesktopMetrics.menuRadius + 2),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            Pairing.display(code),
+            textAlign: TextAlign.center,
+            style: AppText.mono(context, fontSize: 20).copyWith(
+              fontWeight: FontWeight.w500,
+              letterSpacing: 2,
+              color: expired ? colors.tertiaryText : colors.text,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// How long the code still works, or that it has expired.
+class _Countdown extends StatelessWidget {
+  const _Countdown({required this.left, required this.expired});
+
+  final Duration left;
+  final bool expired;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final minutes = left.inMinutes;
+    final seconds = (left.inSeconds % 60).toString().padLeft(2, '0');
+    final color = expired ? colors.danger : colors.secondaryText;
+    return Row(
+      spacing: 5,
+      children: [
+        DesktopIcon(DesktopSymbol.timer, size: 12, color: color),
+        Expanded(
+          child: Text(
+            expired
+                ? 'Expired. Make a new code.'
+                : 'Works for $minutes:$seconds, then the code expires',
+            style: TextStyle(
+              fontSize: DesktopMetrics.secondarySize,
+              color: color,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

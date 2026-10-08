@@ -1,4 +1,4 @@
-import 'package:bc_ui/bc_ui.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopButton;
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
@@ -261,7 +261,7 @@ void main() {
       await tester.pumpAndSettle();
       await tapAndWrite(
         tester,
-        find.text('Keep both'),
+        find.text('Keep Both'),
         () => index(tester).items[mine.id]!.conflict == null,
       );
       expect(inSidebar('Conflicts'), findsNothing);
@@ -277,20 +277,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ConflictDialog), findsOneWidget);
 
-      Finder resolveButton() => find.widgetWithText(BCButton, 'Resolve');
-      expect(tester.widget<BCButton>(resolveButton()).isDisabled, isTrue);
+      Finder resolveButton() => find.widgetWithText(DesktopButton, 'Resolve');
+      expect(tester.widget<DesktopButton>(resolveButton()).onPressed, isNull);
       // Secrets are masked until shown.
       expect(find.text('AIza-theirs'), findsNothing);
-      await tester.tap(find.text('Show secrets'));
+      await tester.tap(find.text('Show secret values'));
       await tester.pumpAndSettle();
       expect(find.text('AIza-theirs'), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Name from this device'));
       await tester.pump();
-      expect(tester.widget<BCButton>(resolveButton()).isDisabled, isTrue);
+      expect(tester.widget<DesktopButton>(resolveButton()).onPressed, isNull);
       await tester.tap(find.bySemanticsLabel('Value from the other device'));
       await tester.pump();
-      expect(tester.widget<BCButton>(resolveButton()).isDisabled, isFalse);
+      expect(
+        tester.widget<DesktopButton>(resolveButton()).onPressed,
+        isNotNull,
+      );
 
       await tapAndWrite(
         tester,
@@ -312,7 +315,7 @@ void main() {
       await tester.pumpAndSettle();
       await tapAndWrite(
         tester,
-        find.text('Keep both'),
+        find.text('Keep Both'),
         () => index(tester).items[mine.id]!.conflict == null,
       );
       final copy = index(tester).all
@@ -331,10 +334,10 @@ void main() {
       expect(find.textContaining('Deleted on another device'), findsOneWidget);
       await tester.tap(find.text('Resolve…'));
       await tester.pumpAndSettle();
-      expect(find.text('Keep it'), findsOneWidget);
+      expect(find.text('Keep It'), findsOneWidget);
       await tapAndWrite(
         tester,
-        find.text('Keep it'),
+        find.text('Keep It'),
         () => index(tester).items[mine.id]!.conflict == null,
       );
       expect(index(tester).items, contains(mine.id));
@@ -346,7 +349,7 @@ void main() {
       await tester.pumpAndSettle();
       await tapAndWrite(
         tester,
-        find.text('Delete everywhere'),
+        find.text('Delete Everywhere'),
         () => !index(tester).items.containsKey(mine.id),
       );
       expect(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bc_ui/bc_ui.dart';
@@ -11,7 +12,6 @@ import 'package:devvault/features/create_vault/join_vault_screen.dart';
 import 'package:devvault/features/pairing/pair_screen.dart';
 import 'package:devvault/services/clipboard_guard.dart';
 import 'package:devvault/services/credential_store.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -141,9 +141,12 @@ void main() {
       await settle(tester, qrShown);
       final code = shownCode(tester);
       expect(code, hasLength(8));
-      expect(find.text('Works for 10:00'), findsOneWidget);
+      expect(
+        find.text('Works for 10:00, then the code expires'),
+        findsOneWidget,
+      );
 
-      await tester.tap(find.text('Copy pairing text'));
+      await tester.tap(find.text('Copy Pairing Text'));
       await tester.pump();
       await settle(tester, () => clipboard.text != null);
       final payload = clipboard.text!;
@@ -198,14 +201,42 @@ void main() {
             .opacity,
         lessThan(0.5),
       );
-      expect(find.text('Copy pairing text'), findsNothing);
+      expect(find.text('Copy Pairing Text'), findsNothing);
 
-      await tester.tap(find.text('New code'));
+      await tester.tap(find.text('New Code'));
       await tester.pump();
       await settle(tester, qrShown);
       expect(shownCode(tester), isNot(first));
-      expect(find.text('Works for 10:00'), findsOneWidget);
+      expect(
+        find.text('Works for 10:00, then the code expires'),
+        findsOneWidget,
+      );
       await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('on desktop it opens as a sheet; Done closes it', (
+      tester,
+    ) async {
+      await open(tester);
+      final before = router(tester).state.uri.toString();
+      unawaited(showPairDevice(tester.element(find.byType(Scaffold).first)));
+      await tester.pump();
+      await settle(tester, qrShown);
+      // The sheet's opening animation.
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        tester.widget<PairScreen>(find.byType(PairScreen)).inSheet,
+        isTrue,
+      );
+      expect(shownCode(tester), hasLength(8));
+      expect(router(tester).state.uri.toString(), before);
+
+      await tester.tap(find.text('Done'));
+      // Sync is on, so its status chip keeps animating: no pumpAndSettle.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(PairScreen), findsNothing);
+      expect(router(tester).state.uri.toString(), before);
     });
   });
 
@@ -310,14 +341,11 @@ void main() {
         isEmpty,
       );
       // The paired vault is picked, so the password is asked straight away.
-      expect(find.byType(PasswordField), findsWidgets);
       final password = find.descendant(
-        of: find.ancestor(
-          of: find.text('Master password'),
-          matching: find.byType(PasswordField),
-        ),
+        of: find.byKey(const ValueKey('join-password')),
         matching: find.byType(EditableText),
       );
+      expect(password, findsOneWidget);
       await tester.enterText(password, _password);
       await tester.pump();
       final join = find.text('Join vault');

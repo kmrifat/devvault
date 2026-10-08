@@ -576,10 +576,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       title: replacing == null
           ? 'Import $name'
           : 'Replace the file of “${replacing.title}”',
-      leading: TypeIconTile(
-        type: draft?.type ?? ItemType.genericFile,
-        size: 36,
-      ),
+      icon: TypeIconTile(type: draft?.type ?? ItemType.genericFile, size: 36),
       subtitle: _SheetFileLine(
         type: _tooLarge ? null : draft?.type,
         reading: !_tooLarge && draft == null,

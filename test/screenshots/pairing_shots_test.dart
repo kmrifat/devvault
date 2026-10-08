@@ -72,18 +72,25 @@ void main() {
   }
 
   shot(
-    'P4-pair-device',
+    'N08-pair-device',
     Routes.settings,
     sample: true,
     overrides: overrides,
     interact: pair,
   );
   shot(
-    'P4-pair-device-light',
+    'N08-pair-device-light',
     Routes.settings,
     sample: true,
     overrides: overrides,
     interact: pair,
+    brightness: Brightness.light,
+  );
+  // Desktop: join in the lock screens' style (N01), pasting the text.
+  shot(
+    'N01-join-light',
+    Routes.joinVault,
+    vault: TestVault.none,
     brightness: Brightness.light,
   );
   // Phones scan the QR; desktops paste the text instead (pairing_flow_test).

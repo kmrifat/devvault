@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/widgets.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:yaru/yaru.dart' as yaru;
 
 import 'desktop_theme.dart';
@@ -26,6 +27,7 @@ enum DesktopSymbol {
   syncOff,
   syncFailed,
   keyChanged,
+  warning,
   chevronRight,
   chevronDown,
   platformApple,
@@ -42,7 +44,17 @@ enum DesktopSymbol {
   document,
   remove,
   reveal,
-  conceal;
+  conceal,
+
+  // Lock screens (N00–N02).
+  fingerprint,
+  faceId,
+  submit,
+  keyDerivation,
+  encrypted,
+  savePdf,
+  saveText,
+  printer;
 
   IconData of(DesktopKit kit) => switch (kit) {
     DesktopKit.macos => _macos,
@@ -68,6 +80,7 @@ enum DesktopSymbol {
     syncOff => CupertinoIcons.wifi_slash,
     syncFailed => CupertinoIcons.exclamationmark_triangle,
     keyChanged => CupertinoIcons.lock_rotation,
+    warning => CupertinoIcons.exclamationmark_triangle,
     chevronRight => CupertinoIcons.chevron_right,
     chevronDown => CupertinoIcons.chevron_down,
     platformApple => CupertinoIcons.device_phone_portrait,
@@ -85,6 +98,16 @@ enum DesktopSymbol {
     remove => CupertinoIcons.minus_circle,
     reveal => CupertinoIcons.eye,
     conceal => CupertinoIcons.eye_slash,
+    // CupertinoIcons has no Touch ID or Face ID glyph; the app's own
+    // Lucide set stands in for them.
+    fingerprint => LucideIcons.fingerprint,
+    faceId => LucideIcons.scanFace,
+    submit => CupertinoIcons.arrow_right_circle_fill,
+    keyDerivation => CupertinoIcons.lock_shield,
+    encrypted => CupertinoIcons.checkmark_shield,
+    savePdf => CupertinoIcons.arrow_down_doc,
+    saveText => CupertinoIcons.doc_text,
+    printer => CupertinoIcons.printer,
   };
 
   IconData get _fluent => switch (this) {
@@ -105,6 +128,7 @@ enum DesktopSymbol {
     syncOff => fl.FluentIcons.cloud_not_synced,
     syncFailed => fl.FluentIcons.warning,
     keyChanged => fl.FluentIcons.permissions,
+    warning => fl.FluentIcons.warning,
     chevronRight => fl.FluentIcons.chevron_right,
     chevronDown => fl.FluentIcons.chevron_down,
     platformApple => fl.FluentIcons.cell_phone,
@@ -122,6 +146,14 @@ enum DesktopSymbol {
     remove => fl.FluentIcons.remove,
     reveal => fl.FluentIcons.view,
     conceal => fl.FluentIcons.hide,
+    fingerprint => fl.FluentIcons.fingerprint,
+    faceId => fl.FluentIcons.contact,
+    submit => fl.FluentIcons.forward,
+    keyDerivation => fl.FluentIcons.processing,
+    encrypted => fl.FluentIcons.shield,
+    savePdf => fl.FluentIcons.pdf,
+    saveText => fl.FluentIcons.page,
+    printer => fl.FluentIcons.print,
   };
 
   IconData get _yaru => switch (this) {
@@ -142,6 +174,7 @@ enum DesktopSymbol {
     syncOff => yaru.YaruIcons.network_offline,
     syncFailed => yaru.YaruIcons.sync_error,
     keyChanged => yaru.YaruIcons.key,
+    warning => yaru.YaruIcons.warning,
     chevronRight => yaru.YaruIcons.pan_end,
     chevronDown => yaru.YaruIcons.pan_down,
     platformApple => yaru.YaruIcons.apple,
@@ -159,6 +192,14 @@ enum DesktopSymbol {
     remove => yaru.YaruIcons.minus,
     reveal => yaru.YaruIcons.eye,
     conceal => yaru.YaruIcons.hide,
+    fingerprint => yaru.YaruIcons.fingerprint,
+    faceId => yaru.YaruIcons.user,
+    submit => yaru.YaruIcons.go_next,
+    keyDerivation => yaru.YaruIcons.chip,
+    encrypted => yaru.YaruIcons.shield,
+    savePdf => yaru.YaruIcons.save,
+    saveText => yaru.YaruIcons.document,
+    printer => yaru.YaruIcons.printer,
   };
 }
 

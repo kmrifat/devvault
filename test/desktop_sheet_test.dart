@@ -20,7 +20,7 @@ void main() {
                 context,
                 builder: (context) => DesktopSheet(
                   title: 'Import',
-                  leading: const SizedBox.square(
+                  icon: const SizedBox.square(
                     key: ValueKey('tile'),
                     dimension: 36,
                   ),

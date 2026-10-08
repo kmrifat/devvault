@@ -26,9 +26,6 @@ Future<T?> showDesktopSheet<T>(
 /// A sheet (design frames N03e, N04, N05, N08): a title, the content (a
 /// [DesktopForm], usually), then the buttons at the bottom right, the
 /// default action last. Escape closes it.
-///
-/// On macOS it hangs from the top of the window, under the toolbar, as a
-/// sheet does; Windows and Linux centre their dialogs.
 class DesktopSheet extends StatelessWidget {
   const DesktopSheet({
     super.key,
@@ -37,18 +34,25 @@ class DesktopSheet extends StatelessWidget {
     required this.actions,
     this.width = 520,
     this.leadingAction,
-    this.leading,
+    this.icon,
+    this.message,
     this.subtitle,
   });
 
   final String title;
-  final Widget child;
 
-  /// A tile beside the title (the item type's icon).
-  final Widget? leading;
+  /// A tile left of the title (the item's type, a conflict mark).
+  final Widget? icon;
 
-  /// A line under the title (what the file was read as).
+  /// A line or two of secondary text under the title: what the sheet is
+  /// about, what happens next.
+  final String? message;
+
+  /// A richer line under the title than [message] (what the file was read
+  /// as, with a check mark), in secondary text.
   final Widget? subtitle;
+
+  final Widget child;
 
   /// Push buttons, Cancel first and the default action last.
   final List<Widget> actions;
@@ -61,41 +65,12 @@ class DesktopSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
-    final heading = Text(
-      title,
-      style: TextStyle(
-        fontSize: DesktopMetrics.bodySize + 2,
-        fontWeight: FontWeight.w600,
-        color: colors.text,
-      ),
+    final header = _SheetHeader(
+      title: title,
+      icon: icon,
+      message: message,
+      subtitle: subtitle,
     );
-    final leading = this.leading;
-    final subtitle = this.subtitle;
-    final header = leading == null && subtitle == null
-        ? heading
-        : Row(
-            spacing: 10,
-            children: [
-              ?leading,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 2,
-                  children: [
-                    heading,
-                    if (subtitle != null)
-                      DefaultTextStyle.merge(
-                        style: TextStyle(
-                          fontSize: DesktopMetrics.secondarySize,
-                          color: colors.secondaryText,
-                        ),
-                        child: subtitle,
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          );
     final buttons = Row(
       spacing: 8,
       children: [?leadingAction, const Spacer(), ...actions],
@@ -120,6 +95,7 @@ class DesktopSheet extends StatelessWidget {
       ),
     );
     return switch (context.desktopKit) {
+      // Sheets hang from the toolbar, as in the frames.
       DesktopKit.macos => Align(
         alignment: Alignment.topCenter,
         child: Padding(
@@ -131,9 +107,11 @@ class DesktopSheet extends StatelessWidget {
             width: width,
             child: mac.MacosSheet(
               insetPadding: EdgeInsets.zero,
+              // The frames draw sheets a shade darker than the window, so the
+              // white fields and tables inside stand out.
               backgroundColor: colors.groupBox,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,6 +139,71 @@ class DesktopSheet extends StatelessWidget {
         actions: [buttons],
       ),
     };
+  }
+}
+
+/// The sheet's title in bold, with its [icon] tile and [message] if any.
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({
+    required this.title,
+    this.icon,
+    this.message,
+    this.subtitle,
+  });
+
+  final String title;
+  final Widget? icon;
+  final String? message;
+  final Widget? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final message = this.message;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      spacing: 3,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: DesktopMetrics.bodySize,
+              fontWeight: FontWeight.w700,
+              color: colors.text,
+            ),
+          ),
+        ),
+        if (message != null)
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: DesktopMetrics.secondarySize,
+              color: colors.secondaryText,
+            ),
+          ),
+        if (subtitle case final subtitle?)
+          DefaultTextStyle.merge(
+            style: TextStyle(
+              fontSize: DesktopMetrics.secondarySize,
+              color: colors.secondaryText,
+            ),
+            child: subtitle,
+          ),
+      ],
+    );
+    final icon = this.icon;
+    if (icon == null) return text;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 10,
+      children: [
+        icon,
+        Expanded(child: text),
+      ],
+    );
   }
 }
 

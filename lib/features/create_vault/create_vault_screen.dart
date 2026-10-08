@@ -5,10 +5,13 @@ import '../../core/password_policy.dart';
 import '../../app/routes.dart';
 import '../../data/providers.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart' show DesktopTheme;
 import '../../shared/ui.dart';
+import 'desktop_create_vault_view.dart';
 import 'setup_layout.dart';
 
-/// Design frame D01: choose the master password for a new vault.
+/// Design frames N01 (desktop, [DesktopCreateVaultView]) and the phone's
+/// first-run screen: choose the master password for a new vault.
 class CreateVaultScreen extends ConsumerStatefulWidget {
   const CreateVaultScreen({super.key});
 
@@ -76,6 +79,22 @@ class _CreateVaultScreenState extends ConsumerState<CreateVaultScreen> {
     final strength = PasswordPolicy.strength(_password.text);
     final mib = ref.watch(kdfMemLimitProvider) ~/ (1024 * 1024);
     final passes = ref.watch(kdfOpsLimitProvider);
+
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopCreateVaultView(
+        password: _password,
+        passwordError: _passwordError,
+        confirm: _confirm,
+        confirmError: _confirmError,
+        confirmFocus: _confirmFocus,
+        busy: _busy,
+        mib: mib,
+        passes: passes,
+        onChanged: () => setState(() {}),
+        onCreate: _create,
+        onJoin: () => context.go(Routes.joinVault),
+      );
+    }
 
     return SetupLayout(
       step: 1,
