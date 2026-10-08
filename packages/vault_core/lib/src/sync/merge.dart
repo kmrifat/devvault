@@ -207,7 +207,7 @@ Item? resolveDeletion({
 
 /// Merges two concurrent versions of an app. Apps carry nothing secret and
 /// have no conflict slot: on a clash the local value stays. Identifier
-/// lists merge as sets.
+/// lists merge as sets, each kind on its own.
 AppRecord mergeApps({
   AppRecord? base,
   required AppRecord local,
@@ -225,11 +225,22 @@ AppRecord mergeApps({
   return AppRecord(
     id: local.id,
     name: pick(base?.name, local.name, remote.name),
+    organization: pick(
+      base?.organization,
+      local.organization,
+      remote.organization,
+    ),
+    kindName: pick(base?.kindName, local.kindName, remote.kindName),
     bundleIds: _mergeSet(base?.bundleIds, local.bundleIds, remote.bundleIds),
     packageNames: _mergeSet(
       base?.packageNames,
       local.packageNames,
       remote.packageNames,
+    ),
+    identifiers: _mergeSet(
+      base?.identifiers,
+      local.identifiers,
+      remote.identifiers,
     ),
     iconBlobId: pick(base?.iconBlobId, local.iconBlobId, remote.iconBlobId),
     createdAt: local.createdAt.isBefore(remote.createdAt)
@@ -247,12 +258,8 @@ AppRecord mergeApps({
 
 /// Three-way set merge: everything either side added, minus what either
 /// side removed from [base]. Without a base, the union. Local order first.
-List<String> _mergeSet(
-  List<String>? base,
-  List<String> local,
-  List<String> remote,
-) {
-  final b = base?.toSet() ?? const <String>{};
+List<T> _mergeSet<T>(List<T>? base, List<T> local, List<T> remote) {
+  final b = base?.toSet() ?? <T>{};
   final removed = {
     ...b.difference(local.toSet()),
     ...b.difference(remote.toSet()),

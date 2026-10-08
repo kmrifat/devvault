@@ -119,6 +119,7 @@ Future<void> generate(Directory out) async {
     ],
     'envelope': envelopes,
     'hlc_sorted': hlcs,
+    'app_records': _appRecordVectors(),
   };
   File('${out.path}/vectors.json').writeAsStringSync(
     '${const JsonEncoder.withIndent('  ').convert(vectors)}\n',
@@ -202,6 +203,22 @@ Future<void> generate(Directory out) async {
     vault.newItem(type: ItemType.genericSecret, title: 'Old token'),
   );
   await vault.delete(doomed.id, TombstoneKind.item);
+  // An app that isn't a mobile app, for an organization (SPEC §6.2).
+  final billing = await vault.putApp(
+    vault.newApp(
+      name: 'Billing API',
+      organization: 'Acme Corp',
+      kindName: AppKind.backend.wireName,
+      identifiers: [
+        AppIdentifier.of(IdentifierKind.domain, 'api.acme.example'),
+        AppIdentifier.of(
+          IdentifierKind.repository,
+          'github.com/acme/billing-api',
+        ),
+        AppIdentifier.of(IdentifierKind.bundleId, 'com.acme.billing'),
+      ],
+    ),
+  );
   vault.lock();
   staging.renameSync('${vaultsDir.path}/${vault.vaultId}');
 
@@ -222,10 +239,116 @@ Future<void> generate(Directory out) async {
           ],
         },
     },
-    'apps': {app.id: app.name},
+    'apps': {app.id: app.name, billing.id: billing.name},
+    // What every app record holds, as SPEC §6.2 reads it.
+    'app_records': {
+      for (final a in [app, billing])
+        a.id: {
+          'name': a.name,
+          'organization': a.organization,
+          'kind': a.kindName,
+          'bundle_ids': a.bundleIds,
+          'package_names': a.packageNames,
+          'identifiers': [for (final i in a.identifiers) i.toJson()],
+        },
+    },
     'tombstones': [doomed.id],
   };
   File('${out.path}/mini-vault.json').writeAsStringSync(
     '${const JsonEncoder.withIndent('  ').convert(expected)}\n',
   );
+}
+
+/// SPEC §6.2: app records as a writer might have stored them, each with
+/// the exact bytes a conforming writer stores when it rewrites the record
+/// unchanged (`canonical`, the plaintext of §6's "compact, keys sorted"),
+/// and every identifier a reader shows, in order.
+List<Map<String, Object?>> _appRecordVectors() {
+  Map<String, Object?> record(Map<String, Object?> fields) => {
+    'schema': 1,
+    'id': 'faf3ad88-4000-4edb-a4a8-03ba341039cb',
+    'name': 'Billing API',
+    'bundle_ids': <String>[],
+    'package_names': <String>[],
+    'icon_blob_id': null,
+    'created_at': '2026-10-07T09:00:00Z',
+    'updated_at': '2026-10-07T09:00:00Z',
+    'rev': '001759827600000-00000-$deviceId',
+    'device_id': deviceId,
+    ...fields,
+  };
+  final cases = <(String, Map<String, Object?>)>[
+    (
+      'Written before organization, kind and identifiers existed: '
+          'rewritten byte for byte.',
+      record({
+        'name': 'Kitchenly',
+        'bundle_ids': ['com.kitchenly.app'],
+        'package_names': ['com.kitchenly.android'],
+      }),
+    ),
+    (
+      'Every field set; bundle IDs stay in bundle_ids.',
+      record({
+        'organization': 'Acme Corp',
+        'kind': 'backend',
+        'bundle_ids': ['com.acme.billing'],
+        'identifiers': [
+          {'kind': 'domain', 'value': 'api.acme.example'},
+          {'kind': 'url', 'value': 'https://billing.acme.example/admin'},
+          {'kind': 'repository', 'value': 'github.com/acme/billing-api'},
+          {'kind': 'other', 'value': 'Stripe account acct_1Acme'},
+        ],
+      }),
+    ),
+    (
+      'Normalized: values trimmed, empty ones and repeats within a kind '
+          'dropped, bundle_id and package_name entries moved to their '
+          'arrays.',
+      record({
+        'organization': '  Acme Corp ',
+        'kind': 'web',
+        'bundle_ids': [' com.acme.app ', 'com.acme.app', ''],
+        'identifiers': [
+          {'kind': 'domain', 'value': ' acme.example '},
+          {'kind': 'domain', 'value': 'acme.example'},
+          {'kind': 'url', 'value': '   '},
+          {'kind': 'bundle_id', 'value': 'com.acme.app'},
+          {'kind': 'bundle_id', 'value': 'com.acme.widget'},
+          {'kind': 'package_name', 'value': 'com.acme.android'},
+          {'kind': 'repository', 'value': 'acme.example'},
+        ],
+      }),
+    ),
+    (
+      'Empty organization and identifiers: left out.',
+      record({'organization': ' ', 'kind': null, 'identifiers': <Object>[]}),
+    ),
+    (
+      'Kinds and fields this version does not know: kept as they are.',
+      record({
+        'kind': 'game',
+        'pinned': true,
+        'identifiers': [
+          {'kind': 'npm_package', 'value': '@acme/billing', 'scope': 'org'},
+          {'kind': 'domain', 'value': 'acme.example', 'primary': true},
+        ],
+      }),
+    ),
+  ];
+  return [
+    for (final (about, json) in cases)
+      () {
+        final app = AppRecord.fromJson(json);
+        return {
+          'about': about,
+          'record': json,
+          'canonical': utf8.decode(encodeRecord(app)),
+          'identifiers': [
+            for (final id in app.allIdentifiers)
+              {'kind': id.kindName, 'value': id.value},
+          ],
+        };
+      }(),
+  ];
 }

@@ -35,6 +35,34 @@ void main() {
     },
   );
 
+  test('app records normalize to their committed canonical bytes', () {
+    final vectors = jsonDecode(
+      File('${committed.path}/vectors.json').readAsStringSync(),
+    ) as Map<String, Object?>;
+    final cases = vectors['app_records']! as List<Object?>;
+    expect(cases, isNotEmpty);
+    for (final c in cases.cast<Map<String, Object?>>()) {
+      final app = AppRecord.fromJson(c['record']);
+      final canonical = c['canonical']! as String;
+      expect(
+        utf8.decode(encodeRecord(app)),
+        canonical,
+        reason: '${c['about']}',
+      );
+      expect(
+        [
+          for (final id in app.allIdentifiers)
+            {'kind': id.kindName, 'value': id.value},
+        ],
+        c['identifiers'],
+        reason: '${c['about']}',
+      );
+      // The canonical form reads back to itself.
+      final again = decodeRecord(ObjectType.app, utf8.encode(canonical));
+      expect(utf8.decode(encodeRecord(again)), canonical);
+    }
+  });
+
   test('the committed mini-vault opens and holds what it should', () async {
     final expected = jsonDecode(
       File('${committed.path}/mini-vault.json').readAsStringSync(),
@@ -74,6 +102,20 @@ void main() {
         final bytes = await vault.readAttachment(a);
         expect(bytes, isNotEmpty);
       }
+    }
+
+    final apps = expected['app_records']! as Map<String, Object?>;
+    expect(contents.apps.keys.toSet(), apps.keys.toSet());
+    for (final MapEntry(key: id, value: want as Map) in apps.entries) {
+      final app = contents.apps[id]!;
+      expect(app.name, want['name']);
+      expect(app.organization, want['organization']);
+      expect(app.kindName, want['kind']);
+      expect(app.bundleIds, want['bundle_ids']);
+      expect(app.packageNames, want['package_names']);
+      expect([
+        for (final i in app.identifiers) i.toJson(),
+      ], want['identifiers']);
     }
 
     final recovery = RecoveryKey.parse(

@@ -9,6 +9,7 @@ import '../format/format_error.dart';
 import '../format/vault_header.dart';
 import '../keys/recovery_key.dart';
 import '../keys/vault_keys.dart';
+import '../model/app_identity.dart';
 import '../model/item_type.dart';
 import '../model/records.dart';
 import '../store/vault_store.dart';
@@ -422,15 +423,21 @@ class Vault {
   /// A new app, stamped but not yet saved; pass it to [putApp].
   AppRecord newApp({
     required String name,
+    String? organization,
+    String? kindName,
     List<String> bundleIds = const [],
     List<String> packageNames = const [],
+    List<AppIdentifier> identifiers = const [],
   }) {
     final now = _now();
     return AppRecord(
       id: newId(),
       name: name,
+      organization: organization,
+      kindName: kindName,
       bundleIds: bundleIds,
       packageNames: packageNames,
+      identifiers: identifiers,
       createdAt: now,
       updatedAt: now,
       rev: _clock,
@@ -456,18 +463,10 @@ class Vault {
   /// Saves [app], stamping a new `rev` and this device.
   Future<AppRecord> putApp(AppRecord app) async {
     final now = _now();
-    final stamped = AppRecord(
-      id: app.id,
-      name: app.name,
-      bundleIds: app.bundleIds,
-      packageNames: app.packageNames,
-      iconBlobId: app.iconBlobId,
-      createdAt: app.createdAt,
+    final stamped = app.copyWith(
       updatedAt: now,
       rev: _tick(now),
       deviceId: deviceId,
-      schema: app.schema,
-      unknownFields: app.unknownFields,
     );
     await _writeRecord(stamped);
     return stamped;

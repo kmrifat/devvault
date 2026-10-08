@@ -6,9 +6,11 @@ import '../vault/vault.dart';
 /// search. Built in memory on unlock and dropped on lock.
 ///
 /// Search only looks at metadata that isn't secret (SPEC §6.1): titles,
-/// types, apps, platforms, environments, tags, file names and non-secret
-/// field values such as key IDs, team IDs and fingerprints. Secret values
-/// and notes are never searchable.
+/// types, platforms, environments, tags, file names, non-secret field
+/// values such as key IDs, team IDs and fingerprints, and the item's app:
+/// its name, organization and every identifier (bundle IDs, package names,
+/// domains, URLs, repositories …). Secret values and notes are never
+/// searchable.
 class VaultIndex {
   VaultIndex(VaultContents contents)
     : items = Map.unmodifiable(contents.items),
@@ -68,11 +70,44 @@ class VaultIndex {
     return nodes;
   }();
 
+  /// Every organization the vault's apps name, once each, A–Z ignoring
+  /// case: what the app form suggests.
+  late final List<String> organizations = {
+    for (final app in apps.values) ?app.organization,
+  }.toList()..sort(_byText);
+
+  /// The [tree]'s apps grouped by organization, organizations A–Z, then
+  /// the apps without one (organization null, "Personal"). The "No app"
+  /// node isn't an app and is in no group. Empty when no app in the tree
+  /// has an organization: then the tree stays flat.
+  late final List<OrgGroup> orgGroups = () {
+    final appNodes = [
+      for (final node in tree)
+        if (node.app != null) node,
+    ];
+    if (!appNodes.any((n) => n.app!.organization != null)) {
+      return const <OrgGroup>[];
+    }
+    final byOrg = <String?, List<AppNode>>{};
+    for (final node in appNodes) {
+      (byOrg[node.app!.organization] ??= []).add(node);
+    }
+    final orgs = [...byOrg.keys.nonNulls]..sort(_byText);
+    return [
+      for (final org in [...orgs, if (byOrg.containsKey(null)) null])
+        OrgGroup._(organization: org, apps: byOrg[org]!),
+    ];
+  }();
+
   /// Items matching every filter that is set. [query] matches when every
-  /// word in it appears in the item's searchable metadata.
+  /// word in it appears in the item's searchable metadata. [organization]
+  /// keeps the items of that organization's apps; [personal], the items of
+  /// apps without one.
   List<Item> filter({
     String? appId,
     bool withoutApp = false,
+    String? organization,
+    bool personal = false,
     String? platform,
     String? environment,
     String? tag,
@@ -83,6 +118,11 @@ class VaultIndex {
       for (final item in all)
         if ((appId == null || item.appId == appId) &&
             (!withoutApp || !apps.containsKey(item.appId)) &&
+            (organization == null ||
+                apps[item.appId]?.organization == organization) &&
+            (!personal ||
+                (apps.containsKey(item.appId) &&
+                    apps[item.appId]!.organization == null)) &&
             (platform == null || item.platform == platform) &&
             (environment == null || item.environment == environment) &&
             (tag == null || item.tags.contains(tag)) &&
@@ -114,7 +154,11 @@ class VaultIndex {
       ?item.platform,
       ?item.environment,
       ...item.tags,
-      if (app != null) ...[app.name, ...app.bundleIds, ...app.packageNames],
+      if (app != null) ...[
+        app.name,
+        ?app.organization,
+        for (final id in app.allIdentifiers) id.value,
+      ],
       for (final attachment in item.attachments) attachment.filename,
       for (final field in item.fields.values)
         if (!field.secret) field.value,
@@ -123,10 +167,31 @@ class VaultIndex {
     return '$text\n${_compact(text)}';
   }
 
+  static int _byText(String a, String b) {
+    final byLower = a.toLowerCase().compareTo(b.toLowerCase());
+    return byLower != 0 ? byLower : a.compareTo(b);
+  }
+
   static int _byTitle(Item a, Item b) {
     final byTitle = a.title.toLowerCase().compareTo(b.title.toLowerCase());
     return byTitle != 0 ? byTitle : a.id.compareTo(b.id);
   }
+}
+
+/// An organization's apps in the sidebar tree; [organization] is null for
+/// the apps without one ("Personal").
+class OrgGroup {
+  OrgGroup._({required this.organization, required List<AppNode> apps})
+    : apps = List.unmodifiable(apps),
+      count = apps.fold(0, (sum, node) => sum + node.count);
+
+  final String? organization;
+
+  /// In the tree's order (by name).
+  final List<AppNode> apps;
+
+  /// Items across [apps].
+  final int count;
 }
 
 /// An app in the sidebar tree, or the "No app" group when [app] is null.

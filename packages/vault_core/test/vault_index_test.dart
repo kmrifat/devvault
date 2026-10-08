@@ -202,6 +202,97 @@ void main() {
     });
   });
 
+  group('organizations and identifiers', () {
+    Future<AppRecord> orgApp(
+      String name, {
+      String? organization,
+      List<AppIdentifier> identifiers = const [],
+    }) => vault.putApp(
+      vault.newApp(
+        name: name,
+        organization: organization,
+        identifiers: identifiers,
+      ),
+    );
+
+    test('search finds every identifier kind and the organization, never '
+        'secrets', () async {
+      final billing = await orgApp(
+        'Billing API',
+        organization: 'Acme Corp',
+        identifiers: [
+          AppIdentifier.of(IdentifierKind.domain, 'api.acme.example'),
+          AppIdentifier.of(IdentifierKind.repository, 'github.com/acme/bill'),
+          AppIdentifier.of(IdentifierKind.url, 'https://status.acme.example'),
+          AppIdentifier.of(IdentifierKind.other, 'acct_1Billing'),
+          AppIdentifier.of(IdentifierKind.packageName, 'com.acme.android'),
+        ],
+      );
+      await item(
+        'Stripe key',
+        ItemType.genericSecret,
+        app: billing,
+        fields: const {
+          'value': ItemField(
+            value: 'sk_live_secret',
+            source: FieldSource.user,
+            secret: true,
+          ),
+        },
+      );
+      await item('Other', ItemType.genericSecret);
+      final idx = await index();
+      List<String> find(String q) =>
+          idx.filter(query: q).map((i) => i.title).toList();
+      expect(find('api.acme.example'), ['Stripe key']);
+      expect(find('github.com/acme'), ['Stripe key']);
+      expect(find('status.acme'), ['Stripe key']);
+      expect(find('acct_1billing'), ['Stripe key']);
+      expect(find('com.acme.android'), ['Stripe key']);
+      expect(find('acme corp'), ['Stripe key']);
+      expect(find('sk_live'), isEmpty);
+    });
+
+    test('lists organizations and groups the tree by them', () async {
+      final billing = await orgApp('Billing API', organization: 'Acme Corp');
+      final web = await orgApp('Web', organization: 'acme labs');
+      final kitchenly = await orgApp('Kitchenly');
+      await orgApp('Unused', organization: 'Zeta');
+      await item('A', ItemType.genericSecret, app: billing);
+      await item('B', ItemType.genericSecret, app: web);
+      await item('C', ItemType.genericSecret, app: kitchenly);
+      await item('D', ItemType.genericSecret);
+
+      final idx = await index();
+      expect(idx.organizations, ['Acme Corp', 'acme labs', 'Zeta']);
+      expect(
+        [
+          for (final g in idx.orgGroups)
+            (
+              g.organization,
+              [for (final n in g.apps) n.app!.name].join(', '),
+              g.count,
+            ),
+        ],
+        [
+          ('Acme Corp', 'Billing API', 1),
+          ('acme labs', 'Web', 1),
+          (null, 'Kitchenly', 1),
+        ],
+      );
+      expect(idx.filter(organization: 'Acme Corp').map((i) => i.title), ['A']);
+      expect(idx.filter(personal: true).map((i) => i.title), ['C']);
+    });
+
+    test('no organization anywhere: the tree stays flat', () async {
+      final kitchenly = await orgApp('Kitchenly');
+      await item('C', ItemType.genericSecret, app: kitchenly);
+      final idx = await index();
+      expect(idx.organizations, isEmpty);
+      expect(idx.orgGroups, isEmpty);
+    });
+  });
+
   test('passes quarantined objects through for the UI', () async {
     final a = await item('A', ItemType.genericSecret);
     final b = await item('B', ItemType.genericSecret);

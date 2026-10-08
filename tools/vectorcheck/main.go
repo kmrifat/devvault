@@ -178,7 +178,13 @@ func checkVectors(dir string) {
 			PlaintextHex string `json:"plaintext_hex"`
 			EnvelopeHex  string `json:"envelope_hex"`
 		} `json:"envelope"`
-		HlcSorted []string `json:"hlc_sorted"`
+		HlcSorted  []string `json:"hlc_sorted"`
+		AppRecords []struct {
+			About       string             `json:"about"`
+			Record      map[string]any     `json:"record"`
+			Canonical   string             `json:"canonical"`
+			Identifiers []appIdentifierVec `json:"identifiers"`
+		} `json:"app_records"`
 	}
 	must(0, json.Unmarshal(must(os.ReadFile(filepath.Join(dir, "vectors.json"))), &v))
 	// An empty group would silently check nothing.
@@ -240,6 +246,145 @@ func checkVectors(dir string) {
 		fail("hlc string order")
 	}
 	ok("hlc order (%d)", len(v.HlcSorted))
+
+	if len(v.AppRecords) == 0 {
+		fail("app_records is empty")
+	}
+	for _, a := range v.AppRecords {
+		app, ids := normalizeApp(a.Record)
+		if got := canonicalJSON(app); got != a.Canonical {
+			fail("app record %q: canonical\n got  %s\n want %s", a.About, got, a.Canonical)
+		}
+		if !identifiersEqual(ids, a.Identifiers) {
+			fail("app record %q: identifiers %v, want %v", a.About, ids, a.Identifiers)
+		}
+		// Normalizing is idempotent: the canonical form rewrites to itself.
+		var again map[string]any
+		must(0, json.Unmarshal([]byte(a.Canonical), &again))
+		if back, _ := normalizeApp(again); canonicalJSON(back) != a.Canonical {
+			fail("app record %q: canonical form is not stable", a.About)
+		}
+	}
+	ok("app records (%d)", len(v.AppRecords))
+}
+
+func toAny(list []string) []any {
+	out := []any{}
+	for _, s := range list {
+		out = append(out, s)
+	}
+	return out
+}
+
+type appIdentifierVec struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
+func identifiersEqual(a, b []appIdentifierVec) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// canonicalJSON is SPEC §6's record encoding: compact UTF-8 JSON, keys
+// sorted, nothing escaped that needn't be.
+func canonicalJSON(v any) string {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	must(0, enc.Encode(v))
+	return strings.TrimSuffix(buf.String(), "\n")
+}
+
+// normalizeApp applies SPEC §6.2's writer rules to a decoded app record:
+// organization and kind trimmed (left out when empty), identifier values
+// trimmed, empty ones and repeats within a kind dropped, bundle_id and
+// package_name entries moved to bundle_ids / package_names. It returns the
+// record a conforming writer stores and every identifier a reader shows:
+// bundle IDs, package names, then the identifiers array in order.
+func normalizeApp(in map[string]any) (map[string]any, []appIdentifierVec) {
+	out := map[string]any{}
+	for k, v := range in {
+		out[k] = v
+	}
+	for _, key := range []string{"organization", "kind"} {
+		s, _ := out[key].(string)
+		if s = strings.TrimSpace(s); s == "" {
+			delete(out, key)
+		} else {
+			out[key] = s
+		}
+	}
+
+	legacy := map[string][]string{}
+	for key, kind := range map[string]string{"bundle_ids": "bundle_id", "package_names": "package_name"} {
+		list, _ := in[key].([]any)
+		for _, v := range list {
+			legacy[kind] = append(legacy[kind], v.(string))
+		}
+	}
+	var others []any
+	type seenKey struct{ kind, value string }
+	seen := map[seenKey]bool{}
+	entries, _ := in["identifiers"].([]any)
+	for _, e := range entries {
+		entry := e.(map[string]any)
+		kind := strings.TrimSpace(entry["kind"].(string))
+		value := strings.TrimSpace(entry["value"].(string))
+		if kind == "" || value == "" {
+			continue
+		}
+		if kind == "bundle_id" || kind == "package_name" {
+			legacy[kind] = append(legacy[kind], value)
+			continue
+		}
+		if seen[seenKey{kind, value}] {
+			continue
+		}
+		seen[seenKey{kind, value}] = true
+		copied := map[string]any{}
+		for k, v := range entry {
+			copied[k] = v
+		}
+		copied["kind"], copied["value"] = kind, value
+		others = append(others, copied)
+	}
+
+	var ids []appIdentifierVec
+	for key, kind := range map[string]string{"bundle_ids": "bundle_id", "package_names": "package_name"} {
+		values := []any{}
+		done := map[string]bool{}
+		for _, v := range legacy[kind] {
+			if v = strings.TrimSpace(v); v != "" && !done[v] {
+				done[v] = true
+				values = append(values, v)
+			}
+		}
+		out[key] = values
+	}
+	for _, kind := range []string{"bundle_id", "package_name"} {
+		key := map[string]string{"bundle_id": "bundle_ids", "package_name": "package_names"}[kind]
+		for _, v := range out[key].([]any) {
+			ids = append(ids, appIdentifierVec{kind, v.(string)})
+		}
+	}
+	if len(others) == 0 {
+		delete(out, "identifiers")
+	} else {
+		out["identifiers"] = others
+		for _, o := range others {
+			m := o.(map[string]any)
+			ids = append(ids, appIdentifierVec{m["kind"].(string), m["value"].(string)})
+		}
+	}
+	return out, ids
 }
 
 func checkMiniVault(dir string) {
@@ -259,7 +404,15 @@ func checkMiniVault(dir string) {
 			} `json:"attachments"`
 		} `json:"items"`
 		Apps       map[string]string `json:"apps"`
-		Tombstones []string          `json:"tombstones"`
+		AppRecords map[string]struct {
+			Name         string             `json:"name"`
+			Organization *string            `json:"organization"`
+			Kind         *string            `json:"kind"`
+			BundleIDs    []string           `json:"bundle_ids"`
+			PackageNames []string           `json:"package_names"`
+			Identifiers  []appIdentifierVec `json:"identifiers"`
+		} `json:"app_records"`
+		Tombstones []string `json:"tombstones"`
 	}
 	must(0, json.Unmarshal(must(os.ReadFile(filepath.Join(dir, "mini-vault.json"))), &expected))
 	root := filepath.Join(dir, "mini-vault", expected.VaultID)
@@ -348,6 +501,40 @@ func checkMiniVault(dir string) {
 			fail("app %s", id)
 		}
 	}
+	// SPEC §6.2: the stored app records are already in canonical form.
+	optional := func(v any) *string {
+		if s, isString := v.(string); isString {
+			return &s
+		}
+		return nil
+	}
+	same := func(a, b *string) bool { return (a == nil && b == nil) || (a != nil && b != nil && *a == *b) }
+	for id, want := range expected.AppRecords {
+		rec := records["app:"+id]
+		if rec == nil || rec["name"] != want.Name {
+			fail("app record %s", id)
+		}
+		normalized, _ := normalizeApp(rec)
+		if canonicalJSON(normalized) != canonicalJSON(rec) {
+			fail("app record %s is not in canonical form", id)
+		}
+		if !same(optional(rec["organization"]), want.Organization) || !same(optional(rec["kind"]), want.Kind) {
+			fail("app record %s organization / kind", id)
+		}
+		var ids []appIdentifierVec
+		if list, _ := rec["identifiers"].([]any); list != nil {
+			for _, e := range list {
+				m := e.(map[string]any)
+				ids = append(ids, appIdentifierVec{m["kind"].(string), m["value"].(string)})
+			}
+		}
+		if fmt.Sprint(rec["bundle_ids"]) != fmt.Sprint(toAny(want.BundleIDs)) ||
+			fmt.Sprint(rec["package_names"]) != fmt.Sprint(toAny(want.PackageNames)) ||
+			!identifiersEqual(ids, want.Identifiers) {
+			fail("app record %s identifiers", id)
+		}
+	}
+	ok("mini-vault: %d app records in canonical form", len(expected.AppRecords))
 	for _, id := range expected.Tombstones {
 		if records["tombstone:"+id] == nil || records["item:"+id] != nil {
 			fail("tombstone %s", id)
