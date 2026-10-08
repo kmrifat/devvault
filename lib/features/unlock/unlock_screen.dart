@@ -6,10 +6,13 @@ import 'package:vault_core/vault_core.dart';
 
 import '../../app/routes.dart';
 import '../../data/vault_session.dart';
+import '../../services/biometric_key_store.dart';
 import '../../shared/ui.dart';
 
 /// Design frames D00 (desktop) and B1 (phone): unlock with the master
-/// password.
+/// password, or with Face ID, Touch ID or a fingerprint where it's turned
+/// on (SPEC §9.1). The biometric prompt opens by itself once the app is in
+/// front; the password is always there as the way back in.
 ///
 /// Shows only facts it can read without the key: the vault id and the
 /// Argon2id settings from `vault.json`. After repeated wrong passwords it
@@ -34,11 +37,26 @@ class UnlockScreen extends ConsumerStatefulWidget {
 
 class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final _password = TextEditingController();
+  final _focus = FocusNode();
   String? _error;
   bool _busy = false;
   int _failures = 0;
   Duration _wait = Duration.zero;
   Timer? _waitTimer;
+
+  /// Why biometrics aren't offered any more, shown above the password.
+  String? _notice;
+  bool _prompted = false;
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prompt once the app is in front: a prompt raised while it locks in
+    // the background would fail or pop up over another app.
+    _lifecycle = AppLifecycleListener(onResume: _autoPrompt);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoPrompt());
+  }
 
   @override
   void dispose() {
@@ -46,7 +64,51 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       ..clear()
       ..dispose();
     _waitTimer?.cancel();
+    _lifecycle.dispose();
+    _focus.dispose();
     super.dispose();
+  }
+
+  Future<void> _autoPrompt() async {
+    if (_prompted || !mounted) return;
+    final status = await ref.read(biometricUnlockProvider.future);
+    if (!mounted || _prompted) return;
+    if (!status.enabled) return _focus.requestFocus();
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+    _prompted = true;
+    await _unlockWithBiometrics(status.biometry!);
+  }
+
+  Future<void> _unlockWithBiometrics(Biometry biometry) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(vaultSessionProvider.notifier)
+          .unlockWithBiometrics(reason: 'Unlock your vault');
+      // Unlocked: the router moves on. Cancelled: the password is here.
+    } on BiometricKeyGone {
+      setState(
+        () => _notice =
+            '${biometry.label} was turned off: the vault key changed, or '
+            '${biometry.label} was set up again on this device. Unlock with '
+            'your master password, then turn it back on in Settings.',
+      );
+    } on BiometricKeyUnavailable {
+      setState(
+        () => _notice =
+            "${biometry.label} isn't available right now. Use your master "
+            'password.',
+      );
+    } on Object {
+      setState(() => _error = "Couldn't read the vault on this device");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _unlock() async {
@@ -72,7 +134,11 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     } on Object {
       setState(() => _error = "Couldn't read the vault on this device");
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        // Cancelled or turned off: the password is next.
+        _focus.requestFocus();
+      }
     }
   }
 
@@ -96,6 +162,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final session = ref.watch(vaultSessionProvider);
     final header = session is Locked ? session.header : null;
     final waiting = _wait > Duration.zero;
+    final biometric = ref.watch(biometricUnlockProvider).value;
+    final biometry = biometric != null && biometric.enabled
+        ? biometric.biometry
+        : null;
 
     return Scaffold(
       backgroundColor: bc.background,
@@ -139,10 +209,21 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       ),
                     ),
                   const SizedBox(height: BCSpacing.xl),
+                  if (_notice case final notice?) ...[
+                    BCText(
+                      notice,
+                      type: BCTextType.bodySm,
+                      color: BCTextColor.muted,
+                      align: TextAlign.center,
+                    ),
+                    const SizedBox(height: BCSpacing.md),
+                  ],
                   PasswordField(
                     label: 'Master password',
                     controller: _password,
-                    autofocus: true,
+                    // Focused once it's known whether a biometric prompt
+                    // comes first: the keyboard would cover it.
+                    focusNode: _focus,
                     isDisabled: _busy || waiting,
                     error: _error,
                     textInputAction: TextInputAction.done,
@@ -168,6 +249,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                           : 'Unlock',
                     ),
                   ),
+                  if (biometry != null) ...[
+                    const SizedBox(height: BCSpacing.sm),
+                    BCButton(
+                      fullWidth: true,
+                      variant: BCButtonVariant.secondary,
+                      isDisabled: _busy,
+                      onPressed: () => _unlockWithBiometrics(biometry),
+                      startContent: Icon(
+                        biometry == Biometry.faceId
+                            ? LucideIcons.scanFace
+                            : LucideIcons.fingerprint,
+                        size: 16,
+                      ),
+                      child: Text('Unlock with ${biometry.label}'),
+                    ),
+                  ],
                   const SizedBox(height: BCSpacing.lg),
                   Wrap(
                     alignment: WrapAlignment.center,
