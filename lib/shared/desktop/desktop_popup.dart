@@ -65,7 +65,12 @@ class DesktopPopup<T> extends StatelessWidget {
               },
         items: [
           for (final c in choices)
-            mac.MacosPopupMenuItem(value: c.value, child: Text(c.label)),
+            mac.MacosPopupMenuItem(
+              value: c.value,
+              // The menu sets its own text style without a font family;
+              // keep the button's, so a row is as wide as its label there.
+              child: Text(c.label, style: _macosMenuText(context)),
+            ),
         ],
       ),
       DesktopKit.fluent => fl.ComboBox<T>(
@@ -97,4 +102,12 @@ class DesktopPopup<T> extends StatelessWidget {
       ),
     };
   }
+}
+
+TextStyle _macosMenuText(BuildContext context) {
+  final body = mac.MacosTheme.of(context).typography.body;
+  return TextStyle(
+    fontFamily: body.fontFamily,
+    letterSpacing: body.letterSpacing,
+  );
 }

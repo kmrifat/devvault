@@ -23,7 +23,7 @@ void main() {
     addTearDown(tester.view.reset);
     await pumpUnlockedApp(
       tester,
-      location: Routes.settings,
+      location: Routes.settingsSecurity,
       layout: AppLayout.desktop,
     );
   }
@@ -54,7 +54,7 @@ void main() {
   ) async {
     await open(tester);
     final oldKey = lastTestRecoveryKey!;
-    await tester.tap(find.text('New kit…'));
+    await tester.tap(find.text('New Kit…'));
     await tester.pumpAndSettle();
     expect(find.text('New recovery kit'), findsOneWidget);
 
@@ -142,7 +142,7 @@ void main() {
       ),
     )!;
     final before = File('${store.root.path}/vault.json').readAsStringSync();
-    await tester.tap(find.text('New kit…'));
+    await tester.tap(find.text('New Kit…'));
     await tester.pumpAndSettle();
     await tester.tap(button('Cancel'));
     await tester.pumpAndSettle();

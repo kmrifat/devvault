@@ -1,4 +1,3 @@
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
@@ -94,9 +93,10 @@ void main() {
       tester,
     ) async {
       await open(tester);
-      expect(inScreen(find.text('Expired')), findsOneWidget);
-      expect(inScreen(find.text('Within 30 days')), findsOneWidget);
-      expect(inScreen(find.text('Later')), findsOneWidget);
+      // Desktop (N06): one table, a band per group with its count.
+      expect(inScreen(find.text('Expired · 1')), findsOneWidget);
+      expect(inScreen(find.text('Within 30 days · 2')), findsOneWidget);
+      expect(inScreen(find.text('Later · 1')), findsOneWidget);
 
       // Rows, in date order within each group.
       for (final title in [
@@ -113,14 +113,19 @@ void main() {
       ];
       expect(soonOrder.first, lessThan(soonOrder.last));
 
-      expect(inScreen(find.text('in 12 days')), findsOneWidget);
+      expect(inScreen(find.text('12 days')), findsOneWidget);
       expect(inScreen(find.text('3 days ago')), findsOneWidget);
       expect(inScreen(find.text('From file')), findsNWidgets(4));
 
       // No expiry: a count, not a list.
       final none = index(tester).all.where((i) => i.expiresAt == null).length;
       expect(
-        inScreen(find.text('$none items have no expiry date')),
+        inScreen(
+          find.text(
+            'No expiry · $none items. Nothing in their files gives a date, '
+            'and none was entered.',
+          ),
+        ),
         findsOneWidget,
       );
       expect(row('Maps API key'), findsNothing);
@@ -146,8 +151,8 @@ void main() {
       await open(tester, location: Routes.expiryShowing(expired: true));
       expect(row('Distribution certificate'), findsOneWidget);
       expect(row('Play publisher'), findsNothing);
-      expect(inScreen(find.text('Within 30 days')), findsNothing);
-      await tester.tap(inScreen(find.text('Show all')));
+      expect(inScreen(find.textContaining('Within 30 days')), findsNothing);
+      await tester.tap(inScreen(find.text('Show All')));
       await tester.pumpAndSettle();
       expect(location(tester), Routes.expiry);
       expect(row('Play publisher'), findsOneWidget);
@@ -170,7 +175,6 @@ void main() {
 
     testWidgets('an empty vault says what will show up here', (tester) async {
       await open(tester, vault: TestVault.locked);
-      expect(inScreen(find.byType(BCEmptyState)), findsOneWidget);
       expect(inScreen(find.text('Nothing to track yet')), findsOneWidget);
     });
 

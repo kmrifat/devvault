@@ -6,11 +6,16 @@ import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
 import '../../data/sync_setup.dart';
 import '../../services/credential_store.dart';
+import '../../shared/desktop_ui.dart'
+    show DesktopButton, DesktopButtonKind, DesktopSheet, showDesktopSheet;
+import '../../shared/desktop/desktop_theme.dart' show DesktopTheme;
 import '../../shared/ui.dart';
+import 'desktop_sync_pane.dart';
 import 'storage_form.dart';
 import 'settings_layout.dart';
 
-/// Design frame D07: where the vault syncs. Pick a provider (Cloudflare R2
+/// Where the vault syncs (design frame N07b on desktop, inside Settings'
+/// Sync tab as [DesktopSyncPane]). Pick a provider (Cloudflare R2
 /// first), enter the bucket and access keys, test the connection, then
 /// save. Keys go to this device's keychain; the vault and the bucket only
 /// ever hold ciphertext and `vault.json`.
@@ -88,16 +93,41 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
     }
   }
 
+  bool get _desktop => DesktopTheme.maybeOf(context) != null;
+
   Future<void> _turnOff() async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Turn off sync on this device?',
-      message:
-          'This device stops syncing and forgets the access keys. The vault '
-          'stays here, and what is already in the bucket stays there.',
-      confirmLabel: 'Turn off',
-      destructive: true,
-    );
+    const title = 'Turn off sync on this device?';
+    const message =
+        'This device stops syncing and forgets the access keys. The vault '
+        'stays here, and what is already in the bucket stays there.';
+    final confirmed = _desktop
+        ? await showDesktopSheet<bool>(
+                context,
+                builder: (context) => DesktopSheet(
+                  title: title,
+                  width: 440,
+                  actions: [
+                    DesktopButton(
+                      label: 'Cancel',
+                      onPressed: () => Navigator.of(context).pop(false),
+                    ),
+                    DesktopButton(
+                      label: 'Turn Off',
+                      kind: DesktopButtonKind.destructive,
+                      onPressed: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
+                  child: const Text(message),
+                ),
+              ) ??
+              false
+        : await showConfirmDialog(
+            context,
+            title: title,
+            message: message,
+            confirmLabel: 'Turn off',
+            destructive: true,
+          );
     if (!confirmed || !mounted) return;
     await ref.read(syncSetupProvider.notifier).turnOff();
     if (!mounted) return;
@@ -107,8 +137,24 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
     final setup = ref.watch(syncSetupProvider);
+    if (_desktop) {
+      return DesktopSyncPane(
+        form: _form,
+        setup: setup,
+        result: switch ((_testError, _testPassed)) {
+          (final String error, _) => StorageTestFailed(error),
+          (null, true) => StorageTestPassed(_tested!),
+          _ => null,
+        },
+        busy: _busy,
+        canSave: _testPassed,
+        onTest: _test,
+        onSave: _save,
+        onTurnOff: _turnOff,
+      );
+    }
+    final bc = context.bcTheme;
 
     return Scaffold(
       backgroundColor: bc.background,

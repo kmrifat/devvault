@@ -10,6 +10,7 @@ import 'package:devvault/services/folder_revealer.dart';
 import 'package:devvault/shared/desktop_ui.dart' show DesktopFormRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
@@ -74,7 +75,10 @@ void main() {
   group('screen', () {
     late FakeRevealer revealer;
 
-    Future<void> open(WidgetTester tester) async {
+    Future<void> open(
+      WidgetTester tester, {
+      String location = Routes.settingsSecurity,
+    }) async {
       tester.view
         ..physicalSize = const Size(1440, 1100)
         ..devicePixelRatio = 1;
@@ -82,7 +86,7 @@ void main() {
       revealer = FakeRevealer();
       await pumpUnlockedApp(
         tester,
-        location: Routes.settings,
+        location: location,
         layout: AppLayout.desktop,
         overrides: [folderRevealerProvider.overrideWithValue(revealer)],
       );
@@ -105,13 +109,29 @@ void main() {
     testWidgets('appearance, auto-lock and clipboard choices apply', (
       tester,
     ) async {
-      await open(tester);
+      await open(tester, location: Routes.settings);
 
-      await choose(tester, 'Match system', 'Dark');
+      // General: a segmented control.
+      await tester.tap(find.text('Dark'));
+      await tester.pumpAndSettle();
       expect(settings(tester).themeMode, ThemeMode.dark);
       expect(
         tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
         ThemeMode.dark,
+      );
+
+      // Security is a tab, and a link.
+      await tester.tap(find.text('Security'));
+      await tester.pumpAndSettle();
+      expect(
+        GoRouter.of(tester.element(find.text('Lock after'))).state.uri
+            .toString(),
+        Routes.settingsSecurity,
+      );
+      // The tab swapped the pane in place: no screen pushed on top.
+      expect(
+        Navigator.of(tester.element(find.text('Lock after'))).canPop(),
+        isFalse,
       );
 
       await choose(tester, '5 minutes', 'Never');
@@ -143,9 +163,9 @@ void main() {
           (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
       expect(find.text(vault.vaultId), findsOneWidget);
       expect(find.textContaining('Argon2id 8 MiB, 1 pass'), findsOneWidget);
-      await tester.ensureVisible(find.text('Show'));
+      await tester.ensureVisible(find.text('Show in Finder'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Show'));
+      await tester.tap(find.text('Show in Finder'));
       await tester.pumpAndSettle();
       expect(revealer.revealed, [vault.store.root.path]);
     });

@@ -10,15 +10,22 @@ import '../../data/sync_setup.dart';
 import '../../data/vault_session.dart';
 import '../../services/biometric_key_store.dart';
 import '../../services/folder_revealer.dart';
+import '../../shared/desktop/desktop_theme.dart' show DesktopTheme;
 import '../../shared/ui.dart';
 import 'change_password_dialog.dart';
+import 'desktop_settings.dart';
 import 'new_recovery_kit_dialog.dart';
 import 'settings_layout.dart';
 
 /// Settings: appearance, when the vault locks and how long copied secrets
 /// stay on the clipboard, the master password, and facts about this vault.
+///
+/// On desktop it is a page of tabs, opened on [pane] ([DesktopSettingsPage]);
+/// phones show General and Security on this one page.
 class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.pane = SettingsPane.general});
+
+  final SettingsPane pane;
 
   static String autoLockLabel(Duration? after) => switch (after) {
     null => 'Never',
@@ -35,6 +42,9 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopSettingsPage(pane: pane);
+    }
     final bc = context.bcTheme;
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);

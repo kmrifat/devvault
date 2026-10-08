@@ -1,17 +1,19 @@
 import 'dart:io';
 
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/sync_controller.dart';
 import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/settings/desktop_settings.dart';
 import 'package:devvault/features/settings/sync_settings_screen.dart';
 import 'package:devvault/services/credential_store.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
+import 'package:devvault/shared/desktop_ui.dart'
+    show DesktopButton, DesktopFormRow, DesktopPopup;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 import 'package:vault_s3/vault_s3.dart';
 
@@ -146,23 +148,21 @@ void main() {
     Vault vault(WidgetTester tester) =>
         (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
 
+    /// The field in the storage form's row labelled [label] (N07b).
     Finder input(String label) => find.descendant(
       of: find.ancestor(
-        of: find.text(label),
-        matching: find.byType(BCTextField),
+        of: find.text('$label:'),
+        matching: find.byType(DesktopFormRow),
       ),
       matching: find.byType(EditableText),
     );
 
-    Finder secret() => find.descendant(
-      of: find.byType(PasswordField),
-      matching: find.byType(EditableText),
-    );
+    Finder secret() => input('Secret access key');
 
     Future<void> fill(WidgetTester tester) async {
       await tester.enterText(input('Account ID'), _accountId);
       await tester.enterText(input('Bucket'), 'my-devvault');
-      await tester.enterText(input('Folder (optional)'), 'devvault');
+      await tester.enterText(input('Folder'), 'devvault');
       await tester.enterText(input('Access key ID'), _accessKey);
       await tester.enterText(secret(), _secretKey);
       await tester.pump();
@@ -206,14 +206,16 @@ void main() {
       await settleSync(tester);
     }
 
-    bool turnOnEnabled(WidgetTester tester) => !tester
-        .widget<BCButton>(
-          find.ancestor(
-            of: find.text('Turn on sync'),
-            matching: find.byType(BCButton),
-          ),
-        )
-        .isDisabled;
+    bool turnOnEnabled(WidgetTester tester) =>
+        tester
+            .widget<DesktopButton>(
+              find.ancestor(
+                of: find.text('Turn On Sync'),
+                matching: find.byType(DesktopButton),
+              ),
+            )
+            .onPressed !=
+        null;
 
     testWidgets('R2 is preselected; saving needs a passing test', (
       tester,
@@ -221,21 +223,22 @@ void main() {
       await open(tester);
       expect(
         tester
-            .widget<BCRadioGroup<StorageProvider>>(
-              find.byType(BCRadioGroup<StorageProvider>),
+            .widget<DesktopPopup<StorageProvider>>(
+              find.byType(DesktopPopup<StorageProvider>),
             )
             .value,
         StorageProvider.r2,
       );
+      expect(find.text('Cloudflare R2'), findsOneWidget);
       expect(turnOnEnabled(tester), isFalse);
 
-      await tester.tap(find.text('Test connection'));
+      await tester.tap(find.text('Test Connection'));
       await tester.pumpAndSettle();
       expect(find.text('Enter the bucket name'), findsOneWidget);
       expect(probes, isEmpty);
 
       await fill(tester);
-      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      await tapAndRun(tester, 'Test Connection', () => probes.isNotEmpty);
       expect(
         probes.single,
         'devvault/${vault(tester).vaultId}/.devvault-probe',
@@ -267,7 +270,7 @@ void main() {
         conditionalUpdate: true,
         conditionalDelete: true,
       );
-      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      await tapAndRun(tester, 'Test Connection', () => probes.isNotEmpty);
       expect(
         find.text('Connected · conditional writes enforced'),
         findsOneWidget,
@@ -281,21 +284,21 @@ void main() {
         conditionalUpdate: false,
         conditionalDelete: false,
       );
-      await tapAndRun(tester, 'Test connection', () => probes.length == 2);
+      await tapAndRun(tester, 'Test Connection', () => probes.length == 2);
       expect(find.text('Connected, with a limitation'), findsOneWidget);
       expect(find.textContaining(writes), findsOneWidget);
       expect(find.textContaining(deletes), findsOneWidget);
 
       await tapAndRun(
         tester,
-        'Turn on sync',
+        'Turn On Sync',
         () => appContainer(tester).read(syncSetupProvider) != null,
       );
       // The saved setup's card carries them from now on.
       final card = find
           .ancestor(
             of: find.textContaining('Syncing with Cloudflare R2'),
-            matching: find.byType(BCCard),
+            matching: find.byType(DesktopSettingsBox),
           )
           .first;
       for (final warning in [writes, deletes]) {
@@ -312,7 +315,7 @@ void main() {
       await open(tester);
       await fill(tester);
       probeError = const StorageAccessDenied('403');
-      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      await tapAndRun(tester, 'Test Connection', () => probes.isNotEmpty);
       expect(find.text('Connection failed'), findsOneWidget);
       expect(find.textContaining('refused these keys'), findsOneWidget);
       expect(turnOnEnabled(tester), isFalse);
@@ -323,10 +326,10 @@ void main() {
     ) async {
       await open(tester);
       await fill(tester);
-      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      await tapAndRun(tester, 'Test Connection', () => probes.isNotEmpty);
       await tapAndRun(
         tester,
-        'Turn on sync',
+        'Turn On Sync',
         () => appContainer(tester).read(syncSetupProvider) != null,
         whenDone: () =>
             expectNoSecretInToasts(tester, [_secretKey, _accessKey]),
@@ -369,10 +372,10 @@ void main() {
     testWidgets('the setup comes back after unlocking again', (tester) async {
       await open(tester);
       await fill(tester);
-      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      await tapAndRun(tester, 'Test Connection', () => probes.isNotEmpty);
       await tapAndRun(
         tester,
-        'Turn on sync',
+        'Turn On Sync',
         () => appContainer(tester).read(syncSetupProvider) != null,
       );
       final container = appContainer(tester);
@@ -404,17 +407,17 @@ void main() {
     testWidgets('turning sync off forgets keys and settings', (tester) async {
       await open(tester);
       await fill(tester);
-      await tapAndRun(tester, 'Test connection', () => probes.isNotEmpty);
+      await tapAndRun(tester, 'Test Connection', () => probes.isNotEmpty);
       await tapAndRun(
         tester,
-        'Turn on sync',
+        'Turn On Sync',
         () => appContainer(tester).read(syncSetupProvider) != null,
       );
-      await tester.tap(find.text('Turn off'));
+      await tester.tap(find.text('Turn Off'));
       await tester.pumpAndSettle();
       await tapAndRun(
         tester,
-        'Turn off',
+        'Turn Off',
         () => appContainer(tester).read(syncSetupProvider) == null,
       );
       expect(keychain.values, isEmpty);
@@ -422,7 +425,7 @@ void main() {
         Directory('${vault(tester).store.root.path}.sync').existsSync(),
         isFalse,
       );
-      expect(find.text('Turn on sync'), findsOneWidget);
+      expect(find.text('Turn On Sync'), findsOneWidget);
       await settleSync(tester);
       await tester.pump(const Duration(seconds: 10));
     });
@@ -438,7 +441,7 @@ void main() {
     });
   });
 
-  testWidgets('the screen is reachable from Settings', (tester) async {
+  testWidgets('the Sync tab is reachable from Settings', (tester) async {
     tester.view
       ..physicalSize = const Size(1440, 1200)
       ..devicePixelRatio = 1;
@@ -448,8 +451,13 @@ void main() {
       location: Routes.settings,
       layout: AppLayout.desktop,
     );
-    await tester.tap(find.text('Sync storage'));
+    await tester.tap(find.text('Sync'));
     await tester.pumpAndSettle();
     expect(find.byType(SyncSettingsScreen), findsOneWidget);
+    expect(
+      GoRouter.of(tester.element(find.byType(SyncSettingsScreen))).state.uri
+          .toString(),
+      Routes.settingsSync,
+    );
   });
 }

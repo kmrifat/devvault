@@ -10,9 +10,9 @@ import 'harness.dart';
 void main() {
   setUpAll(loadAppFonts);
 
-  shot('D06-expiry', Routes.expiry, sample: true);
+  shot('N06-expiry', Routes.expiry, sample: true);
   shot(
-    'D06-expiry-light',
+    'N06-expiry-light',
     Routes.expiry,
     sample: true,
     brightness: Brightness.light,

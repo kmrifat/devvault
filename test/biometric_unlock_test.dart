@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
+import 'package:devvault/features/settings/desktop_settings.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopSwitch;
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/services/biometric_key_store.dart';
 import 'package:flutter/material.dart';
@@ -125,7 +126,7 @@ void main() {
       final keys = MemoryBiometricKeyStore(kind: kind);
       await pumpUnlockedApp(
         tester,
-        location: Routes.settings,
+        location: Routes.settingsSecurity,
         layout: AppLayout.desktop,
         overrides: [biometricKeyStoreProvider.overrideWithValue(keys)],
       );
@@ -138,9 +139,9 @@ void main() {
       final toggle = find.descendant(
         of: find.ancestor(
           of: find.text('Unlock with Face ID'),
-          matching: find.byType(BCListGroupItem),
+          matching: find.byType(DesktopSettingsRow),
         ),
-        matching: find.byType(BCSwitch),
+        matching: find.byType(DesktopSwitch),
       );
 
       await tester.runAsync(() async {

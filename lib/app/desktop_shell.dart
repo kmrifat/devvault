@@ -186,7 +186,11 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
 ) {
   switch (section) {
     case ShellSection.expiry:
-      return (title: 'Expiry', path: '', count: null);
+      return (
+        title: 'Expiry',
+        path: 'Every date is from a file or from you',
+        count: null,
+      );
     case ShellSection.settings:
       return (title: 'Settings', path: '', count: null);
     case ShellSection.vault:

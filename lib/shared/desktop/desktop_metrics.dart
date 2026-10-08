@@ -32,6 +32,10 @@ abstract final class DesktopMetrics {
   /// wide.
   static const double lockWidth = 560;
 
+  /// Settings: the panes' column, and each icon tab along the top.
+  static const double settingsWidth = 636;
+  static const double settingsTabWidth = 64;
+
   /// Sheets: the right-aligned label column, and the gap after it.
   static const double formLabelWidth = 120;
   static const double formLabelGap = 8;
@@ -43,7 +47,14 @@ abstract final class DesktopMetrics {
   static const double panelWidth = 600;
   static const double panelTop = 120;
 
+  /// A form field for a short value (a bucket name), where a full-width
+  /// one would look like it wants more.
+  static const double narrowFieldWidth = 220;
+
   /// Body text and secondary text.
   static const double bodySize = 13;
   static const double secondarySize = 11;
+
+  /// Table cells beside the name column, and row descriptions (Settings).
+  static const double cellSize = 12;
 }
