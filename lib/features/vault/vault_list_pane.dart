@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -285,7 +286,9 @@ class _Header extends StatelessWidget {
 }
 
 /// The rounded group of item rows, scrolling when it outgrows the pane.
-class _ItemList extends StatelessWidget {
+/// Once a row is clicked the list has focus, and ↑/↓ move the selection,
+/// keeping the selected row in view.
+class _ItemList extends StatefulWidget {
   const _ItemList({
     required this.items,
     required this.selected,
@@ -299,14 +302,76 @@ class _ItemList extends StatelessWidget {
   final ValueChanged<Item> onSelect;
 
   @override
+  State<_ItemList> createState() => _ItemListState();
+}
+
+class _ItemListState extends State<_ItemList> {
+  final _focus = FocusNode(debugLabel: 'Vault list');
+  final _selectedRow = GlobalKey();
+
+  /// Set by an arrow key, so only keyboard moves scroll the list; a link or
+  /// click leaves it where it is.
+  bool? _movedDown;
+
+  @override
+  void didUpdateWidget(_ItemList old) {
+    super.didUpdateWidget(old);
+    if (old.selected == widget.selected) return;
+    final down = _movedDown;
+    _movedDown = null;
+    if (down == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final row = _selectedRow.currentContext;
+      if (row == null || !row.mounted) return;
+      Scrollable.ensureVisible(
+        row,
+        alignmentPolicy: down
+            ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+            : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _move(int by) {
+    final items = widget.items;
+    final at = items.indexWhere((i) => i.id == widget.selected);
+    final next = at == -1
+        ? (by > 0 ? 0 : items.length - 1)
+        : (at + by).clamp(0, items.length - 1);
+    if (next == at) return;
+    _movedDown = by > 0;
+    widget.onSelect(items[next]);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return _Group(
-      count: items.length,
-      builder: (i) => VaultItemRow(
-        item: items[i],
-        selected: items[i].id == selected,
-        now: now,
-        onTap: () => onSelect(items[i]),
+    final items = widget.items;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(-1),
+      },
+      child: Focus(
+        focusNode: _focus,
+        child: _Group(
+          count: items.length,
+          builder: (i) => VaultItemRow(
+            key: items[i].id == widget.selected ? _selectedRow : null,
+            item: items[i],
+            selected: items[i].id == widget.selected,
+            now: widget.now,
+            onTap: () {
+              _focus.requestFocus();
+              widget.onSelect(items[i]);
+            },
+          ),
+        ),
       ),
     );
   }
