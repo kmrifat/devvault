@@ -10,6 +10,7 @@ import 'app/routes.dart';
 import 'data/app_settings.dart';
 import 'data/providers.dart';
 import 'services/biometric_key_store.dart';
+import 'services/clipboard_guard.dart';
 import 'services/device_id.dart';
 import 'services/incoming_files.dart';
 import 'services/notifications.dart';
@@ -57,6 +58,10 @@ Future<void> main() async {
             const ChannelBiometricKeyStore(),
           ),
         if (phone) ...[
+          lockInBackgroundProvider.overrideWithValue(true),
+          clipboardAccessProvider.overrideWithValue(
+            const ChannelSensitiveClipboard(),
+          ),
           fileSaverProvider.overrideWithValue(ShareSheetSaver()),
           incomingFilesProvider.overrideWithValue(ChannelIncomingFiles()),
         ],

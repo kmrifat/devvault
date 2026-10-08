@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 
+import 'external_ui.dart';
+
 /// Saves bytes to a place the user picks (a save dialog on desktop, the
 /// system file browser on phones). Abstract so tests don't open dialogs.
 abstract interface class FileSaver {
@@ -22,10 +24,12 @@ class SystemFileSaver implements FileSaver {
     required Uint8List bytes,
     String mimeType = 'application/octet-stream',
   }) async =>
-      await FilePicker.saveFile(
-        fileName: fileName,
-        bytes: bytes,
-        mimeType: mimeType,
+      await ExternalUi.run(
+        () => FilePicker.saveFile(
+          fileName: fileName,
+          bytes: bytes,
+          mimeType: mimeType,
+        ),
       ) !=
       null;
 }

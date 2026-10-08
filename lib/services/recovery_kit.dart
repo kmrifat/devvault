@@ -7,6 +7,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'external_ui.dart';
+
 /// The recovery kit as a document the user keeps: plain text or a one-page
 /// PDF. Built in memory only. Nothing is written anywhere except where the
 /// user saves it, or handed to the print dialog.
@@ -167,5 +169,7 @@ class SystemDocumentPrinter implements DocumentPrinter {
 
   @override
   Future<bool> printPdf(Uint8List bytes, {required String name}) =>
-      Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
+      ExternalUi.run(
+        () => Printing.layoutPdf(onLayout: (_) async => bytes, name: name),
+      );
 }

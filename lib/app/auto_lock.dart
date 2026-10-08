@@ -7,10 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
 import '../data/vault_session.dart';
+import '../services/external_ui.dart';
 
 /// Locks the vault on its own: after [autoLockProvider] of no input, when
 /// the app comes back after the computer slept past that time, and on ⌘L
-/// (Ctrl+L). On quit it clears a copied secret from the clipboard.
+/// (Ctrl+L). On phones ([lockInBackgroundProvider]) also as soon as the app
+/// goes to the background, unless DevVault itself opened the screen in
+/// front ([ExternalUi]: a file picker, the share sheet). On quit it clears a
+/// copied secret from the clipboard.
 ///
 /// Idle time is measured on the wall clock ([clockProvider]) and checked
 /// every [checkEvery], so a sleeping computer, whose timers stop, still
@@ -41,12 +45,16 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     _ticker = Timer.periodic(AutoLock.checkEvery, (_) => _check());
     _lifecycle = AppLifecycleListener(
       onResume: _check,
+      // Hidden, not inactive: Face ID and the app switcher only make the
+      // app inactive.
+      onHide: _inBackground,
       // Quitting takes a copied secret off the clipboard too.
       onExitRequested: () async {
         await ref.read(clipboardGuardProvider).clearNow();
         return AppExitResponse.exit;
       },
     );
+    ExternalUi.open.addListener(_externalUiChanged);
     // A fresh unlock starts a fresh idle period.
     ref.listenManual(vaultSessionProvider, (previous, next) {
       if (next is Unlocked && previous is! Unlocked) _touch();
@@ -58,7 +66,23 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     HardwareKeyboard.instance.removeHandler(_onKey);
     _ticker?.cancel();
     _lifecycle.dispose();
+    ExternalUi.open.removeListener(_externalUiChanged);
     super.dispose();
+  }
+
+  void _inBackground() {
+    if (!ref.read(lockInBackgroundProvider) || ExternalUi.isOpen) return;
+    _lock();
+  }
+
+  /// A picker or share sheet closed while DevVault stayed in the background.
+  void _externalUiChanged() {
+    if (ExternalUi.isOpen) return;
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _inBackground();
+    }
   }
 
   void _touch() => _lastInput = _now();

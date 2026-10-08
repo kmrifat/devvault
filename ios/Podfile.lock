@@ -2,6 +2,8 @@ PODS:
   - biometric_key (0.1.0):
     - Flutter
     - FlutterMacOS
+  - device_privacy (0.1.0):
+    - Flutter
   - file_picker_darwin (1.0.0):
     - Flutter
     - FlutterMacOS
@@ -25,6 +27,7 @@ PODS:
 
 DEPENDENCIES:
   - biometric_key (from `.symlinks/plugins/biometric_key/darwin`)
+  - device_privacy (from `.symlinks/plugins/device_privacy/ios`)
   - file_picker_darwin (from `.symlinks/plugins/file_picker_darwin/darwin`)
   - Flutter (from `Flutter`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
@@ -38,6 +41,8 @@ DEPENDENCIES:
 EXTERNAL SOURCES:
   biometric_key:
     :path: ".symlinks/plugins/biometric_key/darwin"
+  device_privacy:
+    :path: ".symlinks/plugins/device_privacy/ios"
   file_picker_darwin:
     :path: ".symlinks/plugins/file_picker_darwin/darwin"
   Flutter:
@@ -59,6 +64,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   biometric_key: 148bb06919c71c21f208e544e921839aa19b635a
+  device_privacy: 1312267e5b5f39b8a3190aa835e24c93e979c9f5
   file_picker_darwin: 4c2b9a50ea44cb3b071381ea0cf48591bdd80251
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
