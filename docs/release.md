@@ -34,6 +34,17 @@ Each tag gives these desktop files:
 | Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix` |
 | Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature |
 
+## The agent helper (P5-09)
+
+The macOS build compiles `devvault-mcp` (`packages/devvault_mcp`) and embeds
+it at `DevVault.app/Contents/Helpers/devvault-mcp` (Xcode phase *Embed
+devvault-mcp*, `tool/build_mcp_helper.sh`).
+- **Signing:** it is signed like the app, with the hardened runtime and
+  `macos/Runner/Helper.entitlements`, and is not sandboxed (ADR-0006).
+  `tool/release/macos_sign_notarize.sh` re-signs it with the Developer ID
+  before the app.
+- **Docs:** setup for users is in `docs/agent/USING.md`.
+
 ## Secrets
 
 Set them under **Settings › Secrets and variables › Actions**. A platform

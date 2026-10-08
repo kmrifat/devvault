@@ -56,10 +56,16 @@ sign() {
 }
 
 # Inside out: every framework and dylib (Flutter, plugins, libsodium from
-# native assets), then the app itself with its sandbox entitlements.
+# native assets), the agent helper, then the app itself with its sandbox
+# entitlements.
 while IFS= read -r -d '' nested; do
   sign "$nested"
 done < <(find "$app/Contents/Frameworks" \( -name '*.framework' -o -name '*.dylib' \) -print0)
+# devvault-mcp (P5-09): not sandboxed, with the three code-signing
+# exceptions a Dart executable needs under the hardened runtime.
+sign --entitlements macos/Runner/Helper.entitlements \
+  --identifier com.binarycastle.devvault.mcp \
+  "$app/Contents/Helpers/devvault-mcp"
 sign --entitlements "$entitlements" "$app"
 codesign --verify --deep --strict --verbose=2 "$app"
 
