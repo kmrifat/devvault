@@ -95,12 +95,16 @@ Light (dark):
 | Separator | `#E3E3E6` | `#000000` (panes), `#3A3A3C` (inside) |
 | Zebra row | `#F5F5F7` | `#242426` |
 | Group box | `#F6F6F8` / `#FFFFFF`, stroke `#E3E3E6` | `#2A2A2C` / `#252527`, stroke `#3A3A3C` |
-| Text / secondary / tertiary | `#1D1D1F` / `#6E6E73` / `#8E8E93` | `#F5F5F7` / `#98989D` / `#8D8D93` |
+| Text / secondary / tertiary | `#1D1D1F` / `#66666B`¹ / `#8E8E93` | `#F5F5F7` / `#98989D` / `#8D8D93` |
 | Accent, selection | `#0A64D8` | `#0A64D8` (icons `#4D9BFF`) |
 | Success | `#1F9D55` | `#32D74B` |
 | Warning | `#C77700`, badge `#FFF1D6` / `#A15C00` | `#FFB340`, badge `#3D2E12` |
 | Danger | `#D70015` | `#FF6961` |
 | Conflict | `#8944AB`, badge `#F1E4F8` | `#D49BF5`, badge `#3A2846` |
+
+¹ The frames use `#6E6E73`, which is 4.25:1 on the sidebar. The app uses
+`#66666B`, the nearest shade that reaches WCAG AA (4.5:1) there. Tertiary
+text is only for placeholders and disabled controls.
 
 In code these come from the kit's theme (`MacosTheme`, `MacosColors`) plus
 DevVault's own tokens (`DesktopColors`, read with `context.desktopColors`)
@@ -117,8 +121,22 @@ through `package:devvault/shared/desktop_ui.dart`:
 - `DesktopColors` and `DesktopMetrics` hold the tokens and sizes above.
 - Controls: `DesktopTextField` (also the secure field), `DesktopComboBox`,
   `DesktopPopup`, `DesktopTokenField`, `DesktopButton`, `DesktopSegmented`,
-  `DesktopSwitch`, `DesktopCheckbox`, and `DesktopForm` / `DesktopFormRow`
-  for sheet forms.
+  `DesktopSwitch`, `DesktopCheckbox`, `DesktopIconButton`,
+  `DesktopSearchField`, and `DesktopForm` / `DesktopFormRow` for sheet
+  forms.
+- `DesktopSymbol` / `DesktopIcon`: icons by meaning, drawn from each OS's
+  own set (Cupertino, Fluent, Yaru).
+- `DesktopWindow`: the main window's frame. In the app on macOS it is
+  `MacosWindow` + `Sidebar`, so the sidebar runs under the traffic lights
+  with the system's vibrancy and can be resized; `macos_window_utils` sets
+  the window's look (transparent title bar, full-size content) and
+  `window_manager` its size. Windows, Linux and tests draw the same layout
+  in flat colours under the OS's own title bar.
+
+The shell (`lib/app/desktop_shell.dart`) puts the source list
+(`VaultSidebar`), toolbar (`ShellToolbar`) and status bar (`ShellStatusBar`)
+in that frame. The list and inspector inside it are still the bc_ui panes
+until they move to N03.
 
 Each control is drawn by the running OS's kit and behaves the same on all
 three (`test/desktop_controls_test.dart`). The macOS kit's goldens are

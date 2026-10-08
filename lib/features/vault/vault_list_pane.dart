@@ -13,7 +13,8 @@ import 'vault_actions.dart';
 
 /// Design frame D03's middle pane: what the sidebar selected, narrowed by
 /// the All / Expiring / Files / Secrets tabs and the search, with the
-/// selected item highlighted and an import drop zone at the bottom.
+/// selected item highlighted and an import drop zone at the bottom. Its
+/// title, path and count are in the window's toolbar.
 ///
 /// Like the sidebar, it reads everything from [uri] and changes it by
 /// navigating, so the selection is a link.
@@ -42,13 +43,7 @@ class VaultListPane extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Header(
-            filter: filter,
-            apps: index.apps,
-            count: quarantine ? index.quarantined.length : matching.length,
-          ),
           if (_selectedApp(filter, index) case final app?) ...[
-            const SizedBox(height: 10),
             _AppDetails(
               app: app,
               itemCount: index.items.values
@@ -57,7 +52,7 @@ class VaultListPane extends ConsumerWidget {
             ),
           ],
           if (!quarantine) ...[
-            const SizedBox(height: 14),
+            if (_selectedApp(filter, index) != null) const SizedBox(height: 14),
             BCTabs<VaultKind>(
               fullWidth: true,
               value: filter.kind,
@@ -169,122 +164,6 @@ class _AppDetails extends ConsumerWidget {
 }
 
 /// Where the list is (app › platform), what it is, how many, and Import.
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.filter,
-    required this.apps,
-    required this.count,
-  });
-
-  final VaultFilter filter;
-  final Map<String, AppRecord> apps;
-  final int count;
-
-  String _appName(String id) =>
-      id == VaultFilter.none ? 'No app' : apps[id]?.name ?? 'Unknown app';
-
-  @override
-  Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final app = filter.app;
-    final platform = filter.platform;
-    final crumbs = <String>[
-      if (filter.view == null && filter.tag == null && app != null) ...[
-        if (platform != null) _appName(app),
-        if (platform != null && filter.env != null)
-          VaultLabels.platform(platform == VaultFilter.none ? null : platform),
-      ],
-    ];
-    final title = switch (filter) {
-      VaultFilter(view: VaultView.conflicts) => 'Conflicts',
-      VaultFilter(view: VaultView.quarantine) => 'Unreadable',
-      VaultFilter(:final tag?) => '#$tag',
-      VaultFilter(:final env?) => VaultLabels.environment(
-        env == VaultFilter.none ? null : env,
-      ),
-      VaultFilter(platform: final platform?) => VaultLabels.platform(
-        platform == VaultFilter.none ? null : platform,
-      ),
-      VaultFilter(:final app?) => _appName(app),
-      _ => 'All items',
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (crumbs.isNotEmpty) ...[
-          Row(
-            spacing: 6,
-            children: [
-              for (final (i, crumb) in crumbs.indexed) ...[
-                if (i > 0)
-                  Icon(LucideIcons.chevronRight, size: 13, color: bc.separator),
-                Flexible(
-                  child: BCText(
-                    crumb,
-                    type: BCTextType.bodySm,
-                    color: BCTextColor.muted,
-                    maxLines: 1,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 14),
-        ],
-        Row(
-          spacing: 10,
-          children: [
-            Expanded(
-              child: Row(
-                spacing: 10,
-                children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 24,
-                        height: 1.2,
-                        fontWeight: BCTypography.semiBold,
-                        color: bc.foreground,
-                      ),
-                    ),
-                  ),
-                  BCChip(
-                    size: BCChipSize.sm,
-                    variant: BCChipVariant.secondary,
-                    color: BCChipColor.defaultColor,
-                    child: Text('$count'),
-                  ),
-                ],
-              ),
-            ),
-            BCButton(
-              size: BCButtonSize.sm,
-              onPressed: () => openImport(context),
-              startContent: const Icon(LucideIcons.filePlus2, size: 15),
-              child: const Text('Import'),
-            ),
-            BCButton(
-              size: BCButtonSize.sm,
-              variant: BCButtonVariant.secondary,
-              isIconOnly: true,
-              onPressed: () => createItem(context, filter),
-              child: const Icon(
-                LucideIcons.plus,
-                size: 16,
-                semanticLabel: 'New item',
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 /// The rounded group of item rows, scrolling when it outgrows the pane.
 /// Once a row is clicked the list has focus, and ↑/↓ move the selection,
 /// keeping the selected row in view.
@@ -645,6 +524,15 @@ class _Empty extends StatelessWidget {
         icon: Icon(icon),
         title: title,
         description: description,
+        actions: [
+          if (vaultEmpty && q == null)
+            BCButton(
+              size: BCButtonSize.sm,
+              onPressed: () => openImport(context),
+              startContent: const Icon(LucideIcons.filePlus2, size: 15),
+              child: const Text('Import'),
+            ),
+        ],
       ),
     );
   }

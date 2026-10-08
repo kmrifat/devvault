@@ -66,7 +66,7 @@ Future<void> main() async {
           incomingFilesProvider.overrideWithValue(ChannelIncomingFiles()),
         ],
       ],
-      child: const DevVaultApp(initialLocation: _start),
+      child: const DevVaultApp(initialLocation: _start, nativeWindow: true),
     ),
   );
 }

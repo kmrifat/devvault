@@ -1,5 +1,6 @@
 import 'dart:ui' show Tristate;
 
+import 'package:devvault/app/desktop_shell.dart' show ShellToolbar;
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/core/expiry.dart';
@@ -44,6 +45,10 @@ void main() {
   Finder inList(Finder finder) =>
       find.descendant(of: find.byType(VaultListPane), matching: finder);
 
+  /// The window's toolbar, which titles and counts the list.
+  Finder inToolbar(Finder finder) =>
+      find.descendant(of: find.byType(ShellToolbar), matching: finder);
+
   /// Item titles in the order the list shows them.
   List<String> titles(WidgetTester tester) => [
     for (final widget in tester.widgetList<Semantics>(
@@ -76,8 +81,8 @@ void main() {
 
   testWidgets('lists every item by title under "All items"', (tester) async {
     await open(tester);
-    expect(inList(find.text('All items')), findsOneWidget);
-    expect(inList(find.text('12')), findsOneWidget);
+    expect(inToolbar(find.text('All items')), findsOneWidget);
+    expect(inToolbar(find.text('12 items')), findsOneWidget);
     expect(titles(tester), [
       'APNs auth key',
       'App Store profile',
@@ -202,7 +207,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.runAsync(() => notifier.unlock(testPassword));
       await tester.pumpAndSettle();
-      expect(inList(find.text('1000')), findsOneWidget);
+      expect(inToolbar(find.text('1000 items')), findsOneWidget);
       // Only what's on screen (and a little beyond) is built.
       expect(find.byType(VaultItemRow).evaluate().length, lessThan(60));
 
@@ -244,9 +249,11 @@ void main() {
       tester,
       Routes.vault(app: kitchenly, platform: 'android', env: 'production'),
     );
-    expect(inList(find.text('Production')), findsOneWidget);
-    expect(inList(find.text('Kitchenly')), findsOneWidget);
-    expect(inList(find.text('Android')), findsOneWidget);
+    expect(inToolbar(find.text('Production')), findsOneWidget);
+    expect(
+      inToolbar(find.text('Kitchenly › Android · 5 items')),
+      findsOneWidget,
+    );
     expect(titles(tester), [
       'Firebase config',
       'Google Sign-In client',
@@ -256,11 +263,11 @@ void main() {
     ]);
 
     await go(tester, Routes.vault(app: kitchenly));
-    expect(inList(find.text('Kitchenly')), findsOneWidget);
+    expect(inToolbar(find.text('Kitchenly')), findsOneWidget);
     expect(titles(tester), hasLength(10));
 
     await go(tester, Routes.vault(tag: 'ci'));
-    expect(inList(find.text('#ci')), findsOneWidget);
+    expect(inToolbar(find.text('#ci')), findsOneWidget);
     expect(titles(tester), ['GitHub deploy key', 'Play publisher']);
   });
 

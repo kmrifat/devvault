@@ -140,7 +140,9 @@ void main() {
 
   testWidgets('secrets and notes are never found', (tester) async {
     await open(tester);
-    await tester.tap(find.text('Ctrl K'));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pumpAndSettle();
     for (final query in ['kitchenly-store-pass', 'sk_live', 'Google holds']) {
       await tester.enterText(quickOpenInput(), query);

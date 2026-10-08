@@ -36,9 +36,9 @@ void main() {
   /// Opens the import dialog on [name] and waits for it to be read (the
   /// parse runs on an isolate, which needs real time).
   Future<void> importFile(WidgetTester tester) async {
-    // Desktop has an Import button; phones an icon in the header, then
-    // B4a's choice.
-    final button = find.text('Import');
+    // Desktop has an Import button in the toolbar; phones an icon in the
+    // header, then B4a's choice.
+    final button = find.bySemanticsLabel(RegExp('^Import a file'));
     if (button.evaluate().isNotEmpty) {
       await tester.tap(button.first);
     } else {

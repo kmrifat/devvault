@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:bc_ui/bc_ui.dart';
 import 'package:cred_parsers/cred_parsers.dart';
+import 'package:devvault/app/desktop_shell.dart' show ShellToolbar;
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
@@ -296,7 +297,12 @@ void main() {
 
     Future<void> startImport(WidgetTester tester, PickedFile file) async {
       opener.queue.add([file]);
-      await tester.tap(find.widgetWithText(BCButton, 'Import').first);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ShellToolbar),
+          matching: find.bySemanticsLabel(RegExp('^Import a file')),
+        ),
+      );
       await tester.pump();
       await settle(
         tester,
@@ -586,7 +592,12 @@ void main() {
 
     testWidgets('cancelling the file picker does nothing', (tester) async {
       await open(tester);
-      await tester.tap(find.widgetWithText(BCButton, 'Import').first);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ShellToolbar),
+          matching: find.bySemanticsLabel(RegExp('^Import a file')),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(ImportDialog), findsNothing);
       expect(index(tester).all, isEmpty);

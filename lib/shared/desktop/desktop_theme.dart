@@ -39,10 +39,20 @@ enum DesktopKit {
 /// own theme widgets, and on Linux Yaru's Material theme is merged with the
 /// app's theme extensions.
 class DesktopTheme extends StatelessWidget {
-  const DesktopTheme({super.key, this.kit, required this.child});
+  const DesktopTheme({
+    super.key,
+    this.kit,
+    this.nativeWindow = false,
+    required this.child,
+  });
 
   /// Defaults to the running OS's kit; tests render each one.
   final DesktopKit? kit;
+
+  /// Whether this is the app's real window on macOS, where macos_ui draws
+  /// the sidebar with AppKit's vibrancy. It talks to the window on every
+  /// build, so tests leave it off and get the same layout in flat colours.
+  final bool nativeWindow;
 
   final Widget child;
 
@@ -61,6 +71,7 @@ class DesktopTheme extends StatelessWidget {
       kit: kit,
       brightness: brightness,
       colors: DesktopColors.of(brightness),
+      nativeWindow: nativeWindow && kit == DesktopKit.macos,
     );
     final scoped = _DesktopScope(data: data, child: child);
     return switch (kit) {
@@ -124,11 +135,15 @@ class DesktopThemeData {
     required this.kit,
     required this.brightness,
     required this.colors,
+    this.nativeWindow = false,
   });
 
   final DesktopKit kit;
   final Brightness brightness;
   final DesktopColors colors;
+
+  /// See [DesktopTheme.nativeWindow].
+  final bool nativeWindow;
 }
 
 class _DesktopScope extends InheritedWidget {
@@ -139,7 +154,8 @@ class _DesktopScope extends InheritedWidget {
   @override
   bool updateShouldNotify(_DesktopScope oldWidget) =>
       data.kit != oldWidget.data.kit ||
-      data.brightness != oldWidget.data.brightness;
+      data.brightness != oldWidget.data.brightness ||
+      data.nativeWindow != oldWidget.data.nativeWindow;
 }
 
 extension DesktopThemeContext on BuildContext {

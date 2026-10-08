@@ -25,6 +25,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     );
   }
   TestWidgetsFlutterBinding.ensureInitialized();
+  _mockMacosWindowChannels();
   await _loadAppFonts();
   await testMain();
 }
@@ -49,6 +50,31 @@ Future<void> _loadAppFonts() async {
 }
 
 const _macosSystemFont = '.AppleSystemUIFont';
+
+/// macos_ui talks to AppKit (window state, sidebar vibrancy, the system
+/// accent colour) whenever tests run on a Mac. Answers as a focused window
+/// with macOS's default blue accent.
+void _mockMacosWindowChannels() {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  messenger.setMockMethodCallHandler(
+    const MethodChannel('appkit_ui_element_colors'),
+    (call) async => switch (call.method) {
+      // AccentColorListener's hue for AccentColor.blue.
+      'getColorComponents' => {'hueComponent': 0.6085324903200698},
+      _ => null,
+    },
+  );
+  for (final name in [
+    'macos_window_utils/window_manipulator',
+    'macos_window_utils/ns_window_delegate',
+  ]) {
+    messenger.setMockMethodCallHandler(
+      MethodChannel(name),
+      (call) async => call.method == 'isMainWindow' ? true : null,
+    );
+  }
+}
 
 /// Compares goldens per pixel: a pixel only counts as changed when one of
 /// its channels moves by at least [strongDelta] (out of 255), and the

@@ -8,6 +8,7 @@ import '../data/providers.dart';
 import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
 import '../features/settings/new_recovery_kit_dialog.dart';
+import '../shared/desktop/desktop_theme.dart';
 import 'auto_lock.dart';
 import 'incoming_imports.dart';
 import 'layout.dart';
@@ -21,6 +22,7 @@ class DevVaultApp extends ConsumerStatefulWidget {
     super.key,
     this.initialLocation = Routes.unlock,
     this.layout,
+    this.nativeWindow = false,
   });
 
   /// Where the app opens. Tests and `--dart-define=START=` set it.
@@ -28,6 +30,10 @@ class DevVaultApp extends ConsumerStatefulWidget {
 
   /// Overrides the platform's layout (tests render both).
   final AppLayout? layout;
+
+  /// Whether the desktop window is the app's own native window (see
+  /// [DesktopTheme.nativeWindow]); `main()` sets it, tests don't.
+  final bool nativeWindow;
 
   @override
   ConsumerState<DevVaultApp> createState() => _DevVaultAppState();
@@ -38,8 +44,10 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
   /// recovery key changes (unlock, lock, create).
   final _sessionChanges = ValueNotifier<int>(0);
 
+  late final AppLayout _layout = widget.layout ?? AppLayout.current;
+
   late final GoRouter _router = buildRouter(
-    layout: widget.layout ?? AppLayout.current,
+    layout: _layout,
     initialLocation: widget.initialLocation,
     refreshListenable: _sessionChanges,
     redirect: (state) => sessionRedirect(
@@ -105,9 +113,16 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       darkTheme: AppTheme.dark(),
       themeMode: ref.watch(settingsProvider.select((s) => s.themeMode)),
       routerConfig: _router,
-      builder: (context, child) => AutoLock(
-        child: BCToastProvider(child: IncomingImports(child: child!)),
-      ),
+      builder: (context, child) {
+        final app = AutoLock(
+          child: BCToastProvider(child: IncomingImports(child: child!)),
+        );
+        // Desktop controls are drawn by the OS's own kit (ADR-0005). Around
+        // the Navigator, so menus the kits open as routes are themed too.
+        return _layout == AppLayout.desktop
+            ? DesktopTheme(nativeWindow: widget.nativeWindow, child: app)
+            : app;
+      },
     );
   }
 }

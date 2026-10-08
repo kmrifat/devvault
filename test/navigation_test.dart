@@ -152,7 +152,7 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
       expect(location(tester), Routes.settings);
-      await tester.tap(find.text('Expiring soon'));
+      await tester.tap(find.text('Expiring in 30 days'));
       await tester.pumpAndSettle();
       expect(location(tester), Routes.expiry);
       await tester.tap(find.text('Expired'));

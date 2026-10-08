@@ -1,24 +1,26 @@
-import 'package:bc_ui/bc_ui.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Scaffold, VerticalDivider;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:vault_core/vault_core.dart' show VaultIndex;
 
+import '../core/shortcuts.dart';
 import '../data/sync_controller.dart';
 import '../data/vault_filter.dart';
 import '../data/vault_session.dart';
 import '../features/import/drop_import.dart';
 import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
-import '../features/sync/sync_status_chip.dart';
+import '../features/sync/desktop_sync_status.dart';
+import '../features/vault/vault_actions.dart';
+import '../features/vault/vault_heading.dart';
 import '../features/vault/vault_sidebar.dart';
+import '../shared/desktop_ui.dart';
 import 'routes.dart';
-import 'theme.dart';
 
-/// The desktop window (design frame D03): the vault sidebar, and next to it
-/// a toolbar (search, lock) above the content of the selected branch.
+/// The desktop window (design frame N03): the source list down the left,
+/// and beside it a toolbar (title, Import, New, search, sync, Lock) over
+/// the selected branch, with a status bar along the bottom.
 ///
 /// The shell branches are Vault, Expiry and Settings, in that order; the
 /// sidebar links into them by location rather than branch index.
@@ -36,8 +38,6 @@ class DesktopShell extends ConsumerStatefulWidget {
 
   /// The current location, which the sidebar and search reflect.
   final Uri uri;
-
-  static const double sidebarWidth = VaultSidebar.width;
 
   @override
   ConsumerState<DesktopShell> createState() => _DesktopShellState();
@@ -105,58 +105,83 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
     final section = ShellSection.values[widget.navigationShell.currentIndex];
     final uri = widget.uri;
     return Scaffold(
-      backgroundColor: bc.background,
+      backgroundColor: colors.window,
       body: ImportDropTarget(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            VaultSidebar(section: section, uri: uri),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Toolbar(
-                    section: section,
-                    uri: uri,
-                    searchFocus: _searchFocus,
-                    onQuickOpen: _quickOpen,
-                  ),
-                  Expanded(child: widget.navigationShell),
-                ],
+        child: DesktopWindow(
+          sidebarBuilder: (context, scroll) => VaultSidebar(
+            section: section,
+            uri: uri,
+            scrollController: scroll,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ShellToolbar(
+                section: section,
+                uri: uri,
+                searchFocus: _searchFocus,
               ),
-            ),
-          ],
+              Expanded(child: widget.navigationShell),
+              ShellStatusBar(section: section, uri: uri),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Search across the vault and the lock button.
-class _Toolbar extends ConsumerStatefulWidget {
-  const _Toolbar({
+/// What the toolbar and status bar say about the current list: its title,
+/// the path to it, and how many items it holds (null outside the vault).
+({String title, String path, int? count}) _describe(
+  ShellSection section,
+  Uri uri,
+  VaultIndex? index,
+) {
+  switch (section) {
+    case ShellSection.expiry:
+      return (title: 'Expiry', path: '', count: null);
+    case ShellSection.settings:
+      return (title: 'Settings', path: '', count: null);
+    case ShellSection.vault:
+      final filter = VaultFilter.fromUri(uri);
+      if (index == null) return (title: 'All items', path: '', count: null);
+      final heading = vaultHeading(filter, index.apps);
+      return (
+        title: heading.title,
+        path: heading.path.join(' › '),
+        count: filter.view == VaultView.quarantine
+            ? index.quarantined.length
+            : filter.apply(index).length,
+      );
+  }
+}
+
+String _items(int count) => count == 1 ? '1 item' : '$count items';
+
+/// The window's unified toolbar: the list's title, path and count, Import
+/// and New, search (⌘F), the sync status and Lock.
+class ShellToolbar extends ConsumerStatefulWidget {
+  const ShellToolbar({
+    super.key,
     required this.section,
     required this.uri,
     required this.searchFocus,
-    required this.onQuickOpen,
   });
 
   final ShellSection section;
   final Uri uri;
   final FocusNode searchFocus;
-  final VoidCallback onQuickOpen;
-
-  static const double height = 64;
 
   @override
-  ConsumerState<_Toolbar> createState() => _ToolbarState();
+  ConsumerState<ShellToolbar> createState() => _ToolbarState();
 }
 
-class _ToolbarState extends ConsumerState<_Toolbar> {
+class _ToolbarState extends ConsumerState<ShellToolbar> {
   late final _search = TextEditingController(text: _query ?? '');
 
   String? get _query => widget.section == ShellSection.vault
@@ -164,7 +189,7 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
       : null;
 
   @override
-  void didUpdateWidget(_Toolbar oldWidget) {
+  void didUpdateWidget(ShellToolbar oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Follow the location (back, forward, a sidebar link) unless it already
     // says what the field does.
@@ -178,94 +203,143 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
     super.dispose();
   }
 
+  VaultFilter get _filter => widget.section == ShellSection.vault
+      ? VaultFilter.fromUri(widget.uri)
+      : const VaultFilter();
+
   /// Searches within the current filter; from Expiry or Settings it
   /// searches the whole vault.
   void _onSearch(String text) {
-    final filter = widget.section == ShellSection.vault
-        ? VaultFilter.fromUri(widget.uri)
-        : const VaultFilter();
     final item = widget.section == ShellSection.vault
         ? widget.uri.queryParameters['item']
         : null;
-    context.go(filter.withQuery(text).location(item: item));
+    context.go(_filter.withQuery(text).location(item: item));
   }
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
+    final session = ref.watch(vaultSessionProvider);
+    final index = session is Unlocked ? session.index : null;
+    final about = _describe(widget.section, widget.uri, index);
+    final count = about.count;
+    final subtitle = [
+      if (about.path.isNotEmpty) about.path,
+      if (count != null) _items(count),
+    ].join(' · ');
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: bc.border)),
+        color: colors.toolbar,
+        border: Border(bottom: BorderSide(color: colors.separator, width: 0.5)),
       ),
       child: SizedBox(
-        height: _Toolbar.height,
+        height: DesktopMetrics.toolbarHeight,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
-            spacing: BCSpacing.md,
+            spacing: 6,
             children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 140, maxWidth: 240),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      about.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: DesktopMetrics.bodySize,
+                        fontWeight: FontWeight.w600,
+                        color: colors.text,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: DesktopMetrics.secondarySize,
+                          color: colors.secondaryText,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              DesktopIconButton(
+                symbol: DesktopSymbol.importFile,
+                tooltip: 'Import a file (${shortcutLabel('I')})',
+                onPressed: () => openImport(context),
+              ),
+              DesktopIconButton(
+                symbol: DesktopSymbol.add,
+                tooltip: 'New item',
+                onPressed: () => createItem(context, _filter),
+              ),
               Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: BCSpacing.sm,
-                    children: [
-                      Flexible(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 480),
-                          // bc_ui's field wrapper is tappable but unnamed
-                          // for screen readers; name it.
-                          child: Semantics(
-                            label: 'Search',
-                            child: BCSearchField(
-                              controller: _search,
-                              focusNode: widget.searchFocus,
-                              variant: BCInputVariant.secondary,
-                              placeholder:
-                                  'Search items, bundle IDs, key IDs, '
-                                  'fingerprints',
-                              onChanged: _onSearch,
-                              onClear: () => _onSearch(''),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Tooltip(
-                        message: 'Quick open',
-                        child: BCButton(
-                          size: BCButtonSize.sm,
-                          variant: BCButtonVariant.tertiary,
-                          onPressed: widget.onQuickOpen,
-                          child: Text(
-                            defaultTargetPlatform == TargetPlatform.macOS
-                                ? '⌘K'
-                                : 'Ctrl K',
-                            style: AppText.mono(
-                              context,
-                              fontSize: BCTypography.sizeXs,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    child: DesktopSearchField(
+                      controller: _search,
+                      focusNode: widget.searchFocus,
+                      placeholder: 'Search items, key IDs, fingerprints',
+                      onChanged: _onSearch,
+                    ),
                   ),
                 ),
               ),
-              const SyncStatusChip(),
-              Tooltip(
-                message: defaultTargetPlatform == TargetPlatform.macOS
-                    ? 'Lock now (⌘L)'
-                    : 'Lock now (Ctrl+L)',
-                child: BCButton(
-                  size: BCButtonSize.sm,
-                  variant: BCButtonVariant.tertiary,
-                  onPressed: () =>
-                      ref.read(vaultSessionProvider.notifier).lock(),
-                  startContent: const Icon(LucideIcons.lock, size: 14),
-                  child: const Text('Lock'),
-                ),
+              const DesktopSyncStatus(),
+              DesktopIconButton(
+                symbol: DesktopSymbol.lock,
+                tooltip: 'Lock now (${shortcutLabel('L')})',
+                onPressed: () => ref.read(vaultSessionProvider.notifier).lock(),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The window's status bar: how many items the list holds, and that the vault is
+/// end-to-end encrypted.
+class ShellStatusBar extends ConsumerWidget {
+  const ShellStatusBar({super.key, required this.section, required this.uri});
+
+  final ShellSection section;
+  final Uri uri;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.desktopColors;
+    final session = ref.watch(vaultSessionProvider);
+    final index = session is Unlocked ? session.index : null;
+    final count = _describe(section, uri, index).count;
+    final style = TextStyle(
+      fontSize: DesktopMetrics.secondarySize,
+      color: colors.secondaryText,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.bar,
+        border: Border(top: BorderSide(color: colors.separator, width: 0.5)),
+      ),
+      child: SizedBox(
+        height: DesktopMetrics.statusBarHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              if (count != null) Text(_items(count), style: style),
+              const Spacer(),
+              Text('End-to-end encrypted', style: style),
+              const SizedBox(width: 5),
+              DesktopIcon(DesktopSymbol.lock, size: 10),
             ],
           ),
         ),
@@ -276,21 +350,23 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
 
 /// The vault branch on desktop: item list and detail side by side.
 class VaultPanes extends StatelessWidget {
+  /// The list pane's width until it becomes the N03 item table
+  /// ([DesktopMetrics.tableWidth]): its tabs need this much.
+  static const double listWidth = 420;
+
   const VaultPanes({super.key, required this.list, required this.detail});
 
   final Widget list;
   final Widget detail;
 
-  static const double listWidth = 420;
-
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(width: listWidth, child: list),
-        VerticalDivider(width: 1, thickness: 1, color: bc.border),
+        VerticalDivider(width: 1, thickness: 0.5, color: colors.separator),
         Expanded(child: detail),
       ],
     );

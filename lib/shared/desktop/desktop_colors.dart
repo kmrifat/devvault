@@ -22,6 +22,7 @@ class DesktopColors {
     required this.menu,
     required this.field,
     required this.fieldStroke,
+    required this.toolbarField,
     required this.text,
     required this.secondaryText,
     required this.tertiaryText,
@@ -72,6 +73,9 @@ class DesktopColors {
   final Color field;
   final Color fieldStroke;
 
+  /// The toolbar's search field, which sits on the toolbar without a border.
+  final Color toolbarField;
+
   final Color text;
   final Color secondaryText;
   final Color tertiaryText;
@@ -109,8 +113,11 @@ class DesktopColors {
     menu: Color(0xFFF6F6F8),
     field: Color(0xFFFFFFFF),
     fieldStroke: Color(0xFFD1D1D6),
+    toolbarField: Color(0xFFEBEBED),
     text: Color(0xFF1D1D1F),
-    secondaryText: Color(0xFF6E6E73),
+    // The design's #6E6E73 is 4.25:1 on the sidebar; this is the nearest
+    // shade that reaches WCAG AA (4.5:1) there.
+    secondaryText: Color(0xFF66666B),
     tertiaryText: Color(0xFF8E8E93),
     accent: Color(0xFF0A64D8),
     onAccent: Color(0xFFFFFFFF),
@@ -139,6 +146,7 @@ class DesktopColors {
     menu: Color(0xFF2A2A2C),
     field: Color(0xFF2A2A2C),
     fieldStroke: Color(0xFF48484A),
+    toolbarField: Color(0xFF3A3A3C),
     text: Color(0xFFF5F5F7),
     secondaryText: Color(0xFF98989D),
     tertiaryText: Color(0xFF8D8D93),
