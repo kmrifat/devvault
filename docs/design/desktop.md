@@ -28,6 +28,8 @@ and exported here under `desktop/`.
 | N07b | Settings window: Sync (storage form, Pair) | [png](desktop/N07b-settings-sync-light.png) | |
 | N07c | Settings window: General (appearance, reminders) | [png](desktop/N07c-settings-general-light.png) | |
 | N08 | Pair a device (sheet) | [png](desktop/N08-pair-device-light.png) | |
+| N09 | AI agent asks for secrets (sheet): reason, items, where the values go (P5-05). Drawn in code first, not yet in `DevVault.fig` | [png](../../screenshots/N09-agent-reveal-light.png) | [png](../../screenshots/N09-agent-command.png) |
+| N09b | AI agent asks to connect (sheet) | [png](../../screenshots/N09b-agent-pair-light.png) | |
 
 ## Structure
 

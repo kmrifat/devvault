@@ -24,7 +24,7 @@ enum AgentDecision {
 /// through [AgentBridgeNotifier.answer], and closes itself when [closed]
 /// completes (answered here, timed out, or the agent went away).
 sealed class AgentPrompt {
-  AgentPrompt._(this.id, this.client, this.at);
+  AgentPrompt({required this.id, required this.client, required this.at});
 
   final int id;
 
@@ -45,12 +45,17 @@ sealed class AgentPrompt {
 
 /// "Allow *client* to connect to DevVault?" (P5-04).
 class PairPrompt extends AgentPrompt {
-  PairPrompt._(super.id, super.client, super.at) : super._();
+  PairPrompt({required super.id, required super.client, required super.at});
 }
 
 /// A metadata read while *Allow metadata without asking* is off.
 class MetadataPrompt extends AgentPrompt {
-  MetadataPrompt._(super.id, super.client, super.at, this.what) : super._();
+  MetadataPrompt({
+    required super.id,
+    required super.client,
+    required super.at,
+    required this.what,
+  });
 
   /// What the agent wants to read, e.g. `items matching "acme"`.
   final String what;
@@ -76,14 +81,14 @@ class SecretPromptItem {
 
 /// A `request_secret` waiting for the user (P5-05).
 class SecretPrompt extends AgentPrompt {
-  SecretPrompt._(
-    super.id,
-    super.client,
-    super.at, {
+  SecretPrompt({
+    required super.id,
+    required super.client,
+    required super.at,
     required this.reason,
     required this.delivery,
     required this.items,
-  }) : super._();
+  });
 
   /// Why the agent says it needs it, verbatim.
   final String reason;
@@ -229,6 +234,39 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
     if (!prompt._answer.isCompleted) prompt._answer.complete(decision);
   }
 
+  /// Puts [prompt] in front of the user the way an agent's request does,
+  /// and resolves with the answer. For tests and screenshots.
+  @visibleForTesting
+  Future<AgentDecision> debugAsk(AgentPrompt prompt) {
+    _open.add(prompt);
+    state = state.copyWith(prompts: [...state.prompts, prompt]);
+    // Closed without an answer (agents off, lock, dispose) reads as deny.
+    return prompt._answer.future
+        .catchError((Object _) => AgentDecision.deny)
+        .whenComplete(() {
+          prompt._close();
+          _open.remove(prompt);
+          if (ref.mounted) {
+            state = state.copyWith(
+              prompts: [
+                for (final p in state.prompts)
+                  if (p != prompt) p,
+              ],
+            );
+          }
+        });
+  }
+
+  /// Shows [wait] on the unlock screen. For tests and screenshots.
+  @visibleForTesting
+  void debugWait(AgentWait wait) =>
+      state = state.copyWith(waits: [...state.waits, wait]);
+
+  /// Adds [entry] to the activity list. For tests and screenshots.
+  @visibleForTesting
+  void debugLog(AgentActivity entry) =>
+      state = state.copyWith(activity: [entry, ...state.activity]);
+
   /// Forgets a paired client and drops its open connections.
   Future<void> revoke(PairedClient client) async {
     final clients = [
@@ -318,7 +356,11 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
     // Pairing is a security decision: the person approving it has to be
     // able to open the vault.
     await _whenUnlocked(call, 'to connect');
-    final prompt = PairPrompt._(_nextPrompt++, client.name, _now());
+    final prompt = PairPrompt(
+      id: _nextPrompt++,
+      client: client.name,
+      at: _now(),
+    );
     final decision = await _ask(call, prompt, 'Paired', 'this device');
     if (decision == AgentDecision.deny) {
       throw const BridgeException(BridgeError.denied);
@@ -403,11 +445,11 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
       _log(call, action, what, 'Allowed earlier');
       return index;
     }
-    final prompt = MetadataPrompt._(
-      _nextPrompt++,
-      call.session.client!.name,
-      _now(),
-      what,
+    final prompt = MetadataPrompt(
+      id: _nextPrompt++,
+      client: call.session.client!.name,
+      at: _now(),
+      what: what,
     );
     final decision = await _ask(call, prompt, action, what);
     if (decision == AgentDecision.deny) {
@@ -435,10 +477,10 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
     if (_granted(keys)) {
       _log(call, action, detail, 'Allowed earlier');
     } else {
-      final prompt = SecretPrompt._(
-        _nextPrompt++,
-        call.session.client!.name,
-        _now(),
+      final prompt = SecretPrompt(
+        id: _nextPrompt++,
+        client: call.session.client!.name,
+        at: _now(),
         reason: request.reason,
         delivery: request.delivery,
         items: items,

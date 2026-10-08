@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bc_ui/bc_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../data/expiry_alerts.dart';
 import '../data/providers.dart';
 import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
+import '../features/agents/agent_prompt_sheet.dart';
 import '../features/settings/new_recovery_kit_dialog.dart';
 import '../shared/desktop/desktop_theme.dart';
 import 'app_menus.dart';
@@ -84,8 +87,12 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
     ref.listenManual(syncControllerProvider, (_, _) {});
     // Keeps expiry reminders in step with the vault from here on.
     ref.read(expiryAlertsProvider);
-    // Serves AI agents while Settings › AI Agents is on (P5).
-    ref.listenManual(agentBridgeProvider, (_, _) {});
+    // Serves AI agents while Settings › AI Agents is on (P5), and puts
+    // what they ask in front of the user, one sheet at a time.
+    ref.listenManual(
+      agentBridgeProvider.select((s) => s.prompts),
+      (_, _) => _showAgentPrompt(),
+    );
   }
 
   /// An interrupted key rotation is finished by a password unlock (SPEC
@@ -103,6 +110,29 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
       }
       showFinishedRotationDialog(context, key);
     });
+  }
+
+  bool _showingAgentPrompt = false;
+
+  Future<void> _showAgentPrompt() async {
+    if (_showingAgentPrompt) return;
+    final prompt = ref
+        .read(agentBridgeProvider)
+        .prompts
+        .where((p) => !p.isClosed)
+        .firstOrNull;
+    final context = _router.routerDelegate.navigatorKey.currentContext;
+    if (prompt == null || context == null) return;
+    _showingAgentPrompt = true;
+    try {
+      final decision = await showAgentPromptSheet(context, prompt);
+      ref
+          .read(agentBridgeProvider.notifier)
+          .answer(prompt, decision ?? AgentDecision.deny);
+    } finally {
+      _showingAgentPrompt = false;
+    }
+    if (mounted) unawaited(_showAgentPrompt());
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:vault_core/vault_core.dart' show VaultHeader;
 
 import '../../services/biometric_key_store.dart' show Biometry;
+import '../agents/agent_wait_banner.dart';
 import '../../shared/desktop_ui.dart';
 
 /// Design frame N00: the unlock screen on desktop. The app mark, the
@@ -109,6 +110,7 @@ class DesktopUnlockView extends StatelessWidget {
             style: secondary,
           ),
         const SizedBox(height: 28),
+        const AgentWaitBanner(),
         if (notice != null) ...[
           Text(notice, textAlign: TextAlign.center, style: secondary),
           const SizedBox(height: 14),
