@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 /// Records what would have been written, or cancels.
 class RecordingFileSaver implements FileSaver {
@@ -231,6 +232,7 @@ void main() {
     expect(find.text('Couldn’t save upload.jks'), findsOneWidget);
     expect(find.textContaining('/secret/path'), findsNothing);
     expect(find.textContaining('denied'), findsNothing);
+    expectNoSecretInToasts(tester, ['/secret/path', 'denied']);
     await dismissToasts(tester);
   });
 

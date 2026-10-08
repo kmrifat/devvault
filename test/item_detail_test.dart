@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 
 import 'clipboard_guard_test.dart' show FakeClipboard;
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 void main() {
   setUpAll(loadTestCrypto);
@@ -166,6 +167,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Alias copied'), findsNothing);
+    expectNoSecretInToasts(tester, ['kitchenly-store-pass']);
 
     await tester.pump(const Duration(seconds: 2));
     expect(inDetail(find.text('Copied')), findsNothing);

@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 void main() {
   setUpAll(loadTestCrypto);
@@ -276,6 +277,7 @@ void main() {
 
     await submit(testPassword);
     expect(find.text('The vault key changed'), findsNothing);
+    expectNoSecretInToasts(tester, [testPassword, 'not my password']);
     final session = appContainer(tester).read(vaultSessionProvider) as Unlocked;
     expect(session.vault.header.vkId, rotatedVkId);
     expect(session.index.items, hasLength(12));

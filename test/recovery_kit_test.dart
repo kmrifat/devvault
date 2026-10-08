@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 import 'clipboard_guard_test.dart' show FakeClipboard;
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 class FakeFileSaver implements FileSaver {
   /// What was saved, as text (a PDF reads as Latin-1).
@@ -125,6 +126,8 @@ void main() {
     await tester.tap(find.text('Copy'));
     await tester.pumpAndSettle();
     expect(clipboard.text, keyText);
+    // Not the key, nor any group of it.
+    expectNoSecretInToasts(tester, [keyText, ...keyText.split(RegExp('[- ]'))]);
     await tester.pump(const Duration(seconds: 30));
     expect(clipboard.text, '');
   });
@@ -135,6 +138,7 @@ void main() {
     await tester.pumpAndSettle();
     final kit = saver.saved['DevVault Recovery Key.txt']!;
     expect(kit, contains(keyText));
+    expectNoSecretInToasts(tester, [keyText, ...keyText.split(RegExp('[- ]'))]);
     final vault =
         (appContainer(tester).read(vaultSessionProvider) as Unlocked).vault;
     expect(kit, contains(vault.vaultId));

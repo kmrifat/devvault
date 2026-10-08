@@ -16,6 +16,7 @@ import 'package:vault_core/vault_core.dart';
 import 'package:vault_s3/vault_s3.dart';
 
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 const _accountId = '0123456789abcdef0123456789abcdef';
 const _accessKey = 'AKIA-TEST-ACCESS';
@@ -180,11 +181,14 @@ void main() {
       }
     }
 
+    /// Taps [label] and runs until [done]. [whenDone] checks the screen
+    /// before sync settles (a toast is gone by then).
     Future<void> tapAndRun(
       WidgetTester tester,
       String label,
-      bool Function() done,
-    ) async {
+      bool Function() done, {
+      void Function()? whenDone,
+    }) async {
       final target = find.text(label).last; // a dialog's button wins
       await tester.ensureVisible(target);
       await tester.tap(target);
@@ -195,6 +199,8 @@ void main() {
         await tester.pump();
       }
       expect(done(), isTrue, reason: '$label never finished');
+      await tester.pump();
+      whenDone?.call();
       await settleSync(tester);
     }
 
@@ -265,6 +271,8 @@ void main() {
         tester,
         'Turn on sync',
         () => appContainer(tester).read(syncSetupProvider) != null,
+        whenDone: () =>
+            expectNoSecretInToasts(tester, [_secretKey, _accessKey]),
       );
       final id = vault(tester).vaultId;
       expect(keychain.values.keys, ['s3:$id']);

@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
+import 'toasts.dart';
 
 class FakeRevealer implements FolderRevealer {
   final revealed = <String>[];
@@ -250,6 +251,10 @@ void main() {
         await submit(tester);
         expect(find.byType(ChangePasswordForm), findsNothing);
         expect(find.text('Master password changed'), findsOneWidget);
+        expectNoSecretInToasts(tester, [
+          testPassword,
+          'a brand new passphrase',
+        ]);
 
         final after = (await tester.runAsync(snapshot))!;
         final changed = [
