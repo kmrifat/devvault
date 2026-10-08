@@ -6,17 +6,21 @@ import 'package:macos_ui/macos_ui.dart' as mac;
 import 'desktop_metrics.dart';
 import 'desktop_theme.dart';
 
-/// Opens [builder]'s [DesktopSheet] the way the OS shows a modal: a
-/// `MacosSheet` on macOS, Fluent's dialog route on Windows, Material's on
-/// Linux (Yaru-themed). Resolves with what the sheet pops.
+/// Opens [builder]'s [DesktopSheet] the way the OS shows a modal: on macOS
+/// a sheet that slides down from under the toolbar, Fluent's dialog route on
+/// Windows, Material's on Linux (Yaru-themed). Resolves with what the sheet
+/// pops.
 Future<T?> showDesktopSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
 }) {
   return switch (context.desktopKit) {
-    DesktopKit.macos => mac.showMacosSheet<T>(
-      context: context,
-      builder: builder,
+    DesktopKit.macos => Navigator.of(context).push<T>(
+      _MacosSheetRoute<T>(
+        builder: builder,
+        barrierLabel: MaterialLocalizations.of(context)
+            .modalBarrierDismissLabel,
+      ),
     ),
     DesktopKit.fluent => fl.showDialog<T>(context: context, builder: builder),
     DesktopKit.yaru => showDialog<T>(context: context, builder: builder),
@@ -89,7 +93,9 @@ class DesktopSheet extends StatelessWidget {
               fontSize: DesktopMetrics.bodySize,
               color: colors.text,
             ),
-            child: child,
+            // Sized to its content, and scrolls when that's taller than
+            // the window allows.
+            child: SingleChildScrollView(child: child),
           ),
         ),
       ),
@@ -99,10 +105,8 @@ class DesktopSheet extends StatelessWidget {
       DesktopKit.macos => Align(
         alignment: Alignment.topCenter,
         child: Padding(
-          padding: const EdgeInsets.only(
-            top: DesktopMetrics.toolbarHeight + 2,
-            bottom: DesktopMetrics.toolbarHeight,
-          ),
+          // The route places it just under the toolbar.
+          padding: const EdgeInsets.only(bottom: DesktopMetrics.toolbarHeight),
           child: SizedBox(
             width: width,
             child: mac.MacosSheet(
@@ -251,6 +255,63 @@ class DesktopGroupBox extends StatelessWidget {
         ),
         box,
       ],
+    );
+  }
+}
+
+/// A macOS sheet's route: the sheet slides down out of the toolbar's lower
+/// edge (it is clipped there, as if it came from behind it) and back up
+/// when it closes, over a light dimming of the window.
+class _MacosSheetRoute<T> extends PopupRoute<T> {
+  _MacosSheetRoute({required this.builder, required this.barrierLabel});
+
+  final WidgetBuilder builder;
+
+  @override
+  final String barrierLabel;
+
+  @override
+  Color get barrierColor => const Color(0x26000000);
+
+  @override
+  bool get barrierDismissible => false;
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 280);
+
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 200);
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) => builder(context);
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final slide = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: DesktopMetrics.toolbarHeight),
+      child: ClipRect(
+        child: SlideTransition(
+          position: Tween(
+            begin: const Offset(0, -1),
+            end: Offset.zero,
+          ).animate(slide),
+          child: child,
+        ),
+      ),
     );
   }
 }

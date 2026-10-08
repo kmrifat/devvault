@@ -6,7 +6,6 @@ import 'package:flutter/material.dart'
     show DropdownButton, Icons, PopupMenuButton, Theme, ThemeData;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:macos_ui/macos_ui.dart' as mac;
 
 import 'pump_desktop.dart';
 
@@ -278,7 +277,7 @@ Finder _comboMenu(DesktopKit kit) => switch (kit) {
 };
 
 Finder _popup(DesktopKit kit) => switch (kit) {
-  DesktopKit.macos => find.byType(mac.MacosPopupButton<String>),
+  DesktopKit.macos => find.byType(DesktopPopup<String>),
   DesktopKit.fluent => find.byType(fl.ComboBox<String>),
   DesktopKit.yaru => find.byType(DropdownButton<String>),
 };

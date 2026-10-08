@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:yaru/yaru.dart' as yaru;
 
+import 'desktop_macos_menu.dart';
 import 'desktop_metrics.dart';
 import 'desktop_text_field.dart';
 import 'desktop_theme.dart';
@@ -124,8 +125,6 @@ class _DesktopComboBoxState extends State<DesktopComboBox> {
   );
 }
 
-const double _menuPadding = 5;
-
 /// The macOS combo box: the field anchors a menu of suggestions in the
 /// macOS menu style, opened by the chevron (or ↓ in the field).
 class _MacosComboMenu extends StatelessWidget {
@@ -146,64 +145,14 @@ class _MacosComboMenu extends StatelessWidget {
     final colors = context.desktopColors;
     return LayoutBuilder(
       builder: (context, constraints) => MenuAnchor(
-        style: MenuStyle(
-          backgroundColor: WidgetStatePropertyAll(colors.menu),
-          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-          elevation: const WidgetStatePropertyAll(8),
-          padding: const WidgetStatePropertyAll(EdgeInsets.all(_menuPadding)),
-          shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              side: BorderSide(color: colors.groupBoxStroke, width: 0.5),
-              borderRadius: const BorderRadius.all(
-                Radius.circular(DesktopMetrics.menuRadius),
-              ),
-            ),
-          ),
-        ),
+        style: MacosMenuStyle.panel(colors),
         menuChildren: [
           for (final s in suggestions)
-            MenuItemButton(
+            MacosMenuStyle.item(
+              context,
+              label: s,
+              width: constraints.maxWidth,
               onPressed: () => onPick(s),
-              style: ButtonStyle(
-                // Rows span the field's width (less the menu's padding), so
-                // the menu is as wide as the field and the highlight fills it.
-                minimumSize: WidgetStatePropertyAll(
-                  Size(
-                    constraints.maxWidth - 2 * _menuPadding,
-                    DesktopMetrics.controlHeight,
-                  ),
-                ),
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 10),
-                ),
-                shape: const WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(DesktopMetrics.menuItemRadius),
-                    ),
-                  ),
-                ),
-                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-                backgroundColor: WidgetStateProperty.resolveWith(
-                  (states) =>
-                      states.contains(WidgetState.hovered) ||
-                          states.contains(WidgetState.focused)
-                      ? colors.accent
-                      : Colors.transparent,
-                ),
-                foregroundColor: WidgetStateProperty.resolveWith(
-                  (states) =>
-                      states.contains(WidgetState.hovered) ||
-                          states.contains(WidgetState.focused)
-                      ? colors.onAccent
-                      : colors.text,
-                ),
-                textStyle: WidgetStatePropertyAll(
-                  DefaultTextStyle.of(context).style
-                      .copyWith(fontSize: DesktopMetrics.bodySize),
-                ),
-              ),
-              child: Text(s),
             ),
         ],
         builder: (context, menu, _) {
@@ -219,15 +168,21 @@ class _MacosComboMenu extends StatelessWidget {
                   : Semantics(
                       button: true,
                       label: label,
+                      // The whole end of the field opens the menu, not
+                      // just the chevron: a full-height target.
                       child: GestureDetector(
                         onTap: toggle,
                         behavior: HitTestBehavior.opaque,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          child: Icon(
-                            CupertinoIcons.chevron_down,
-                            size: 12,
-                            color: colors.secondaryText,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.basic,
+                          child: SizedBox(
+                            width: DesktopMetrics.fieldHeight,
+                            height: DesktopMetrics.fieldHeight - 6,
+                            child: Icon(
+                              CupertinoIcons.chevron_down,
+                              size: 12,
+                              color: colors.secondaryText,
+                            ),
                           ),
                         ),
                       ),

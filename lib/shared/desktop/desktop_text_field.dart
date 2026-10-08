@@ -56,7 +56,7 @@ class DesktopTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
-    final style = mono ? AppText.mono(context, fontSize: 12) : null;
+    final style = mono ? AppText.mono(context, fontSize: 12.5) : null;
     final monoStyle = style?.copyWith(color: colors.text);
     return switch (context.desktopKit) {
       DesktopKit.macos => mac.MacosTextField(
@@ -71,7 +71,13 @@ class DesktopTextField extends StatelessWidget {
           borderRadius: _macosRadius,
         ),
         focusedDecoration: const BoxDecoration(borderRadius: _macosRadius),
-        placeholderStyle: TextStyle(color: colors.tertiaryText),
+        placeholderStyle: TextStyle(
+          color: colors.tertiaryText,
+          fontSize: DesktopMetrics.bodySize,
+        ),
+        // Fields are DesktopMetrics.fieldHeight tall, like the pop-ups and
+        // combo boxes beside them.
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         obscureText: obscureText,
@@ -79,7 +85,9 @@ class DesktopTextField extends StatelessWidget {
         autofocus: autofocus,
         autocorrect: !obscureText,
         enableSuggestions: !obscureText,
-        style: monoStyle,
+        style:
+            monoStyle ??
+            TextStyle(fontSize: DesktopMetrics.bodySize, color: colors.text),
         suffix: suffix,
         maxLines: maxLines,
         minLines: minLines,
