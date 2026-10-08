@@ -12,7 +12,6 @@ import 'package:devvault/features/create_vault/join_vault_screen.dart';
 import 'package:devvault/features/pairing/pair_screen.dart';
 import 'package:devvault/services/clipboard_guard.dart';
 import 'package:devvault/services/credential_store.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -342,14 +341,11 @@ void main() {
         isEmpty,
       );
       // The paired vault is picked, so the password is asked straight away.
-      expect(find.byType(PasswordField), findsWidgets);
       final password = find.descendant(
-        of: find.ancestor(
-          of: find.text('Master password'),
-          matching: find.byType(PasswordField),
-        ),
+        of: find.byKey(const ValueKey('join-password')),
         matching: find.byType(EditableText),
       );
+      expect(password, findsOneWidget);
       await tester.enterText(password, _password);
       await tester.pump();
       final join = find.text('Join vault');

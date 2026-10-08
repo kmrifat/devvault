@@ -1,8 +1,9 @@
 import '../../app/layout.dart';
 import '../../shared/ui.dart';
 
-/// The first-run screens' frame (design frames D01, D02): a steps rail
-/// beside the content on desktop, the content alone on phones.
+/// The first-run screens' frame in the mobile layout: the content alone on
+/// a phone, with a steps rail beside it on a tablet-wide screen. The
+/// desktop layout draws these screens in `DesktopLockWindow` (N01, N02).
 class SetupLayout extends StatelessWidget {
   const SetupLayout({
     super.key,

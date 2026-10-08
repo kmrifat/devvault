@@ -20,14 +20,14 @@ void main() {
   }
 
   shot(
-    'D01-create-vault',
+    'N01-create',
     Routes.create,
     vault: TestVault.none,
     interact: typePassword,
     realKdf: true, // show the real Argon2id defaults
   );
   shot(
-    'D01-create-vault-light',
+    'N01-create-light',
     Routes.create,
     vault: TestVault.none,
     brightness: Brightness.light,
@@ -42,7 +42,7 @@ void main() {
     realKdf: true, // show the real Argon2id defaults
   );
 
-  // D02: create a vault the way D01 does, then hold its recovery key.
+  // N02: create a vault the way N01 does, then hold its recovery key.
   Future<void> createVault(WidgetTester tester) async {
     final c = appContainer(tester);
     await tester.runAsync(() async {
@@ -54,17 +54,22 @@ void main() {
   }
 
   shot(
-    'D02-recovery-kit',
+    'N02-recovery-kit',
     Routes.create,
     vault: TestVault.none,
     interact: createVault,
   );
+  // As in the frame: the key is saved and Open Vault is ready.
   shot(
-    'D02-recovery-kit-light',
+    'N02-recovery-kit-light',
     Routes.create,
     vault: TestVault.none,
     brightness: Brightness.light,
-    interact: createVault,
+    interact: (tester) async {
+      await createVault(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("I've saved my recovery key somewhere safe"));
+    },
   );
   shot(
     'B-recovery-kit',
