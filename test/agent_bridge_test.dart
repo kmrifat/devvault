@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_overrides.dart';
+import 'wait_until.dart';
 
 const _agent = ClientInfo(name: 'claude-code', version: '2.1');
 
@@ -439,15 +440,4 @@ void main() {
       await until(() => bridge().prompts.isEmpty);
     });
   });
-}
-
-/// Polls [condition] (real time) until it holds, or fails after 5 s.
-Future<void> until(bool Function() condition) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (!condition()) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail('Timed out waiting for a condition');
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-  }
 }
