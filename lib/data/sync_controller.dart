@@ -41,6 +41,15 @@ final class SyncOffline extends SyncStatus {
   final DateTime? lastSync;
 }
 
+/// The bucket's vault has a new key: rotated on another device, or its
+/// `vault.json` was replaced (SPEC §4.4). Sync is paused, with nothing
+/// touched, until the user adopts it with the master password.
+final class SyncKeyChanged extends SyncStatus {
+  const SyncKeyChanged({this.lastSync});
+
+  final DateTime? lastSync;
+}
+
 /// Sync stopped on something the user has to look at (credentials, the
 /// bucket, a vault that doesn't match).
 final class SyncFailed extends SyncStatus {
@@ -196,6 +205,8 @@ class SyncController extends Notifier<SyncStatus> {
         lastSync: _lastSync,
       );
       _schedule(retryAfterRace);
+    } on RemoteKeyChanged {
+      state = SyncKeyChanged(lastSync: _lastSync);
     } on VaultKeyMismatch {
       state = SyncFailed(
         'The vault in this storage has a different key. Sync is paused so '
@@ -207,6 +218,29 @@ class SyncController extends Notifier<SyncStatus> {
       state = SyncIdle(lastSync: _lastSync);
     }
     return null;
+  }
+
+  /// Takes the bucket's new vault key after [SyncKeyChanged]: [password]
+  /// must open the bucket's `vault.json`, or [WrongPassword] and nothing
+  /// changes. Edits made here meanwhile are merged on top and pushed
+  /// (SyncEngine.adoptRemoteKey).
+  Future<KeyAdoption> adoptRemoteKey(String password) async {
+    final backend = ref.read(storageBackendProvider);
+    if (backend == null) throw StateError('Sync is off');
+    _soon?.cancel();
+    final adoption = await ref
+        .read(vaultSessionProvider.notifier)
+        .adoptKey(
+          (vault) => SyncEngine(
+            vault: vault,
+            backend: backend,
+            rootPrefix: ref.read(storageRootPrefixProvider),
+            now: ref.read(clockProvider),
+          ).adoptRemoteKey(password, crypto: ref.read(cryptoProvider)),
+        );
+    _lastSync = ref.read(clockProvider)();
+    state = SyncIdle(lastSync: _lastSync, conflicts: adoption.conflicts);
+    return adoption;
   }
 }
 

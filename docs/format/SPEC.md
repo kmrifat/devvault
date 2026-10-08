@@ -199,6 +199,21 @@ the new key would encrypt **new** items to them.
 A legitimate VK rotation (§9) changes `vk_id` too, so the user on every other
 device is asked once.
 
+**Adopting a new key** (a rotation done on another device):
+- Sync stops as soon as the remote `vault.json` has the same `vault_id` and a
+  different `vk_id`. Nothing local is written or pushed.
+- The client asks for the master password and MUST unwrap the *remote*
+  `vault.json` with it, checking `vk_id`. Only a genuine rotation passes:
+  someone who replaced the wraps doesn't know the user's password.
+- Records changed locally and not yet synced are opened with the old VK
+  first. The client then builds the vault as the bucket has it, beside the
+  local one, merges those records on top (§6.1, ADR-0004), pushes them, and
+  only then replaces the local copy. A failure part way leaves the device
+  as it was.
+- Attachments that were in the bucket move to their rotated ids (§9); a file
+  that only existed on this device is uploaded as a new blob.
+- A key kept for device-bound unlock (§9.1) is the old one, and is deleted.
+
 ---
 
 ## 5. Envelope
