@@ -209,7 +209,7 @@ class _MarkTile extends StatelessWidget {
   }
 }
 
-/// A problem with the control above it ("Use at least 12 characters"), in
+/// A problem with the control above it ("Use at least 4 characters"), in
 /// the danger colour, lined up with the controls of a form whose label
 /// column is [indent] wide. Screen readers announce it when it appears.
 class DesktopFieldMessage extends StatelessWidget {

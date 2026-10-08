@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +25,12 @@ const String _start = String.fromEnvironment(
   defaultValue: Routes.unlock,
 );
 
+/// Debug builds only: keep the app's data in a separate profile, a folder
+/// named this inside the app support folder (the sandbox allows nothing
+/// else), to try first run or onboarding without touching the vault on
+/// this machine, e.g. `--dart-define=DEVVAULT_DATA=onboarding`.
+const String _dataDirOverride = String.fromEnvironment('DEVVAULT_DATA');
+
 /// Where `packages/biometric_key` keeps the vault key behind biometrics.
 const _biometricPlatforms = {
   TargetPlatform.iOS,
@@ -36,7 +44,11 @@ Future<void> main() async {
 
   // Load everything that needs I/O before the first frame, so providers can
   // stay synchronous.
-  final supportDir = await getApplicationSupportDirectory();
+  final appSupport = await getApplicationSupportDirectory();
+  final supportDir = kDebugMode && _dataDirOverride.isNotEmpty
+      ? await Directory('${appSupport.path}/dev-profiles/$_dataDirOverride')
+            .create(recursive: true)
+      : appSupport;
   final deviceId = await loadOrCreateDeviceId(supportDir);
   final crypto = await VaultCrypto.init();
   final settings = AppSettings.load(supportDir);

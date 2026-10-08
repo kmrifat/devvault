@@ -165,13 +165,13 @@ class _StrengthMeter extends StatelessWidget {
     final filled = length == 0
         ? 0
         : switch (strength) {
-            PasswordStrength.tooShort => 1,
+            PasswordStrength.tooShort || PasswordStrength.weak => 1,
             PasswordStrength.fair => 2,
             PasswordStrength.good => 3,
             PasswordStrength.strong => 4,
           };
     final tint = switch (strength) {
-      PasswordStrength.tooShort => colors.danger,
+      PasswordStrength.tooShort || PasswordStrength.weak => colors.danger,
       PasswordStrength.fair => colors.warning,
       PasswordStrength.good || PasswordStrength.strong => colors.success,
     };
@@ -220,6 +220,20 @@ class _StrengthMeter extends StatelessWidget {
                   ],
                 ),
         ),
+        // Allowed, but said plainly.
+        if (strength == PasswordStrength.weak)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 5,
+            children: [
+              DesktopIcon(
+                DesktopSymbol.warning,
+                size: 12,
+                color: colors.warning,
+              ),
+              Expanded(child: Text(PasswordPolicy.shortWarning, style: small)),
+            ],
+          ),
       ],
     );
   }
