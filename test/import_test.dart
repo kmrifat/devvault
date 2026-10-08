@@ -317,6 +317,77 @@ void main() {
       await settle(tester, done);
     }
 
+    testWidgets('on a phone (B4): sheet pickers and one Add to vault button', (
+      tester,
+    ) async {
+      tester.view
+        ..physicalSize = const Size(390 * 3, 844 * 3)
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      opener = FakeFileOpener()..queue.add([fixture('AuthKey_TESTKEY123.p8')]);
+      await pumpUnlockedApp(
+        tester,
+        location: Routes.vault(),
+        layout: AppLayout.mobile,
+        overrides: [fileOpenerProvider.overrideWithValue(opener)],
+      );
+      await tester.tap(find.bySemanticsLabel('Import').first);
+      await tester.pump();
+      await settle(
+        tester,
+        () => find.byType(ImportDialog).evaluate().isNotEmpty,
+        andSettle: false,
+      );
+      await settle(tester, () => find.byType(BCSpinner).evaluate().isEmpty);
+
+      Finder inSheet(Finder f) =>
+          find.descendant(of: find.byType(ImportDialog), matching: f);
+      // One full-width action; the sheet's close button cancels.
+      expect(inSheet(find.widgetWithText(BCButton, 'Add to vault')), findsOne);
+      expect(
+        tester
+            .widget<BCButton>(
+              inSheet(find.widgetWithText(BCButton, 'Add to vault')),
+            )
+            .fullWidth,
+        isTrue,
+      );
+      expect(inSheet(find.text('Cancel')), findsNothing);
+      expect(inSheet(find.text('Import')), findsNothing);
+
+      // Pickers open as bottom sheets.
+      expect(
+        tester
+            .widgetList<BCSelect<String>>(
+              inSheet(find.byType(BCSelect<String>)),
+            )
+            .map((s) => s.presentation),
+        everyElement(BCSelectPresentation.bottomSheet),
+      );
+      final environment = inSheet(find.byType(BCSelect<String>)).last;
+      await tester.ensureVisible(environment);
+      await tester.pumpAndSettle();
+      await tester.tap(environment);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Production').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(input(field('team_id')), 'TESTTEAM01');
+      await tester.pump();
+      final add = inSheet(find.widgetWithText(BCButton, 'Add to vault'));
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pump();
+      await settle(tester, () => index(tester).all.isNotEmpty);
+
+      final item = index(tester).all.single;
+      expect(item.typeName, ItemType.appleAuthKey.wireName);
+      expect(item.environment, 'production');
+      expect(item.fields['team_id']!.value, 'TESTTEAM01');
+      expect(find.byType(ImportDialog), findsNothing);
+    });
+
     testWidgets('a .p8: facts from the file, required fields from the user', (
       tester,
     ) async {

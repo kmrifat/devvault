@@ -362,6 +362,9 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
         const _Label('Which app is this for?'),
         BCSelect<String>(
           listLabel: 'App in this file',
+          presentation: _Actions.narrow(context)
+              ? BCSelectPresentation.bottomSheet
+              : BCSelectPresentation.popover,
           value: draft.choice,
           placeholder: 'Choose an app',
           items: [
@@ -405,6 +408,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           ))
         : <AppRecord>[];
     final replacing = _replacing;
+    final narrow = _Actions.narrow(context);
     return [
       if (result.facts.isNotEmpty || result.expiresAt != null) ...[
         _Facts(facts: result.facts, expiresAt: result.expiresAt),
@@ -465,44 +469,35 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           ],
         ),
         const SizedBox(height: BCSpacing.md),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: BCSpacing.sm,
-          children: [
-            Expanded(
-              child: _Choice(
-                label: 'App',
-                none: 'No app',
-                value: draft.appId,
-                options: {for (final app in apps) app.id: app.name},
-                onChanged: (v) => setState(() => draft.appId = v),
-              ),
-            ),
-            Expanded(
-              child: _Choice(
-                label: 'Platform',
-                none: 'None',
-                value: draft.platform,
-                options: {
-                  for (final p in ItemTemplates.platforms)
-                    p: VaultLabels.platform(p),
-                },
-                onChanged: (v) => setState(() => draft.platform = v),
-              ),
-            ),
-            Expanded(
-              child: _Choice(
-                label: 'Environment',
-                none: 'None',
-                value: draft.environment,
-                options: {
-                  for (final e in ItemTemplates.environments)
-                    e: VaultLabels.environment(e),
-                },
-                onChanged: (v) => setState(() => draft.environment = v),
-              ),
-            ),
-          ],
+        _Place(
+          narrow: narrow,
+          app: _Choice(
+            label: 'App',
+            none: 'No app',
+            value: draft.appId,
+            options: {for (final app in apps) app.id: app.name},
+            onChanged: (v) => setState(() => draft.appId = v),
+          ),
+          platform: _Choice(
+            label: 'Platform',
+            none: 'None',
+            value: draft.platform,
+            options: {
+              for (final p in ItemTemplates.platforms)
+                p: VaultLabels.platform(p),
+            },
+            onChanged: (v) => setState(() => draft.platform = v),
+          ),
+          environment: _Choice(
+            label: 'Environment',
+            none: 'None',
+            value: draft.environment,
+            options: {
+              for (final e in ItemTemplates.environments)
+                e: VaultLabels.environment(e),
+            },
+            onChanged: (v) => setState(() => draft.environment = v),
+          ),
         ),
       ],
       if (draft.secrets.isNotEmpty) ...[
@@ -521,7 +516,12 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       const SizedBox(height: BCSpacing.lg),
       _Actions(
         busy: _busy,
-        primary: replacing == null ? 'Import' : 'Replace file',
+        // B4 says "Add to vault" on a phone; D04 says "Import".
+        primary: replacing != null
+            ? 'Replace file'
+            : narrow
+            ? 'Add to vault'
+            : 'Import',
         onPrimary: _import,
         onCancel: () => Navigator.of(context).pop(),
       ),
@@ -758,8 +758,33 @@ class _Actions extends StatelessWidget {
   final VoidCallback? onPrimary;
   final bool busy;
 
+  /// A phone (B4): one full-width button, and the sheet's close button
+  /// or a swipe down to cancel. Wider screens (D04): Cancel and the action
+  /// side by side.
+  static bool narrow(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 600;
+
   @override
   Widget build(BuildContext context) {
+    if (narrow(context)) {
+      return switch (primary) {
+        final label? => BCButton(
+          size: BCButtonSize.lg,
+          fullWidth: true,
+          isDisabled: busy,
+          onPressed: onPrimary,
+          startContent: busy ? const BCSpinner(size: BCSpinnerSize.sm) : null,
+          child: Text(label),
+        ),
+        null => BCButton(
+          size: BCButtonSize.lg,
+          fullWidth: true,
+          variant: BCButtonVariant.secondary,
+          onPressed: onCancel,
+          child: const Text('Cancel'),
+        ),
+      };
+    }
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       spacing: BCSpacing.sm,
@@ -777,6 +802,41 @@ class _Actions extends StatelessWidget {
             child: Text(label),
           ),
       ],
+    );
+  }
+}
+
+/// App, platform and environment: one row on a wide screen; on a phone the
+/// app gets its own row, as in B4, so no select is too narrow to read.
+class _Place extends StatelessWidget {
+  const _Place({
+    required this.narrow,
+    required this.app,
+    required this.platform,
+    required this.environment,
+  });
+
+  final bool narrow;
+  final Widget app;
+  final Widget platform;
+  final Widget environment;
+
+  @override
+  Widget build(BuildContext context) {
+    final pair = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: BCSpacing.sm,
+      children: [
+        if (!narrow) Expanded(child: app),
+        Expanded(child: platform),
+        Expanded(child: environment),
+      ],
+    );
+    if (!narrow) return pair;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: BCSpacing.md,
+      children: [app, pair],
     );
   }
 }
@@ -820,6 +880,10 @@ class _Choice extends StatelessWidget {
         _Label(label),
         BCSelect<String>(
           listLabel: label,
+          // Phones pick from a sheet (B4), wider screens from a popover.
+          presentation: _Actions.narrow(context)
+              ? BCSelectPresentation.bottomSheet
+              : BCSelectPresentation.popover,
           value: value ?? '',
           items: [
             BCSelectItem(value: '', label: none),
