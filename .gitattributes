@@ -3,3 +3,4 @@
 # byte-exact tests fail.
 docs/format/vectors/** -text
 packages/cred_parsers/test/fixtures/** -text
+packages/vault_s3/test/aws-sigv4-test-suite/** -text
