@@ -69,6 +69,9 @@ enum DesktopSymbol {
   verified,
   alert,
   privacy,
+
+  /// An AI agent (Settings › AI Agents, the approval sheet).
+  agent,
   document,
   remove,
 
@@ -144,6 +147,7 @@ enum DesktopSymbol {
     verified => CupertinoIcons.checkmark_circle,
     alert => CupertinoIcons.exclamationmark_circle,
     privacy => CupertinoIcons.checkmark_shield,
+    agent => CupertinoIcons.sparkles,
     document => CupertinoIcons.doc,
     remove => CupertinoIcons.minus_circle,
     // CupertinoIcons has no Touch ID or Face ID glyph; the app's own
@@ -214,6 +218,7 @@ enum DesktopSymbol {
     verified => fl.FluentIcons.completed,
     alert => fl.FluentIcons.error,
     privacy => fl.FluentIcons.shield,
+    agent => fl.FluentIcons.robot,
     document => fl.FluentIcons.page,
     remove => fl.FluentIcons.remove,
     fingerprint => fl.FluentIcons.fingerprint,
@@ -283,6 +288,7 @@ enum DesktopSymbol {
     verified => yaru.YaruIcons.ok,
     alert => yaru.YaruIcons.error,
     privacy => yaru.YaruIcons.shield,
+    agent => yaru.YaruIcons.terminal,
     document => yaru.YaruIcons.document,
     remove => yaru.YaruIcons.minus,
     fingerprint => yaru.YaruIcons.fingerprint,
