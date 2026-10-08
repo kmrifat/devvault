@@ -1,0 +1,147 @@
+name: Release
+
+# v1 release builds for the three desktop platforms (P4-09). On a version
+# tag they are built, signed where the secrets exist, checksummed and
+# attached to a draft GitHub Release. Without the secrets each artifact is
+# built unsigned and named so. iOS and Android store builds are P3-08
+# (TestFlight / Play internal).
+#
+# Secrets (docs/release.md): MACOS_CERT_P12_BASE64, MACOS_CERT_PASSWORD,
+# APPLE_TEAM_ID, APPLE_ID, APPLE_APP_PASSWORD; WINDOWS_CERT_PFX_BASE64,
+# WINDOWS_CERT_PASSWORD; LINUX_GPG_PRIVATE_KEY, LINUX_GPG_PASSPHRASE.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  # Dry-run the unsigned path whenever the release machinery changes.
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - tool/release/**
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: macos
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-latest
+            target: linux
+    env:
+      # Whether this run can sign each platform (secrets are empty on forks
+      # and pull requests).
+      SIGN_MACOS: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
+      SIGN_WINDOWS: ${{ secrets.WINDOWS_CERT_PFX_BASE64 != '' }}
+      SIGN_LINUX: ${{ secrets.LINUX_GPG_PRIVATE_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - name: Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgtk-3-dev libsecret-1-dev
+      - run: flutter pub get
+      - run: flutter build ${{ matrix.target }} --release
+
+      # macOS: Developer ID + hardened runtime, notarized DMG.
+      - name: Sign and notarize (macOS)
+        if: matrix.target == 'macos' && env.SIGN_MACOS == 'true'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: tool/release/macos_sign_notarize.sh
+      - name: Unsigned DMG (macOS)
+        if: matrix.target == 'macos' && env.SIGN_MACOS != 'true'
+        run: |
+          hdiutil create -volname DevVault \
+            -srcfolder build/macos/Build/Products/Release/DevVault.app \
+            -ov -format UDZO DevVault-macos-unsigned.dmg
+
+      # Windows: Authenticode-signed exe and DLLs, zipped.
+      - name: Sign (Windows)
+        if: matrix.target == 'windows' && env.SIGN_WINDOWS == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: tool/release/windows_sign.ps1
+      - name: Zip (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $name = if ($env:SIGN_WINDOWS -eq 'true') { 'devvault-windows-x64.zip' } else { 'devvault-windows-x64-unsigned.zip' }
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath $name
+
+      # Linux: tarball with a detached GPG signature.
+      - name: Tarball (Linux)
+        if: matrix.target == 'linux'
+        run: tar -C build/linux/x64/release/bundle -czf devvault-linux-x64.tar.gz .
+      - name: Sign (Linux)
+        if: matrix.target == 'linux' && env.SIGN_LINUX == 'true'
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+        run: |
+          GNUPGHOME="$(mktemp -d)"
+          export GNUPGHOME
+          printf '%s' "$LINUX_GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$LINUX_GPG_PASSPHRASE" \
+            --armor --detach-sign devvault-linux-x64.tar.gz
+          gpg --verify devvault-linux-x64.tar.gz.asc devvault-linux-x64.tar.gz
+          rm -rf "$GNUPGHOME"
+      - name: Mark unsigned (Linux)
+        if: matrix.target == 'linux' && env.SIGN_LINUX != 'true'
+        run: mv devvault-linux-x64.tar.gz devvault-linux-x64-unsigned.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devvault-${{ matrix.target }}
+          path: |
+            DevVault-macos*.dmg
+            devvault-windows-x64*.zip
+            devvault-linux-x64*.tar.gz*
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "DevVault ${GITHUB_REF_NAME#v}" \
+            --notes "Draft: check docs/acceptance/v1.md before publishing. Files ending in -unsigned were built without signing secrets."
