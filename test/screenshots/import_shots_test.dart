@@ -35,7 +35,13 @@ void main() {
   /// Opens the import dialog on [name] and waits for it to be read (the
   /// parse runs on an isolate, which needs real time).
   Future<void> importFile(WidgetTester tester) async {
-    await tester.tap(find.text('Import').first);
+    // Desktop has an Import button; phones an icon in the header.
+    final button = find.text('Import');
+    await tester.tap(
+      button.evaluate().isNotEmpty
+          ? button.first
+          : find.bySemanticsLabel('Import').first,
+    );
     for (var i = 0; i < 300; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -66,5 +72,24 @@ void main() {
     overrides: overrides,
     interact: importFile,
     brightness: Brightness.light,
+  );
+  shot(
+    'B4-import',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    overrides: overrides,
+    interact: importFile,
+  );
+  shot(
+    'B4-import-end',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    overrides: overrides,
+    interact: (tester) async {
+      await importFile(tester);
+      await tester.ensureVisible(find.text('Add to vault'));
+    },
   );
 }
