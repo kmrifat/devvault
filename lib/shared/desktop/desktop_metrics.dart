@@ -37,6 +37,12 @@ abstract final class DesktopMetrics {
   static const double formLabelGap = 8;
   static const double formRowGap = 10;
 
+  /// Floating panels (quick open): corner radius, width, and how far below
+  /// the top of the window they sit.
+  static const double panelRadius = 12;
+  static const double panelWidth = 600;
+  static const double panelTop = 120;
+
   /// Body text and secondary text.
   static const double bodySize = 13;
   static const double secondarySize = 11;

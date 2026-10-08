@@ -298,7 +298,7 @@ void main() {
         password,
       );
       await tester.runAsync(() async {
-        await tester.tap(find.text('Use the new key'));
+        await tester.tap(find.text('Use the New Key'));
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       // Real I/O, then the dialog animates closed (which takes frame time),
