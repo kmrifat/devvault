@@ -127,8 +127,14 @@ through `package:devvault/shared/desktop_ui.dart`:
 - `showDesktopSheet` + `DesktopSheet` (title, content, buttons bottom
   right, Escape closes) and `DesktopGroupBox` for the sheets and the
   inspector's boxes.
+- `DesktopLockWindow` for the lock screens (unlock, create, recovery kit,
+  recover, join): a centred `lockWidth` column on the lock-window colour,
+  with the app mark, and a footer row for a link and the default button.
+  `DesktopLink` is a text link (Fluent `HyperlinkButton`, Yaru
+  `TextButton`); `DesktopButton` can lead with a symbol.
 - `DesktopSymbol` / `DesktopIcon`: icons by meaning, drawn from each OS's
-  own set (Cupertino, Fluent, Yaru).
+  own set (Cupertino, Fluent, Yaru). CupertinoIcons has no Touch ID or
+  Face ID glyph, so macOS uses the app's Lucide ones for those two.
 - `DesktopWindow`: the main window's frame. In the app on macOS it is
   `MacosWindow` + `Sidebar`, so the sidebar runs under the traffic lights
   with the system's vibrancy and can be resized; `macos_window_utils` sets

@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/material.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
 
+import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
 
 enum DesktopButtonKind {
@@ -33,6 +34,7 @@ class DesktopButton extends StatelessWidget {
     required this.onPressed,
     this.kind = DesktopButtonKind.plain,
     this.size = DesktopButtonSize.regular,
+    this.icon,
   });
 
   final String label;
@@ -42,13 +44,43 @@ class DesktopButton extends StatelessWidget {
   final DesktopButtonKind kind;
   final DesktopButtonSize size;
 
+  /// A symbol before the label (Save PDF…, Unlock with Touch ID).
+  final DesktopSymbol? icon;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
-    final text = Text(label);
     final filled = kind != DesktopButtonKind.plain;
     final danger = kind == DesktopButtonKind.destructive;
-    return switch (context.desktopKit) {
+    final kit = context.desktopKit;
+    final symbol = icon;
+    Widget labelled(Widget text) {
+      if (symbol == null) return text;
+      final onMacAccent = kit == DesktopKit.macos
+          ? kind == DesktopButtonKind.primary
+          : filled;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 5,
+        children: [
+          Icon(
+            symbol.of(kit),
+            size: 14,
+            color: onPressed == null
+                ? colors.tertiaryText
+                : onMacAccent
+                ? colors.onAccent
+                : danger
+                ? colors.danger
+                : colors.text,
+          ),
+          Flexible(child: text),
+        ],
+      );
+    }
+
+    final text = labelled(Text(label));
+    return switch (kit) {
       // macOS draws a destructive action as a plain button with a red
       // label; only the default action is filled.
       DesktopKit.macos => mac.PushButton(
@@ -58,7 +90,7 @@ class DesktopButton extends StatelessWidget {
         secondary: kind != DesktopButtonKind.primary,
         onPressed: onPressed,
         child: danger
-            ? Text(label, style: TextStyle(color: colors.danger))
+            ? labelled(Text(label, style: TextStyle(color: colors.danger)))
             : text,
       ),
       DesktopKit.fluent when filled => fl.FilledButton(

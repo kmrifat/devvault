@@ -13,6 +13,8 @@ export 'desktop/desktop_colors.dart';
 export 'desktop/desktop_combo_box.dart';
 export 'desktop/desktop_form.dart';
 export 'desktop/desktop_icon_button.dart';
+export 'desktop/desktop_link.dart';
+export 'desktop/desktop_lock_window.dart';
 export 'desktop/desktop_menu_bar.dart';
 export 'desktop/desktop_metrics.dart';
 export 'desktop/desktop_popup.dart';

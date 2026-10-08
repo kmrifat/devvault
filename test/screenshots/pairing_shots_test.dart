@@ -86,6 +86,13 @@ void main() {
     interact: pair,
     brightness: Brightness.light,
   );
+  // Desktop: join in the lock screens' style (N01), pasting the text.
+  shot(
+    'N01-join-light',
+    Routes.joinVault,
+    vault: TestVault.none,
+    brightness: Brightness.light,
+  );
   // Phones scan the QR; desktops paste the text instead (pairing_flow_test).
   shot(
     'P4-join-with-pairing-code',

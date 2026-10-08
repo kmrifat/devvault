@@ -2,12 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart' show DesktopTheme;
 import '../../shared/ui.dart';
 import '../../services/recovery_kit.dart';
+import 'desktop_recovery_kit_view.dart';
 import 'recovery_kit_card.dart';
 import 'setup_layout.dart';
 
-/// Design frame D02: the new vault's recovery key, shown once.
+/// Design frames N02 (desktop, [DesktopRecoveryKitView]) and the phone's
+/// recovery kit: the new vault's recovery key, shown once.
 ///
 /// The user can save it as a PDF or text file, print it, or copy it
 /// (cleared from the clipboard after 30 s), and has to confirm they kept it
@@ -32,12 +35,28 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
     _ => '',
   };
 
+  /// Made once, so its date doesn't move between frames.
+  late final RecoveryKitDocument _kit = RecoveryKitDocument(
+    recoveryKey: _keyText,
+    vaultId: _vaultId,
+    created: ref.read(clockProvider)(),
+  );
+
   void _continue() =>
       ref.read(pendingRecoveryKeyProvider.notifier).confirmSaved();
 
   @override
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
+
+    if (DesktopTheme.maybeOf(context) != null) {
+      return DesktopRecoveryKitView(
+        kit: _kit,
+        saved: _saved,
+        onSavedChanged: (value) => setState(() => _saved = value),
+        onContinue: _continue,
+      );
+    }
 
     return SetupLayout(
       step: 2,
@@ -60,13 +79,7 @@ class _RecoveryKitScreenState extends ConsumerState<RecoveryKitScreen> {
             color: BCTextColor.muted,
           ),
           const SizedBox(height: BCSpacing.lg),
-          RecoveryKitCard(
-            kit: RecoveryKitDocument(
-              recoveryKey: _keyText,
-              vaultId: _vaultId,
-              created: ref.read(clockProvider)(),
-            ),
-          ),
+          RecoveryKitCard(kit: _kit),
           const SizedBox(height: BCSpacing.md),
           DecoratedBox(
             decoration: ShapeDecoration(

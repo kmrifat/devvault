@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/widgets.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:yaru/yaru.dart' as yaru;
 
 import 'desktop_theme.dart';
@@ -33,7 +34,18 @@ enum DesktopSymbol {
   platformWeb,
   platformServer,
   platformDesktop,
-  platformOther;
+  platformOther,
+
+  // Lock screens (N00–N02).
+  fingerprint,
+  faceId,
+  submit,
+  keyDerivation,
+  encrypted,
+  savePdf,
+  saveText,
+  printer,
+  copy;
 
   IconData of(DesktopKit kit) => switch (kit) {
     DesktopKit.macos => _macos,
@@ -67,6 +79,17 @@ enum DesktopSymbol {
     platformServer => CupertinoIcons.cube_box,
     platformDesktop => CupertinoIcons.desktopcomputer,
     platformOther => CupertinoIcons.cube,
+    // CupertinoIcons has no Touch ID or Face ID glyph; the app's own
+    // Lucide set stands in for them.
+    fingerprint => LucideIcons.fingerprint,
+    faceId => LucideIcons.scanFace,
+    submit => CupertinoIcons.arrow_right_circle_fill,
+    keyDerivation => CupertinoIcons.lock_shield,
+    encrypted => CupertinoIcons.checkmark_shield,
+    savePdf => CupertinoIcons.arrow_down_doc,
+    saveText => CupertinoIcons.doc_text,
+    printer => CupertinoIcons.printer,
+    copy => CupertinoIcons.doc_on_doc,
   };
 
   IconData get _fluent => switch (this) {
@@ -95,6 +118,15 @@ enum DesktopSymbol {
     platformServer => fl.FluentIcons.server,
     platformDesktop => fl.FluentIcons.t_v_monitor,
     platformOther => fl.FluentIcons.package,
+    fingerprint => fl.FluentIcons.fingerprint,
+    faceId => fl.FluentIcons.contact,
+    submit => fl.FluentIcons.forward,
+    keyDerivation => fl.FluentIcons.processing,
+    encrypted => fl.FluentIcons.shield,
+    savePdf => fl.FluentIcons.pdf,
+    saveText => fl.FluentIcons.page,
+    printer => fl.FluentIcons.print,
+    copy => fl.FluentIcons.copy,
   };
 
   IconData get _yaru => switch (this) {
@@ -123,6 +155,15 @@ enum DesktopSymbol {
     platformServer => yaru.YaruIcons.server,
     platformDesktop => yaru.YaruIcons.computer,
     platformOther => yaru.YaruIcons.package,
+    fingerprint => yaru.YaruIcons.fingerprint,
+    faceId => yaru.YaruIcons.user,
+    submit => yaru.YaruIcons.go_next,
+    keyDerivation => yaru.YaruIcons.chip,
+    encrypted => yaru.YaruIcons.shield,
+    savePdf => yaru.YaruIcons.save,
+    saveText => yaru.YaruIcons.document,
+    printer => yaru.YaruIcons.printer,
+    copy => yaru.YaruIcons.copy,
   };
 }
 

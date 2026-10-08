@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 class DesktopColors {
   const DesktopColors({
     required this.window,
+    required this.lockWindow,
     required this.sidebar,
     required this.toolbar,
     required this.bar,
@@ -41,6 +42,9 @@ class DesktopColors {
 
   /// Window and content background.
   final Color window;
+
+  /// The lock screens' compact window (unlock, create, recovery kit).
+  final Color lockWindow;
 
   /// Source-list sidebar (the vibrancy tint on macOS).
   final Color sidebar;
@@ -101,6 +105,7 @@ class DesktopColors {
 
   static const light = DesktopColors(
     window: Color(0xFFFFFFFF),
+    lockWindow: Color(0xFFF6F6F8),
     sidebar: Color(0xFFECEAEF),
     toolbar: Color(0xFFFAFAFA),
     bar: Color(0xFFFAFAFA),
@@ -134,6 +139,7 @@ class DesktopColors {
 
   static const dark = DesktopColors(
     window: Color(0xFF1E1E1E),
+    lockWindow: Color(0xFF1E1E1E),
     sidebar: Color(0xFF29272E),
     toolbar: Color(0xFF2B2B2D),
     bar: Color(0xFF252527),
