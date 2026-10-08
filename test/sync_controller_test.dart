@@ -152,6 +152,52 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('syncs every 60 seconds in front, never in the background', (
+    tester,
+  ) async {
+    await open(tester);
+    await until(tester, () => synced(tester));
+    // In front, before the platform has reported a state and once it says
+    // resumed: a minute later, a sync.
+    expect(tester.binding.lifecycleState, isNull);
+    var before = lists();
+    await tester.pump(SyncController.interval);
+    await until(tester, () => lists() > before && synced(tester));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    before = lists();
+    await tester.pump(SyncController.interval);
+    await until(tester, () => lists() > before && synced(tester));
+
+    // In the background: minutes pass, nothing is sent.
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    before = lists();
+    for (var minute = 0; minute < 3; minute++) {
+      await tester.pump(SyncController.interval);
+      // As long as a sync takes to start in front (see above).
+      for (var i = 0; i < 20; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+    }
+    expect(lists(), before);
+
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await until(tester, () => lists() > before && synced(tester));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('on a phone: the status shows and pulling down syncs', (
     tester,
   ) async {

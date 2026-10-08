@@ -131,9 +131,10 @@ class SyncController extends Notifier<SyncStatus> {
       }
     });
     _periodic = Timer.periodic(interval, (_) {
-      final inFront =
-          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
-      if (inFront) syncNow();
+      // Skip only when the app is known to be behind something: before the
+      // platform reports a state (null), it is in front.
+      final state = WidgetsBinding.instance.lifecycleState;
+      if (state == null || state == AppLifecycleState.resumed) syncNow();
     });
     if (ref.read(vaultSessionProvider) is Unlocked) _schedule(Duration.zero);
     return const SyncIdle();
