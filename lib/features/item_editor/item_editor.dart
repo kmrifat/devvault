@@ -5,7 +5,35 @@ import 'package:vault_core/vault_core.dart';
 import '../../core/item_templates.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart'
+    show
+        DesktopButton,
+        DesktopButtonKind,
+        DesktopCheckbox,
+        DesktopChoice,
+        DesktopComboBox,
+        DesktopForm,
+        DesktopFormRow,
+        DesktopIconButton,
+        DesktopMetrics,
+        DesktopPopup,
+        DesktopProgress,
+        DesktopSheet,
+        DesktopSymbol,
+        DesktopTextField,
+        DesktopTheme,
+        DesktopThemeContext,
+        DesktopTokenField,
+        showDesktopSheet;
 import '../../shared/ui.dart';
+import '../import/place_fields.dart'
+    show
+        NoteTone,
+        SheetNote,
+        SheetNotice,
+        SourceTag,
+        placeSuggestions,
+        typedPlace;
 import 'item_draft.dart';
 
 /// Opens the item form: [item] to edit it, or null for a new item placed
@@ -26,6 +54,12 @@ Future<String?> showItemEditor(
           environment: env,
         )
       : ItemDraft.edit(item);
+  if (DesktopTheme.maybeOf(context) != null) {
+    return showDesktopSheet<String>(
+      context,
+      builder: (_) => ItemEditor(draft: draft),
+    );
+  }
   return BCDialog.show<String>(
     context,
     builder: (_) => BCDialogContent(
@@ -61,15 +95,51 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     _title.dispose();
     _tags.dispose();
     _notes.dispose();
+    _expiry.dispose();
     super.dispose();
   }
+
+  /// Sets the draft's expiry from the typed date (midnight UTC, the user's
+  /// own), or none when the field is empty. Returns what's wrong with it.
+  String? _typedExpiry() {
+    final text = _expiry.text.trim();
+    if (text.isEmpty) {
+      _draft.expiresAt = null;
+      return null;
+    }
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text);
+    if (match == null) return 'Type the date as YYYY-MM-DD';
+    final [year, month, day] = [
+      for (final i in [1, 2, 3]) int.parse(match.group(i)!),
+    ];
+    final date = DateTime.utc(year, month, day);
+    if (date.month != month || date.day != day) return 'No such date';
+    _draft.expiresAt = date;
+    return null;
+  }
+
+  /// Desktop: the expiry as typed (YYYY-MM-DD), checked on save.
+  late final _expiry = TextEditingController(
+    text: switch (_draft.expiresAt) {
+      final date? when !_draft.expiryFromFile => DateFormat(
+        'yyyy-MM-dd',
+      ).format(date.toUtc()),
+      _ => '',
+    },
+  );
+
+  bool get _desktop => DesktopTheme.maybeOf(context) != null;
 
   Future<void> _save() async {
     _draft
       ..title = _title.text
-      ..tags = _tags.text
       ..notes = _notes.text;
-    final errors = _draft.validate();
+    // On a desktop the token field keeps the draft's tags as it goes.
+    if (!_desktop) _draft.tags = _tags.text;
+    final expiryError = _desktop && !_draft.expiryFromFile
+        ? _typedExpiry()
+        : null;
+    final errors = {..._draft.validate(), 'expiry': ?expiryError};
     setState(() {
       _errors = errors;
       _saveError = null;
@@ -92,6 +162,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
 
   @override
   Widget build(BuildContext context) {
+    if (_desktop) return _sheet(context);
     final session = ref.watch(vaultSessionProvider);
     final apps = session is Unlocked
         ? (session.index.apps.values.toList()..sort(
@@ -250,6 +321,459 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
           ],
         ),
       ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Desktop (N03e): a sheet with a classic form. Same fields and rules as
+  // the phone form above.
+  // -------------------------------------------------------------------------
+
+  static const double _labelWidth = 100;
+
+  Widget _sheet(BuildContext context) {
+    final session = ref.watch(vaultSessionProvider);
+    final unlocked = session is Unlocked ? session : null;
+    final apps = [...?unlocked?.index.apps.values]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final items = unlocked?.index.items.values ?? const <Item>[];
+    final draft = _draft;
+    final base = draft.base;
+
+    return DesktopSheet(
+      width: 640,
+      title: base == null ? 'New item' : 'Edit “${base.title}”',
+      leadingAction: _saving
+          ? const DesktopProgress(semanticLabel: 'Saving')
+          : null,
+      actions: [
+        DesktopButton(
+          label: 'Cancel',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        DesktopButton(
+          label: draft.isNew ? 'Add item' : 'Save',
+          kind: DesktopButtonKind.primary,
+          onPressed: _saving ? null : _save,
+        ),
+      ],
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: [
+            DesktopForm(
+              labelWidth: _labelWidth,
+              children: [
+                DesktopFormRow(
+                  label: 'Type',
+                  child: draft.isNew
+                      ? SheetNote(
+                          width: 240,
+                          control: DesktopPopup<ItemType>(
+                            value: draft.type,
+                            choices: [
+                              for (final type in ItemType.values)
+                                DesktopChoice(type, type.label),
+                            ],
+                            onChanged: (type) =>
+                                setState(() => draft.changeType(type)),
+                          ),
+                        )
+                      // An item keeps its type.
+                      : Row(
+                          spacing: 6,
+                          children: [
+                            TypeIconTile(type: draft.type, size: 20),
+                            Text(draft.type.label),
+                          ],
+                        ),
+                ),
+                DesktopFormRow(
+                  label: 'Name',
+                  child: SheetNote(
+                    tone: NoteTone.problem,
+                    note: _errors['title'],
+                    control: DesktopTextField(
+                      key: const ValueKey('item-name'),
+                      controller: _title,
+                      autofocus: draft.isNew,
+                      placeholder: 'e.g. Upload keystore',
+                    ),
+                  ),
+                ),
+                DesktopFormRow(
+                  label: 'Place',
+                  child: Row(
+                    spacing: DesktopMetrics.formLabelGap,
+                    children: [
+                      Expanded(
+                        child: DesktopPopup<String>(
+                          // An app deleted since shows as no app, as in the
+                          // sidebar.
+                          value: apps.any((a) => a.id == draft.appId)
+                              ? draft.appId!
+                              : '',
+                          choices: [
+                            const DesktopChoice('', 'No app'),
+                            for (final app in apps)
+                              DesktopChoice(app.id, app.name),
+                          ],
+                          onChanged: (id) => setState(
+                            () => draft.appId = id.isEmpty ? null : id,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: DesktopComboBox(
+                          key: const ValueKey('item-platform'),
+                          value: draft.platform ?? '',
+                          placeholder: 'Platform',
+                          menuLabel: 'Platform suggestions',
+                          suggestions: placeSuggestions(
+                            ItemTemplates.platforms,
+                            items.map((i) => i.platform),
+                          ),
+                          onChanged: (text) =>
+                              setState(() => draft.platform = typedPlace(text)),
+                        ),
+                      ),
+                      Expanded(
+                        child: DesktopComboBox(
+                          key: const ValueKey('item-environment'),
+                          value: draft.environment ?? '',
+                          placeholder: 'Environment',
+                          menuLabel: 'Environment suggestions',
+                          suggestions: placeSuggestions(
+                            ItemTemplates.environments,
+                            items.map((i) => i.environment),
+                          ),
+                          onChanged: (text) => setState(
+                            () => draft.environment = typedPlace(text),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                DesktopFormRow(
+                  label: 'Tags',
+                  child: DesktopTokenField(
+                    tokens: draft.tagList,
+                    placeholder: 'Press Return after each tag',
+                    onChanged: (tags) =>
+                        setState(() => draft.tags = tags.join(', ')),
+                  ),
+                ),
+              ],
+            ),
+            _FieldTable(
+              fields: draft.fields,
+              errors: _errors,
+              onRemove: (field) => setState(() => draft.fields.remove(field)),
+              onAdd: () => setState(() => draft.fields.add(DraftField())),
+              onChanged: () => setState(() {}),
+            ),
+            DesktopForm(
+              labelWidth: _labelWidth,
+              children: [
+                DesktopFormRow(
+                  label: 'Expires',
+                  child: switch (draft.expiresAt) {
+                    // Read from the file: shown with its source, not
+                    // editable.
+                    final expiresAt? when draft.expiryFromFile => Row(
+                      spacing: 10,
+                      children: [
+                        Text(DateFormat.yMMMd().format(expiresAt.toLocal())),
+                        const SourceTag('From the file'),
+                      ],
+                    ),
+                    _ => SheetNote(
+                      width: 140,
+                      tone: _errors.containsKey('expiry')
+                          ? NoteTone.problem
+                          : NoteTone.hint,
+                      note:
+                          _errors['expiry'] ??
+                          'Set by you · leave empty for no expiry',
+                      control: DesktopTextField(
+                        key: const ValueKey('item-expiry'),
+                        controller: _expiry,
+                        placeholder: 'YYYY-MM-DD',
+                        mono: true,
+                      ),
+                    ),
+                  },
+                ),
+                DesktopFormRow(
+                  label: 'Notes',
+                  child: DesktopTextField(
+                    controller: _notes,
+                    maxLines: 4,
+                    minLines: 3,
+                    placeholder:
+                        'Anything worth remembering. Notes aren’t searchable.',
+                  ),
+                ),
+              ],
+            ),
+            if (_saveError case final error?)
+              SheetNotice(
+                symbol: DesktopSymbol.alert,
+                problem: true,
+                child: Text(error),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The fields as a table (N03e): name, value, and whether it's secret.
+/// Fields read from the file are shown, not editable.
+class _FieldTable extends StatelessWidget {
+  const _FieldTable({
+    required this.fields,
+    required this.errors,
+    required this.onRemove,
+    required this.onAdd,
+    required this.onChanged,
+  });
+
+  final List<DraftField> fields;
+  final Map<String, String> errors;
+  final ValueChanged<DraftField> onRemove;
+  final VoidCallback onAdd;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final header = TextStyle(
+      fontSize: DesktopMetrics.secondarySize,
+      fontWeight: FontWeight.w600,
+      color: colors.secondaryText,
+    );
+    Widget rule() =>
+        SizedBox(height: 0.5, child: ColoredBox(color: colors.innerSeparator));
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.groupBoxInner,
+        border: Border.all(color: colors.groupBoxStroke, width: 0.5),
+        borderRadius: const BorderRadius.all(
+          Radius.circular(DesktopMetrics.menuRadius + 2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ColoredBox(
+            color: colors.bar,
+            child: SizedBox(
+              height: DesktopMetrics.tableHeaderHeight,
+              child: _FieldColumns(
+                name: Text('Field', style: header),
+                value: Text('Value', style: header),
+                secret: Text('Secret', style: header),
+              ),
+            ),
+          ),
+          for (final (i, field) in fields.indexed) ...[
+            rule(),
+            _FieldRow(
+              key: ObjectKey(field),
+              field: field,
+              error: errors['$i'],
+              onRemove: () => onRemove(field),
+              onChanged: onChanged,
+            ),
+          ],
+          rule(),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: DesktopButton(label: 'Add Field', onPressed: onAdd),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The table's columns: name, value (the rest), secret, then room for the
+/// remove button.
+class _FieldColumns extends StatelessWidget {
+  const _FieldColumns({
+    required this.name,
+    required this.value,
+    required this.secret,
+    this.remove,
+  });
+
+  final Widget name;
+  final Widget value;
+  final Widget secret;
+  final Widget? remove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        spacing: 10,
+        children: [
+          SizedBox(width: 150, child: name),
+          Expanded(child: value),
+          SizedBox(width: 96, child: secret),
+          SizedBox(width: DesktopMetrics.toolbarSearchHeight, child: remove),
+        ],
+      ),
+    );
+  }
+}
+
+/// One field: a file fact (locked) or the user's own (name, value with
+/// show / hide when secret, the secret box, remove).
+class _FieldRow extends StatefulWidget {
+  const _FieldRow({
+    super.key,
+    required this.field,
+    required this.onRemove,
+    required this.onChanged,
+    this.error,
+  });
+
+  final DraftField field;
+  final VoidCallback onRemove;
+  final VoidCallback onChanged;
+  final String? error;
+
+  @override
+  State<_FieldRow> createState() => _FieldRowState();
+}
+
+class _FieldRowState extends State<_FieldRow> {
+  late final _name = TextEditingController(text: widget.field.name);
+  late final _value = TextEditingController(text: widget.field.value);
+  bool _revealed = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _value.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final field = widget.field;
+    final mono = AppText.mono(
+      context,
+      fontSize: 12,
+    ).copyWith(color: colors.text);
+    final Widget row;
+    if (field.fromFile) {
+      row = _FieldColumns(
+        name: Text(field.name),
+        value: field.secret
+            ? Text(SecretRow.mask, style: mono)
+            : Text(
+                field.value,
+                style: mono,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+        secret: const SourceTag('From file'),
+      );
+    } else {
+      final name = field.name.isEmpty ? 'Field' : field.name;
+      row = _FieldColumns(
+        name: Semantics(
+          label: 'Field name',
+          child: DesktopTextField(
+            controller: _name,
+            placeholder: 'Name',
+            onChanged: (v) => field.name = v,
+          ),
+        ),
+        value: Row(
+          spacing: 2,
+          children: [
+            Expanded(
+              child: Semantics(
+                label: '$name value',
+                child: DesktopTextField(
+                  controller: _value,
+                  obscureText: field.secret && !_revealed,
+                  mono: true,
+                  placeholder: field.secret ? 'Secret value' : 'Value',
+                  onChanged: (v) => field.value = v,
+                ),
+              ),
+            ),
+            if (field.secret)
+              DesktopIconButton(
+                symbol: _revealed
+                    ? DesktopSymbol.conceal
+                    : DesktopSymbol.reveal,
+                tooltip: _revealed ? 'Hide value' : 'Show value',
+                onPressed: () => setState(() => _revealed = !_revealed),
+              ),
+          ],
+        ),
+        secret: Semantics(
+          label: field.secret
+              ? 'Secret: masked, never searched'
+              : 'Mark $name secret',
+          child: DesktopCheckbox(
+            label: '',
+            value: field.secret,
+            onChanged: (secret) {
+              setState(() {
+                field.secret = secret;
+                _revealed = false;
+              });
+              widget.onChanged();
+            },
+          ),
+        ),
+        remove: DesktopIconButton(
+          symbol: DesktopSymbol.remove,
+          tooltip: 'Remove $name',
+          onPressed: widget.onRemove,
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 2,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: DesktopMetrics.toolbarSearchHeight,
+            ),
+            child: Center(child: row),
+          ),
+          if (widget.error case final error?)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                error,
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize,
+                  color: colors.danger,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

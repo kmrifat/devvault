@@ -22,13 +22,19 @@ class RequiredField {
     required this.label,
     required this.pattern,
     required this.hint,
+    required this.example,
     required this.error,
   });
 
   final String key;
   final String label;
   final RegExp pattern;
+
+  /// Where to find it, with an example (under the field on a phone).
   final String hint;
+
+  /// Just the example, as a placeholder in a narrow field (desktop).
+  final String example;
   final String error;
 }
 
@@ -80,8 +86,13 @@ class ImportDraft {
 
   String title;
   String? appId;
+
+  /// Free strings (SPEC §6.1): what the user typed or picked, or null.
   String? platform;
   String? environment;
+
+  /// Tags the user gave the new item. (Replacing keeps the item's own.)
+  List<String> tags = [];
 
   ItemType get type => result.type;
 
@@ -118,6 +129,7 @@ class ImportDraft {
           label: 'Key ID',
           pattern: _teamId,
           hint: 'From App Store Connect, e.g. 2X9R4HXF34',
+          example: '2X9R4HXF34',
           error: 'A Key ID is 10 capital letters and digits',
         ),
       if (!result.facts.containsKey(CertificateFields.team))
@@ -126,6 +138,7 @@ class ImportDraft {
           label: 'Team ID',
           pattern: _teamId,
           hint: 'From your Apple Developer account, e.g. A1B2C3D4E5',
+          example: 'A1B2C3D4E5',
           error: 'A Team ID is 10 capital letters and digits',
         ),
     ],
@@ -183,6 +196,7 @@ class ImportDraft {
       appId: appId,
       platform: platform,
       environment: environment,
+      tags: tags,
     );
   }
 
@@ -208,6 +222,7 @@ class ImportDraft {
       appId: existing.appId,
       platform: existing.platform,
       environment: existing.environment,
+      tags: existing.tags,
     );
   }
 
@@ -220,6 +235,7 @@ class ImportDraft {
     required String? appId,
     required String? platform,
     required String? environment,
+    required List<String> tags,
   }) => Item(
     id: start.id,
     typeName: start.typeName,
@@ -227,7 +243,7 @@ class ImportDraft {
     appId: appId,
     platform: platform,
     environment: environment,
-    tags: start.tags,
+    tags: tags,
     fields: fields,
     attachments: attachments,
     expiresAt: expiresAt,

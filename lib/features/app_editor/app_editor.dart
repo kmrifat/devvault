@@ -2,20 +2,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart'
+    show
+        DesktopButton,
+        DesktopButtonKind,
+        DesktopForm,
+        DesktopFormRow,
+        DesktopProgress,
+        DesktopSheet,
+        DesktopSymbol,
+        DesktopTextField,
+        DesktopTheme,
+        showDesktopSheet;
 import '../../shared/ui.dart';
+import '../import/place_fields.dart' show NoteTone, SheetNote, SheetNotice;
 import 'app_draft.dart';
 
 /// Opens the app form: [app] to edit it, or null for a new app. Resolves
 /// to the saved app's id, or null when cancelled.
 Future<String?> showAppEditor(BuildContext context, {AppRecord? app}) {
+  final draft = app == null ? AppDraft.create() : AppDraft.edit(app);
+  if (DesktopTheme.maybeOf(context) != null) {
+    return showDesktopSheet<String>(
+      context,
+      builder: (_) => AppEditor(draft: draft),
+    );
+  }
   return BCDialog.show<String>(
     context,
     builder: (_) => BCDialogContent(
       width: 520,
       showCloseButton: true,
-      child: AppEditor(
-        draft: app == null ? AppDraft.create() : AppDraft.edit(app),
-      ),
+      child: AppEditor(draft: draft),
     ),
   );
 }
@@ -80,6 +98,7 @@ class _AppEditorState extends ConsumerState<AppEditor> {
 
   @override
   Widget build(BuildContext context) {
+    if (DesktopTheme.maybeOf(context) != null) return _sheet(context);
     final bc = context.bcTheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -173,6 +192,97 @@ class _AppEditorState extends ConsumerState<AppEditor> {
           ],
         ),
       ],
+    );
+  }
+
+  /// Desktop: the same form as a sheet with a classic form (N03e's style).
+  Widget _sheet(BuildContext context) {
+    SheetNote noted(String key, Widget control, {String? hint}) => SheetNote(
+      tone: _errors.containsKey(key) ? NoteTone.problem : NoteTone.hint,
+      note: _errors[key] ?? hint,
+      control: control,
+    );
+    const ids = 'One per line or comma-separated';
+    return DesktopSheet(
+      title: _draft.isNew ? 'New app' : 'Edit app',
+      subtitle: const Text(
+        'Items are grouped by app in the sidebar. Bundle IDs and package '
+        'names are searchable.',
+      ),
+      leadingAction: _saving
+          ? const DesktopProgress(semanticLabel: 'Saving')
+          : null,
+      actions: [
+        DesktopButton(
+          label: 'Cancel',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        DesktopButton(
+          label: _draft.isNew ? 'Add app' : 'Save',
+          kind: DesktopButtonKind.primary,
+          onPressed: _saving ? null : _save,
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 12,
+        children: [
+          DesktopForm(
+            labelWidth: 150,
+            children: [
+              DesktopFormRow(
+                label: 'Name',
+                child: noted(
+                  'name',
+                  DesktopTextField(
+                    key: const ValueKey('app-name'),
+                    controller: _name,
+                    autofocus: true,
+                    placeholder: 'e.g. Kitchenly',
+                    onSubmitted: (_) => _save(),
+                  ),
+                ),
+              ),
+              DesktopFormRow(
+                label: 'Apple bundle IDs',
+                child: noted(
+                  'bundleIds',
+                  DesktopTextField(
+                    key: const ValueKey('app-bundle-ids'),
+                    controller: _bundleIds,
+                    placeholder: 'com.example.app',
+                    mono: true,
+                    maxLines: 3,
+                    minLines: 1,
+                  ),
+                  hint: ids,
+                ),
+              ),
+              DesktopFormRow(
+                label: 'Android package names',
+                child: noted(
+                  'packageNames',
+                  DesktopTextField(
+                    key: const ValueKey('app-package-names'),
+                    controller: _packageNames,
+                    placeholder: 'com.example.android',
+                    mono: true,
+                    maxLines: 3,
+                    minLines: 1,
+                  ),
+                  hint: ids,
+                ),
+              ),
+            ],
+          ),
+          if (_saveError case final error?)
+            SheetNotice(
+              symbol: DesktopSymbol.alert,
+              problem: true,
+              child: Text(error),
+            ),
+        ],
+      ),
     );
   }
 }

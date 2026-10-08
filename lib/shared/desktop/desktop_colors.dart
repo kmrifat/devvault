@@ -155,7 +155,7 @@ class DesktopColors {
     groupBoxInner: Color(0xFF252527),
     groupBoxStroke: Color(0xFF3A3A3C),
     menu: Color(0xFF2A2A2C),
-    field: Color(0xFF2A2A2C),
+    field: Color(0xFF1C1C1E),
     fieldStroke: Color(0xFF48484A),
     toolbarField: Color(0xFF3A3A3C),
     text: Color(0xFFF5F5F7),

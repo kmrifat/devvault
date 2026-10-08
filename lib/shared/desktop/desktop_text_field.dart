@@ -31,6 +31,8 @@ class DesktopTextField extends StatelessWidget {
     this.enabled = true,
     this.autofocus = false,
     this.suffix,
+    this.maxLines = 1,
+    this.minLines,
   });
 
   final TextEditingController? controller;
@@ -45,6 +47,11 @@ class DesktopTextField extends StatelessWidget {
 
   /// A small widget inside the field's trailing edge (a menu button).
   final Widget? suffix;
+
+  /// More than one for a text area (notes, lists of IDs). A secure field
+  /// is always one line.
+  final int maxLines;
+  final int? minLines;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +81,8 @@ class DesktopTextField extends StatelessWidget {
         enableSuggestions: !obscureText,
         style: monoStyle,
         suffix: suffix,
+        maxLines: maxLines,
+        minLines: minLines,
       ),
       DesktopKit.fluent => fl.TextBox(
         controller: controller,
@@ -88,6 +97,8 @@ class DesktopTextField extends StatelessWidget {
         autofocus: autofocus,
         style: monoStyle,
         suffix: suffix,
+        maxLines: maxLines,
+        minLines: minLines,
       ),
       DesktopKit.yaru => TextField(
         controller: controller,
@@ -100,6 +111,8 @@ class DesktopTextField extends StatelessWidget {
         autocorrect: !obscureText,
         enableSuggestions: !obscureText,
         style: monoStyle,
+        maxLines: maxLines,
+        minLines: minLines,
         decoration: InputDecoration(
           hintText: placeholder,
           isDense: true,

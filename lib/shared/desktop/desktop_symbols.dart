@@ -36,6 +36,15 @@ enum DesktopSymbol {
   platformServer,
   platformDesktop,
   platformOther,
+  verified,
+  copy,
+  info,
+  alert,
+  privacy,
+  document,
+  remove,
+  reveal,
+  conceal,
 
   // Lock screens (N00–N02).
   fingerprint,
@@ -45,8 +54,7 @@ enum DesktopSymbol {
   encrypted,
   savePdf,
   saveText,
-  printer,
-  copy;
+  printer;
 
   IconData of(DesktopKit kit) => switch (kit) {
     DesktopKit.macos => _macos,
@@ -81,6 +89,15 @@ enum DesktopSymbol {
     platformServer => CupertinoIcons.cube_box,
     platformDesktop => CupertinoIcons.desktopcomputer,
     platformOther => CupertinoIcons.cube,
+    verified => CupertinoIcons.checkmark_circle,
+    copy => CupertinoIcons.doc_on_doc,
+    info => CupertinoIcons.info_circle,
+    alert => CupertinoIcons.exclamationmark_circle,
+    privacy => CupertinoIcons.checkmark_shield,
+    document => CupertinoIcons.doc,
+    remove => CupertinoIcons.minus_circle,
+    reveal => CupertinoIcons.eye,
+    conceal => CupertinoIcons.eye_slash,
     // CupertinoIcons has no Touch ID or Face ID glyph; the app's own
     // Lucide set stands in for them.
     fingerprint => LucideIcons.fingerprint,
@@ -91,7 +108,6 @@ enum DesktopSymbol {
     savePdf => CupertinoIcons.arrow_down_doc,
     saveText => CupertinoIcons.doc_text,
     printer => CupertinoIcons.printer,
-    copy => CupertinoIcons.doc_on_doc,
   };
 
   IconData get _fluent => switch (this) {
@@ -121,6 +137,15 @@ enum DesktopSymbol {
     platformServer => fl.FluentIcons.server,
     platformDesktop => fl.FluentIcons.t_v_monitor,
     platformOther => fl.FluentIcons.package,
+    verified => fl.FluentIcons.completed,
+    copy => fl.FluentIcons.copy,
+    info => fl.FluentIcons.info,
+    alert => fl.FluentIcons.error,
+    privacy => fl.FluentIcons.shield,
+    document => fl.FluentIcons.page,
+    remove => fl.FluentIcons.remove,
+    reveal => fl.FluentIcons.view,
+    conceal => fl.FluentIcons.hide,
     fingerprint => fl.FluentIcons.fingerprint,
     faceId => fl.FluentIcons.contact,
     submit => fl.FluentIcons.forward,
@@ -129,7 +154,6 @@ enum DesktopSymbol {
     savePdf => fl.FluentIcons.pdf,
     saveText => fl.FluentIcons.page,
     printer => fl.FluentIcons.print,
-    copy => fl.FluentIcons.copy,
   };
 
   IconData get _yaru => switch (this) {
@@ -159,6 +183,15 @@ enum DesktopSymbol {
     platformServer => yaru.YaruIcons.server,
     platformDesktop => yaru.YaruIcons.computer,
     platformOther => yaru.YaruIcons.package,
+    verified => yaru.YaruIcons.ok,
+    copy => yaru.YaruIcons.copy,
+    info => yaru.YaruIcons.information,
+    alert => yaru.YaruIcons.error,
+    privacy => yaru.YaruIcons.shield,
+    document => yaru.YaruIcons.document,
+    remove => yaru.YaruIcons.minus,
+    reveal => yaru.YaruIcons.eye,
+    conceal => yaru.YaruIcons.hide,
     fingerprint => yaru.YaruIcons.fingerprint,
     faceId => yaru.YaruIcons.user,
     submit => yaru.YaruIcons.go_next,
@@ -167,7 +200,6 @@ enum DesktopSymbol {
     savePdf => yaru.YaruIcons.save,
     saveText => yaru.YaruIcons.document,
     printer => yaru.YaruIcons.printer,
-    copy => yaru.YaruIcons.copy,
   };
 }
 

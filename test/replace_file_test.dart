@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:bc_ui/bc_ui.dart';
 import 'package:cred_parsers/cred_parsers.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
@@ -12,7 +11,8 @@ import 'package:devvault/features/import/import_dialog.dart';
 import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/services/file_import.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
+import 'package:devvault/shared/desktop_ui.dart'
+    show DesktopButton, DesktopProgress;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -241,7 +241,7 @@ void main() {
         tester,
         () =>
             find.byType(ImportDialog).evaluate().isNotEmpty &&
-            find.byType(BCSpinner).evaluate().isEmpty,
+            find.byType(DesktopProgress).evaluate().isEmpty,
       );
     }
 
@@ -272,7 +272,10 @@ void main() {
       expect(ExpiryState.of(await keystore(tester), testNow), ExpiryState.soon);
 
       await replaceWith(tester, fixture('test.jks'));
-      expect(find.text('Replace file'), findsWidgets);
+      expect(
+        find.text('Replace the file of “Upload keystore”'),
+        findsOneWidget,
+      );
       expect(
         find.textContaining('Replaces the file of “Upload keystore”'),
         findsOneWidget,
@@ -280,7 +283,12 @@ void main() {
       // The JKS needs its store password first.
       await tester.enterText(
         find.descendant(
-          of: find.byType(PasswordField),
+          // The file's first secret: here, the store password.
+          of: find.byWidgetPredicate(
+            (w) =>
+                w.key is ValueKey<String> &&
+                (w.key! as ValueKey<String>).value.startsWith('import-secret-'),
+          ),
           matching: find.byType(EditableText),
         ),
         'test-password',
@@ -288,12 +296,12 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Unlock file'));
       await settle(tester, () => find.text('Details').evaluate().isNotEmpty);
-      expect(find.text('Name'), findsNothing); // the item keeps its own
+      expect(find.text('Name:'), findsNothing); // the item keeps its own
 
       await tester.tap(
         find.descendant(
           of: find.byType(ImportDialog),
-          matching: find.widgetWithText(BCButton, 'Replace file'),
+          matching: find.widgetWithText(DesktopButton, 'Replace file'),
         ),
       );
       await settle(
@@ -333,7 +341,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(ImportDialog),
-          matching: find.widgetWithText(BCButton, 'Replace file'),
+          matching: find.widgetWithText(DesktopButton, 'Replace file'),
         ),
         findsNothing,
       );
