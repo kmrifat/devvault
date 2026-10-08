@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../core/pairing.dart';
+import 'agent_clients.dart';
 import '../services/clipboard_guard.dart';
 import '../services/biometric_key_store.dart';
 import '../services/credential_store.dart';
@@ -121,6 +122,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setExpiryReminders(bool on) =>
       update(state.copyWith(expiryReminders: on));
+
+  void setAgentsEnabled(bool on) => update(state.copyWith(agentsEnabled: on));
+
+  void setAgentMetadataWithoutAsking(bool on) =>
+      update(state.copyWith(agentMetadataWithoutAsking: on));
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
@@ -191,3 +197,23 @@ final incomingFilesProvider = Provider<IncomingFiles>(
 /// Argon2id cost for pairing codes (P4-06). Tests lower it.
 final pairingOpsLimitProvider = Provider<int>((ref) => Pairing.opsLimit);
 final pairingMemLimitProvider = Provider<int>((ref) => Pairing.memLimit);
+
+/// The AI agent bridge's socket (ADR-0006); null where agents aren't
+/// supported yet. main() sets it on macOS, tests to a temp folder.
+final agentSocketPathProvider = Provider<String?>((ref) => null);
+
+/// Brings the window forward so the user sees an agent's request. main()
+/// sets it on desktop.
+final bringToFrontProvider = Provider<Future<void> Function()>(
+  (ref) => () async {},
+);
+
+/// The clients paired with this device, next to the settings.
+final agentClientsFileProvider = Provider<AgentClientsFile>(
+  (ref) => AgentClientsFile(ref.watch(appSupportDirProvider)),
+);
+
+/// How long an agent's request waits for the user (PROTOCOL.md §5).
+final agentTimeoutProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 120),
+);

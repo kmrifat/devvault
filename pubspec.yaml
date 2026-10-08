@@ -16,6 +16,7 @@ workspace:
   - packages/agent_bridge
 
 dependencies:
+  agent_bridge: ^0.1.0
   bc_ui: ^0.7.0
   biometric_key: ^0.1.0
   device_privacy: ^0.1.0
