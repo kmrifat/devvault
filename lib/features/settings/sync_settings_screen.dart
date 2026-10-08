@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../../data/providers.dart';
@@ -7,6 +8,7 @@ import '../../data/sync_setup.dart';
 import '../../services/credential_store.dart';
 import '../../shared/ui.dart';
 import 'storage_form.dart';
+import 'settings_layout.dart';
 
 /// Design frame D07: where the vault syncs. Pick a provider (Cloudflare R2
 /// first), enter the bucket and access keys, test the connection, then
@@ -110,71 +112,89 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
 
     return Scaffold(
       backgroundColor: bc.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const BCText('Sync storage', type: BCTextType.h2),
-                const SizedBox(height: BCSpacing.sm),
-                const BCText(
-                  'Sync through an S3-compatible bucket you own. Everything is '
-                  'encrypted on this device first: the bucket only ever sees '
-                  'ciphertext and vault.json.',
-                  color: BCTextColor.muted,
-                ),
-                if (setup != null) ...[
-                  const SizedBox(height: BCSpacing.lg),
-                  _CurrentSetup(setup: setup, onTurnOff: _turnOff),
-                ],
-                StorageFormView(model: _form),
-                const SizedBox(height: BCSpacing.lg),
-                if (_testError case final error?)
-                  StorageResult(
-                    icon: LucideIcons.circleAlert,
-                    tint: bc.danger,
-                    title: 'Connection failed',
-                    lines: [error],
-                  )
-                else if (_testPassed)
-                  StorageResult(
-                    icon: _tested!.isRaceFree
-                        ? LucideIcons.circleCheck
-                        : LucideIcons.triangleAlert,
-                    tint: _tested!.isRaceFree ? bc.success : bc.warning,
-                    title: _tested!.isRaceFree
-                        ? 'Connected · conditional writes enforced'
-                        : 'Connected, with a limitation',
-                    lines: _tested!.warnings,
-                  ),
-                const SizedBox(height: BCSpacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  spacing: BCSpacing.sm,
-                  children: [
-                    BCButton(
-                      variant: BCButtonVariant.secondary,
-                      isDisabled: _busy,
-                      onPressed: _test,
-                      startContent: _busy
-                          ? const BCSpinner(size: BCSpinnerSize.sm)
-                          : const Icon(LucideIcons.plugZap, size: 16),
-                      child: const Text('Test connection'),
-                    ),
-                    BCButton(
-                      isDisabled: _busy || !_testPassed,
-                      onPressed: _save,
-                      child: Text(
-                        setup == null ? 'Turn on sync' : 'Save changes',
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: SettingsLayout.padding(context),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Phones have no sidebar to go back with.
+                  if (SettingsLayout.isNarrow(context) && context.canPop())
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: BCButton(
+                        variant: BCButtonVariant.ghost,
+                        size: SettingsLayout.buttonSize(context),
+                        onPressed: () => context.pop(),
+                        startContent: const Icon(
+                          LucideIcons.chevronLeft,
+                          size: 16,
+                        ),
+                        child: const Text('Settings'),
                       ),
                     ),
+                  const BCText('Sync storage', type: BCTextType.h2),
+                  const SizedBox(height: BCSpacing.sm),
+                  const BCText(
+                    'Sync through an S3-compatible bucket you own. Everything is '
+                    'encrypted on this device first: the bucket only ever sees '
+                    'ciphertext and vault.json.',
+                    color: BCTextColor.muted,
+                  ),
+                  if (setup != null) ...[
+                    const SizedBox(height: BCSpacing.lg),
+                    _CurrentSetup(setup: setup, onTurnOff: _turnOff),
                   ],
-                ),
-              ],
+                  StorageFormView(model: _form),
+                  const SizedBox(height: BCSpacing.lg),
+                  if (_testError case final error?)
+                    StorageResult(
+                      icon: LucideIcons.circleAlert,
+                      tint: bc.danger,
+                      title: 'Connection failed',
+                      lines: [error],
+                    )
+                  else if (_testPassed)
+                    StorageResult(
+                      icon: _tested!.isRaceFree
+                          ? LucideIcons.circleCheck
+                          : LucideIcons.triangleAlert,
+                      tint: _tested!.isRaceFree ? bc.success : bc.warning,
+                      title: _tested!.isRaceFree
+                          ? 'Connected · conditional writes enforced'
+                          : 'Connected, with a limitation',
+                      lines: _tested!.warnings,
+                    ),
+                  const SizedBox(height: BCSpacing.md),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    spacing: BCSpacing.sm,
+                    children: [
+                      BCButton(
+                        variant: BCButtonVariant.secondary,
+                        isDisabled: _busy,
+                        onPressed: _test,
+                        startContent: _busy
+                            ? const BCSpinner(size: BCSpinnerSize.sm)
+                            : const Icon(LucideIcons.plugZap, size: 16),
+                        child: const Text('Test connection'),
+                      ),
+                      BCButton(
+                        isDisabled: _busy || !_testPassed,
+                        onPressed: _save,
+                        child: Text(
+                          setup == null ? 'Turn on sync' : 'Save changes',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -211,14 +231,14 @@ class _CurrentSetup extends ConsumerWidget {
                 ),
               ),
               BCButton(
-                size: BCButtonSize.sm,
+                size: SettingsLayout.buttonSize(context),
                 variant: BCButtonVariant.secondary,
                 onPressed: () =>
                     ref.read(syncControllerProvider.notifier).syncNow(),
                 child: const Text('Sync now'),
               ),
               BCButton(
-                size: BCButtonSize.sm,
+                size: SettingsLayout.buttonSize(context),
                 variant: BCButtonVariant.dangerSoft,
                 onPressed: onTurnOff,
                 child: const Text('Turn off'),

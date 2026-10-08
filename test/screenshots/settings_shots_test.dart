@@ -2,6 +2,7 @@
 library;
 
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/data/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,5 +28,20 @@ void main() {
     Routes.settingsSync,
     sample: true,
     brightness: Brightness.light,
+  );
+
+  // The same two on a phone (P3-07: D07 reflowed for mobile).
+  shot(
+    'B-settings',
+    Routes.settings,
+    device: ShotDevice.mobile,
+    sample: true,
+    overrides: [lockInBackgroundProvider.overrideWithValue(true)],
+  );
+  shot(
+    'B-sync-storage',
+    Routes.settingsSync,
+    device: ShotDevice.mobile,
+    sample: true,
   );
 }

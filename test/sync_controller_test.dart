@@ -4,6 +4,7 @@ import 'package:devvault/data/sync_controller.dart';
 import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/sync/sync_status_chip.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -16,17 +17,23 @@ void main() {
 
   late MemoryBackend bucket;
 
-  Future<void> open(WidgetTester tester, {StorageBackend? backend}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    StorageBackend? backend,
+    bool phone = false,
+  }) async {
     tester.view
-      ..physicalSize = const Size(1440, 900)
-      ..devicePixelRatio = 1;
+      ..physicalSize = phone
+          ? const Size(390 * 3, 844 * 3)
+          : const Size(1440, 900)
+      ..devicePixelRatio = phone ? 3 : 1;
     addTearDown(tester.view.reset);
     bucket = MemoryBackend();
     await pumpUnlockedApp(
       tester,
       location: Routes.vault(),
       vault: TestVault.sample,
-      layout: AppLayout.desktop,
+      layout: phone ? AppLayout.mobile : AppLayout.desktop,
       overrides: [
         storageBackendProvider.overrideWithValue(backend ?? bucket),
         storageLabelProvider.overrideWithValue('R2'),
@@ -114,6 +121,42 @@ void main() {
           bucket.log.where((l) => l.startsWith('list')).length > lists &&
           synced(tester),
     );
+    await tester.pumpAndSettle();
+  });
+
+  int lists() => bucket.log.where((l) => l.startsWith('list')).length;
+
+  testWidgets('coming back to the front syncs', (tester) async {
+    await open(tester);
+    await until(tester, () => synced(tester));
+    final before = lists();
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await until(tester, () => lists() > before && synced(tester));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('on a phone: the status shows and pulling down syncs', (
+    tester,
+  ) async {
+    await open(tester, phone: true);
+    await until(tester, () => synced(tester));
+    expect(find.text('Synced · R2 · just now'), findsOneWidget);
+    final before = lists();
+    await tester.fling(
+      find.byType(CustomScrollView),
+      const Offset(0, 400),
+      1000,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await until(tester, () => lists() > before && synced(tester));
     await tester.pumpAndSettle();
   });
 
