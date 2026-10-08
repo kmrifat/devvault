@@ -6,10 +6,13 @@ name: Format vectors
 
 on:
   pull_request:
+    # labeled/unlabeled: the no-format-change label re-runs the SPEC check.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - docs/format/**
       - tools/vectorcheck/**
       - packages/vault_core/**
+      - tool/ci/spec_guard.sh
       - .github/workflows/vectors.yml
   push:
     branches: [main]
@@ -33,3 +36,19 @@ jobs:
       - name: Verify vectors
         working-directory: tools/vectorcheck
         run: go vet ./... && go run . ../../docs/format/vectors
+
+  spec-updated:
+    # PR-8: format code and docs/format/SPEC.md change together.
+    name: SPEC updated with the format
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Format code changed ⇒ SPEC changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          NO_FORMAT_CHANGE: ${{ contains(github.event.pull_request.labels.*.name, 'no-format-change') }}
+        run: tool/ci/spec_guard.sh "$BASE"
