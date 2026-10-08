@@ -332,6 +332,9 @@ void main() {
         overrides: [fileOpenerProvider.overrideWithValue(opener)],
       );
       await tester.tap(find.bySemanticsLabel('Import').first);
+      await tester.pumpAndSettle();
+      // B4a: a file or a secret.
+      await tester.tap(find.text('Pick a file'));
       await tester.pump();
       await settle(
         tester,

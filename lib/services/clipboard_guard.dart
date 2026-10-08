@@ -82,6 +82,16 @@ class ClipboardGuard {
     _timer = Timer(clearAfter, () => unawaited(clearNow()));
   }
 
+  /// Takes a secret the user copied elsewhere to paste it here (B4b): reads
+  /// the clipboard and empties it, so the secret doesn't stay there. Null
+  /// when it holds no text.
+  Future<String?> takePasted() async {
+    final text = await clipboard.read();
+    if (text == null || text.isEmpty) return null;
+    await clipboard.write('');
+    return text;
+  }
+
   /// Empties the clipboard if it still holds the copied secret.
   Future<void> clearNow() async {
     _timer?.cancel();

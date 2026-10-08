@@ -19,6 +19,8 @@ class PasswordField extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.focusNode,
+    this.isRequired = false,
+    this.action,
   });
 
   final String label;
@@ -33,6 +35,12 @@ class PasswordField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final FocusNode? focusNode;
+
+  /// Marks the label with bc_ui's required asterisk.
+  final bool isRequired;
+
+  /// A button before the show/hide toggle, such as Paste.
+  final Widget? action;
 
   @override
   State<PasswordField> createState() => _PasswordFieldState();
@@ -53,6 +61,7 @@ class _PasswordFieldState extends State<PasswordField> {
     return Semantics(
       label: widget.label,
       child: BCTextField(
+        isRequired: widget.isRequired,
         isInvalid: error != null,
         isDisabled: widget.isDisabled,
         children: [
@@ -68,16 +77,25 @@ class _PasswordFieldState extends State<PasswordField> {
             textInputAction: widget.textInputAction,
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
-            suffix: BCButton(
-              variant: BCButtonVariant.ghost,
-              // 48 px on touch screens, the minimum comfortable target.
-              size: _touch ? BCButtonSize.md : BCButtonSize.sm,
-              isIconOnly: true,
-              onPressed: () => setState(() => _revealed = !_revealed),
-              child: Icon(
-                _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
-                semanticLabel: _revealed ? 'Hide password' : 'Show password',
-              ),
+            suffix: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: BCSpacing.xs,
+              children: [
+                ?widget.action,
+                BCButton(
+                  variant: BCButtonVariant.ghost,
+                  // 48 px on touch screens, the minimum comfortable target.
+                  size: _touch ? BCButtonSize.md : BCButtonSize.sm,
+                  isIconOnly: true,
+                  onPressed: () => setState(() => _revealed = !_revealed),
+                  child: Icon(
+                    _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
+                    semanticLabel: _revealed
+                        ? 'Hide password'
+                        : 'Show password',
+                  ),
+                ),
+              ],
             ),
           ),
           if (error != null)

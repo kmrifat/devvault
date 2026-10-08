@@ -57,6 +57,14 @@ void main() {
     expect(clipboard.text, 'later copy', reason: 'nothing of ours left');
   });
 
+  test('a pasted secret is taken off the clipboard (B4b)', () async {
+    expect(await guard.takePasted(), isNull, reason: 'nothing to paste');
+    clipboard.text = 'sk_live_from_elsewhere';
+    expect(await guard.takePasted(), 'sk_live_from_elsewhere');
+    expect(clipboard.text, '');
+    expect(await guard.takePasted(), isNull);
+  });
+
   testWidgets('marks the copy as a secret where the clipboard can', (
     tester,
   ) async {

@@ -9,6 +9,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../sync/sync_status_chip.dart';
+import '../import/paste_secret_sheet.dart';
 import 'vault_actions.dart';
 import 'vault_list_pane.dart';
 
@@ -91,7 +92,7 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
             BCHeaderIconButton(
               size: 48,
               icon: const Icon(LucideIcons.filePlus2, semanticLabel: 'Import'),
-              onPressed: () => openImport(context),
+              onPressed: () => showPhoneImport(context),
             ),
             BCHeaderIconButton(
               size: 48,
