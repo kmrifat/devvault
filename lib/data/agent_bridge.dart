@@ -440,7 +440,10 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
   ) async {
     var index = (await _whenUnlocked(call, 'to read $what')).index;
     final key = '${call.session.tokenHash}|*';
-    if (ref.read(settingsProvider).agentMetadataWithoutAsking) return index;
+    if (ref.read(settingsProvider).agentMetadataWithoutAsking) {
+      _log(call, action, what, 'Allowed without asking');
+      return index;
+    }
     if (_granted([key])) {
       _log(call, action, what, 'Allowed earlier');
       return index;

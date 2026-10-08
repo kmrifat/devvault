@@ -22,6 +22,7 @@ abstract final class Routes {
   // Settings sections
   static const settingsSync = '/settings/sync';
   static const settingsSecurity = '/settings/security';
+  static const settingsAgents = '/settings/agents';
 
   // Device pairing (QR, P4)
   static const pair = '/pair';

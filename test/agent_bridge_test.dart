@@ -156,7 +156,8 @@ void main() {
 
       final again = await connect();
       expect((await again.hello(_agent, token: await token)).paired, isTrue);
-      expect(bridge().activity.first.action, 'Paired');
+      expect(bridge().activity.map((a) => a.action), contains('Paired'));
+      expect(bridge().activity.first.outcome, 'Allowed without asking');
     });
 
     test('a denied pair fails with denied', () async {

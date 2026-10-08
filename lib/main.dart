@@ -76,6 +76,12 @@ Future<void> main() async {
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
         agentSocketPathProvider.overrideWithValue(agentSocket),
+        if (agentSocket != null)
+          agentHelperPathProvider.overrideWithValue(
+            // …/DevVault.app/Contents/MacOS/DevVault → Contents/Helpers.
+            '${File(Platform.resolvedExecutable).parent.parent.path}'
+            '/Helpers/devvault-mcp',
+          ),
         if (!phone) bringToFrontProvider.overrideWithValue(bringWindowToFront),
         if (_biometricPlatforms.contains(defaultTargetPlatform))
           biometricKeyStoreProvider.overrideWithValue(

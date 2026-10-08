@@ -13,13 +13,14 @@ import '../../data/vault_session.dart';
 import '../../services/biometric_key_store.dart';
 import '../../shared/desktop_ui.dart';
 import 'change_password_dialog.dart';
+import 'desktop_agents_pane.dart';
 import 'new_recovery_kit_dialog.dart';
 import 'settings_layout.dart';
 import 'settings_screen.dart' show SettingsScreen;
 import 'sync_settings_screen.dart';
 
-/// Settings on desktop (design frames N07c, N07, N07b): icon tabs along
-/// the top (General, Security, Sync), each a link to its path, and the
+/// Settings on desktop (design frames N07c, N07, N07b, N07d): icon tabs
+/// along the top (General, Security, Sync, AI Agents), each a link to its path, and the
 /// pane's group boxes below.
 ///
 /// The design draws Settings as its own window (⌘,); until it has one, it
@@ -50,6 +51,7 @@ class DesktopSettingsPage extends StatelessWidget {
                     SettingsPane.general => const _GeneralPane(),
                     SettingsPane.security => const _SecurityPane(),
                     SettingsPane.sync => const SyncSettingsScreen(),
+                    SettingsPane.agents => const DesktopAgentsPane(),
                   },
                 ),
               ),
@@ -126,6 +128,7 @@ class _SettingsTabState extends State<_SettingsTab> {
       SettingsPane.general => DesktopSymbol.settings,
       SettingsPane.security => DesktopSymbol.lock,
       SettingsPane.sync => DesktopSymbol.synced,
+      SettingsPane.agents => DesktopSymbol.agent,
     };
     return Semantics(
       button: true,

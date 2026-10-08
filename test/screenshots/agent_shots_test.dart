@@ -4,16 +4,20 @@ library;
 import 'package:agent_bridge/agent_bridge.dart' show Delivery;
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/agent_bridge.dart';
+import 'package:devvault/data/app_settings.dart';
+import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:flutter/material.dart' show Brightness;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../agent_prompts.dart';
+import '../agent_settings.dart';
 import '../test_overrides.dart';
 import 'harness.dart';
 
 /// AI agents (P5): the approval sheet (N09) for each delivery, pairing
-/// (N09b), and the unlock screen while an agent waits.
+/// (N09b), the unlock screen while an agent waits, and Settings › AI
+/// Agents (N07d).
 void main() {
   setUpAll(loadAppFonts);
 
@@ -68,5 +72,35 @@ void main() {
         .debugWait(
           const AgentWait(client: 'claude-code', what: 'for a secret'),
         ),
+  );
+
+  // Settings › AI Agents: on, two clients, a few things they did.
+  Future<void> activity(WidgetTester tester) async {
+    final bridge = appContainer(tester).read(agentBridgeProvider.notifier);
+    for (final entry in sampleActivity.reversed) {
+      bridge.debugLog(entry);
+    }
+  }
+
+  final agentsOn = [
+    ...agentSettingsOverrides(),
+    initialSettingsProvider.overrideWithValue(
+      const AppSettings(agentsEnabled: true),
+    ),
+  ];
+  shot(
+    'N07d-settings-agents',
+    Routes.settingsAgents,
+    sample: true,
+    overrides: agentsOn,
+    interact: activity,
+  );
+  shot(
+    'N07d-settings-agents-light',
+    Routes.settingsAgents,
+    sample: true,
+    overrides: agentsOn,
+    interact: activity,
+    brightness: Brightness.light,
   );
 }
