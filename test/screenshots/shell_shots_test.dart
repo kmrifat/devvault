@@ -35,12 +35,7 @@ void main() {
     );
   }
 
-  shot(
-    'N03-vault',
-    Routes.vault(),
-    sample: true,
-    interact: selectProduction,
-  );
+  shot('N03-vault', Routes.vault(), sample: true, interact: selectProduction);
   shot(
     'N03-vault-light',
     Routes.vault(),
