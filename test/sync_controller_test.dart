@@ -6,6 +6,7 @@ import 'package:devvault/data/sync_controller.dart';
 import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/sync/adopt_key_dialog.dart';
+import 'package:devvault/features/sync/desktop_sync_status.dart';
 import 'package:devvault/features/sync/sync_status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -237,7 +238,7 @@ void main() {
     await tester.tap(find.text('Sync paused'));
     await tester.pumpAndSettle();
     expect(
-      GoRouter.of(tester.element(find.byType(SyncStatusChip))).state.uri
+      GoRouter.of(tester.element(find.byType(DesktopSyncStatus))).state.uri
           .toString(),
       Routes.settingsSync,
     );

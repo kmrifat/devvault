@@ -11,7 +11,81 @@ import '../../data/sync_setup.dart';
 import '../../shared/ui.dart';
 import 'adopt_key_dialog.dart';
 
-/// The toolbar's sync line (design frame D03: "Synced · R2 · 2 min ago").
+/// What the sync line says, whichever widget draws it.
+enum SyncLineState {
+  off,
+  running,
+  conflicts,
+  synced,
+  offline,
+  keyChanged,
+  failed,
+}
+
+/// The sync status in words ("Synced · R2 · 2 min ago"), what clicking it
+/// does (sync now; open the settings when sync is off or failing) and its
+/// tooltip.
+({SyncLineState state, String text, VoidCallback? onPressed, String? tooltip})
+describeSync(BuildContext context, WidgetRef ref) {
+  final status = ref.watch(syncControllerProvider);
+  final label = ref.watch(storageLabelProvider);
+  final now = ref.watch(clockProvider)();
+  String since(DateTime? t) =>
+      t == null ? '' : ' · ${SyncStatusChip.ago(t, now)}';
+  void sync() => ref.read(syncControllerProvider.notifier).syncNow();
+  void settings() => context.go(Routes.settingsSync);
+
+  final (state, text, onPressed, tooltip) = switch (status) {
+    SyncOff() => (
+      SyncLineState.off,
+      'Not syncing',
+      settings,
+      'Set up sync storage',
+    ),
+    SyncRunning() => (SyncLineState.running, 'Syncing…', null, null),
+    SyncIdle(:final conflicts) when conflicts > 0 => (
+      SyncLineState.conflicts,
+      conflicts == 1 ? '1 conflict' : '$conflicts conflicts',
+      sync,
+      'Items changed on two devices need your choice',
+    ),
+    SyncIdle(:final lastSync) => (
+      SyncLineState.synced,
+      lastSync == null
+          ? 'Sync on${label == null ? '' : ' · $label'}'
+          : 'Synced${label == null ? '' : ' · $label'}${since(lastSync)}',
+      sync,
+      'Sync now (${shortcutLabel('R')})',
+    ),
+    SyncOffline(:final lastSync) => (
+      SyncLineState.offline,
+      'Offline${lastSync == null ? '' : ' · synced${since(lastSync)}'}',
+      sync,
+      'Changes stay on this device until the storage is reachable',
+    ),
+    SyncKeyChanged() => (
+      SyncLineState.keyChanged,
+      'Vault key changed',
+      () => showAdoptKeyDialog(context),
+      'Changed on another device: enter your master password to go on',
+    ),
+    SyncFailed(:final message) => (
+      SyncLineState.failed,
+      'Sync paused',
+      settings,
+      message,
+    ),
+  };
+  return (state: state, text: text, onPressed: onPressed, tooltip: tooltip);
+}
+
+/// Whether the sync line shows a time that has to be kept current.
+bool syncShowsTime(SyncStatus status) => switch (status) {
+  SyncIdle(lastSync: _?) || SyncOffline(lastSync: _?) => true,
+  _ => false,
+};
+
+/// The phone's sync chip (design frame B2: "Synced · R2 · 2 min ago").
 /// Tap to sync now; when sync is off or failing, it opens the settings.
 class SyncStatusChip extends ConsumerStatefulWidget {
   const SyncStatusChip({super.key});
@@ -53,64 +127,22 @@ class _SyncStatusChipState extends ConsumerState<SyncStatusChip> {
   @override
   Widget build(BuildContext context) {
     final status = ref.watch(syncControllerProvider);
-    final label = ref.watch(storageLabelProvider);
-    final now = ref.watch(clockProvider)();
-    String since(DateTime? t) =>
-        t == null ? '' : ' · ${SyncStatusChip.ago(t, now)}';
-    void sync() => ref.read(syncControllerProvider.notifier).syncNow();
-    void settings() => context.go(Routes.settingsSync);
-
-    final (color, icon, text, onPressed, tooltip) = switch (status) {
-      SyncOff() => (
-        BCChipColor.defaultColor,
-        LucideIcons.cloudOff,
-        'Not syncing',
-        settings,
-        'Set up sync storage',
-      ),
-      SyncRunning() => (BCChipColor.accent, null, 'Syncing…', null, null),
-      SyncIdle(:final conflicts) when conflicts > 0 => (
-        BCChipColor.warning,
-        LucideIcons.gitMerge,
-        conflicts == 1 ? '1 conflict' : '$conflicts conflicts',
-        sync,
-        'Items changed on two devices need your choice',
-      ),
-      SyncIdle(:final lastSync) => (
-        BCChipColor.success,
-        LucideIcons.cloudCheck,
-        lastSync == null
-            ? 'Sync on${label == null ? '' : ' · $label'}'
-            : 'Synced${label == null ? '' : ' · $label'}${since(lastSync)}',
-        sync,
-        'Sync now (${shortcutLabel('R')})',
-      ),
-      SyncOffline(:final lastSync) => (
-        BCChipColor.warning,
-        LucideIcons.cloudOff,
-        'Offline${lastSync == null ? '' : ' · synced${since(lastSync)}'}',
-        sync,
-        'Changes stay on this device until the storage is reachable',
-      ),
-      SyncKeyChanged() => (
-        BCChipColor.warning,
-        LucideIcons.keyRound,
-        'Vault key changed',
-        () => showAdoptKeyDialog(context),
-        'Changed on another device: enter your master password to go on',
-      ),
-      SyncFailed(:final message) => (
-        BCChipColor.danger,
-        LucideIcons.cloudAlert,
-        'Sync paused',
-        settings,
-        message,
-      ),
+    final line = describeSync(context, ref);
+    final (color, icon) = switch (line.state) {
+      SyncLineState.off => (BCChipColor.defaultColor, LucideIcons.cloudOff),
+      SyncLineState.running => (BCChipColor.accent, null),
+      SyncLineState.conflicts => (BCChipColor.warning, LucideIcons.gitMerge),
+      SyncLineState.synced => (BCChipColor.success, LucideIcons.cloudCheck),
+      SyncLineState.offline => (BCChipColor.warning, LucideIcons.cloudOff),
+      SyncLineState.keyChanged => (BCChipColor.warning, LucideIcons.keyRound),
+      SyncLineState.failed => (BCChipColor.danger, LucideIcons.cloudAlert),
     };
-    _ticking(switch (status) {
-      SyncIdle(lastSync: _?) || SyncOffline(lastSync: _?) => true,
-      _ => false,
-    });
+    final (text, onPressed, tooltip) = (
+      line.text,
+      line.onPressed,
+      line.tooltip,
+    );
+    _ticking(syncShowsTime(status));
 
     final chip = BCChip(
       size: BCChipSize.md,

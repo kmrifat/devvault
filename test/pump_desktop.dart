@@ -1,7 +1,6 @@
 import 'package:devvault/app/theme.dart';
 import 'package:devvault/shared/desktop_ui.dart';
 import 'package:flutter/material.dart' show MaterialApp, Scaffold, ThemeMode;
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Pumps [child] the way a desktop screen sees it: inside the app's
@@ -12,7 +11,6 @@ Future<void> pumpDesktop(
   Widget child, {
   Brightness brightness = Brightness.light,
 }) async {
-  mockMacosAccentColor();
   await tester.pumpWidget(
     MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -61,18 +59,4 @@ class _HeldState<T> extends State<Held<T>> {
     widget.log.add(v);
     setState(() => _value = v);
   });
-}
-
-/// macos_ui asks AppKit for the system accent colour whenever the tests run
-/// on a Mac. Answers with macOS's default blue, which the design uses.
-void mockMacosAccentColor() {
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(
-        const MethodChannel('appkit_ui_element_colors'),
-        (call) async => switch (call.method) {
-          // AccentColorListener's hue for AccentColor.blue.
-          'getColorComponents' => {'hueComponent': 0.6085324903200698},
-          _ => null,
-        },
-      );
 }

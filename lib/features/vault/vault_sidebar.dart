@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -7,26 +8,34 @@ import '../../core/expiry.dart';
 import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
-import '../../shared/ui.dart';
+import '../../shared/desktop_ui.dart';
+import '../../shared/widgets/app_badge.dart';
 import 'vault_actions.dart';
 
 /// Which part of the app the window shows, as the sidebar sees it.
 enum ShellSection { vault, expiry, settings }
 
-/// Design frame D03's sidebar: the vault, smart filters (all items,
-/// expiring, expired, conflicts), the App → Platform → Environment tree
-/// with item counts, tags, and Settings at the bottom.
+/// The window's source list (design frame N03): the vault, the smart lists
+/// with counts (all items, expiring in 30 days, expired, conflicts), the
+/// App › Platform › Environment tree, tags, and a footer with Settings and
+/// the auto-lock time.
 ///
 /// It has no selection state of its own: what is selected is read from
 /// [uri], and every row is a link, so back and forward and a reload all
 /// keep the sidebar in step with the list.
 class VaultSidebar extends ConsumerStatefulWidget {
-  const VaultSidebar({super.key, required this.section, required this.uri});
+  const VaultSidebar({
+    super.key,
+    required this.section,
+    required this.uri,
+    this.scrollController,
+  });
 
   final ShellSection section;
   final Uri uri;
 
-  static const double width = 264;
+  /// macos_ui's sidebar hands one over; elsewhere the list makes its own.
+  final ScrollController? scrollController;
 
   @override
   ConsumerState<VaultSidebar> createState() => _VaultSidebarState();
@@ -50,7 +59,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
     final session = ref.watch(vaultSessionProvider);
     final index = session is Unlocked ? session.index : null;
     final now = ref.watch(clockProvider)();
@@ -59,123 +68,101 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     final expiredSelected =
         section == ShellSection.expiry &&
         widget.uri.queryParameters['show'] == 'expired';
+    final conflicts = index == null ? 0 : _conflicts(index);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: bc.background,
-        border: Border(right: BorderSide(color: bc.border)),
-      ),
-      child: SizedBox(
-        width: VaultSidebar.width,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _VaultCard(count: index?.items.length ?? 0),
-              const SizedBox(height: 18),
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _NavRow(
-                      icon: LucideIcons.layers,
-                      label: 'All items',
-                      trailing: _Count(index?.items.length ?? 0),
-                      selected: section == ShellSection.vault && filter.isAll,
-                      onTap: () => _show(const VaultFilter()),
-                    ),
-                    _NavRow(
-                      icon: LucideIcons.clockAlert,
-                      label: 'Expiring soon',
-                      trailing: _Badge(
-                        index?.countExpiring(ExpiryState.soon, now) ?? 0,
-                        BCChipColor.warning,
-                      ),
-                      selected:
-                          section == ShellSection.expiry && !expiredSelected,
-                      onTap: () => context.go(Routes.expiryShowing()),
-                    ),
-                    _NavRow(
-                      icon: LucideIcons.circleX,
-                      label: 'Expired',
-                      trailing: _Badge(
-                        index?.countExpiring(ExpiryState.expired, now) ?? 0,
-                        BCChipColor.danger,
-                      ),
-                      selected: expiredSelected,
-                      onTap: () =>
-                          context.go(Routes.expiryShowing(expired: true)),
-                    ),
-                    if (index != null && _conflicts(index) > 0)
-                      _NavRow(
-                        icon: LucideIcons.gitMerge,
-                        label: 'Conflicts',
-                        trailing: _Badge(
-                          _conflicts(index),
-                          BCChipColor.defaultColor,
-                        ),
-                        selected: filter.view == VaultView.conflicts,
-                        onTap: () =>
-                            _show(const VaultFilter(view: VaultView.conflicts)),
-                      ),
-                    if (index != null && index.quarantined.isNotEmpty)
-                      _NavRow(
-                        icon: LucideIcons.shieldAlert,
-                        label: 'Unreadable',
-                        trailing: _Badge(
-                          index.quarantined.length,
-                          BCChipColor.danger,
-                        ),
-                        selected: filter.view == VaultView.quarantine,
-                        onTap: () => _show(
-                          const VaultFilter(view: VaultView.quarantine),
-                        ),
-                      ),
-                    const SizedBox(height: 18),
-                    _SectionLabel(
-                      'Apps',
-                      action: BCButton(
-                        size: BCButtonSize.sm,
-                        variant: BCButtonVariant.ghost,
-                        isIconOnly: true,
-                        onPressed: () => createApp(context),
-                        child: Icon(
-                          LucideIcons.plus,
-                          size: 16,
-                          color: bc.muted,
-                          semanticLabel: 'New app',
-                        ),
-                      ),
-                    ),
-                    if (index == null || index.tree.isEmpty)
-                      const _Hint('Items you add are grouped here by app')
-                    else
-                      for (final node in index.tree) ..._appRows(node, filter),
-                    if (index != null && index.tagCounts.isNotEmpty) ...[
-                      const SizedBox(height: 18),
-                      const _SectionLabel('Tags'),
-                      _Tags(
-                        tags: index.tagCounts.keys.toList(),
-                        selected: section == ShellSection.vault
-                            ? filter.tag
-                            : null,
-                        onSelected: (tag) => _show(VaultFilter(tag: tag)),
-                      ),
-                    ],
-                  ],
+    // Material for the kits' button ink; the sidebar paints no background
+    // itself, so macOS's vibrancy shows through.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _VaultHeader(count: index?.items.length ?? 0),
+          Expanded(
+            child: ListView(
+              controller: widget.scrollController,
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+              children: [
+                _SourceRow(
+                  icon: DesktopSymbol.allItems,
+                  iconColor: colors.accentIcon,
+                  label: 'All items',
+                  count: index?.items.length ?? 0,
+                  selected: section == ShellSection.vault && filter.isAll,
+                  onTap: () => _show(const VaultFilter()),
                 ),
-              ),
-              const SizedBox(height: BCSpacing.sm),
-              _NavRow(
-                icon: LucideIcons.settings,
-                label: 'Settings',
-                selected: section == ShellSection.settings,
-                onTap: () => context.go(Routes.settings),
-              ),
-            ],
+                _SourceRow(
+                  icon: DesktopSymbol.expiring,
+                  iconColor: colors.warning,
+                  label: 'Expiring in 30 days',
+                  count: index?.countExpiring(ExpiryState.soon, now) ?? 0,
+                  selected: section == ShellSection.expiry && !expiredSelected,
+                  onTap: () => context.go(Routes.expiryShowing()),
+                ),
+                _SourceRow(
+                  icon: DesktopSymbol.expired,
+                  iconColor: colors.danger,
+                  label: 'Expired',
+                  count: index?.countExpiring(ExpiryState.expired, now) ?? 0,
+                  selected: expiredSelected,
+                  onTap: () => context.go(Routes.expiryShowing(expired: true)),
+                ),
+                if (conflicts > 0)
+                  _SourceRow(
+                    icon: DesktopSymbol.conflicts,
+                    iconColor: colors.conflict,
+                    label: 'Conflicts',
+                    count: conflicts,
+                    selected: filter.view == VaultView.conflicts,
+                    onTap: () =>
+                        _show(const VaultFilter(view: VaultView.conflicts)),
+                  ),
+                if (index != null && index.quarantined.isNotEmpty)
+                  _SourceRow(
+                    icon: DesktopSymbol.unreadable,
+                    iconColor: colors.danger,
+                    label: 'Unreadable',
+                    count: index.quarantined.length,
+                    selected: filter.view == VaultView.quarantine,
+                    onTap: () =>
+                        _show(const VaultFilter(view: VaultView.quarantine)),
+                  ),
+                _SectionLabel(
+                  'Apps',
+                  action: DesktopIconButton(
+                    symbol: DesktopSymbol.add,
+                    tooltip: 'New app',
+                    size: 12,
+                    onPressed: () => createApp(context),
+                  ),
+                ),
+                if (index == null || index.tree.isEmpty)
+                  const _Hint('Items you add are grouped here by app')
+                else
+                  for (final node in index.tree) ..._appRows(node, filter),
+                if (index != null && index.tagCounts.isNotEmpty) ...[
+                  const _SectionLabel('Tags'),
+                  for (final MapEntry(key: tag, value: count)
+                      in index.tagCounts.entries)
+                    _SourceRow(
+                      icon: DesktopSymbol.tag,
+                      label: tag,
+                      count: count,
+                      selected:
+                          section == ShellSection.vault && filter.tag == tag,
+                      // Clicking the selected tag again shows everything.
+                      onTap: () => _show(
+                        section == ShellSection.vault && filter.tag == tag
+                            ? const VaultFilter()
+                            : VaultFilter(tag: tag),
+                      ),
+                    ),
+                ],
+              ],
+            ),
           ),
-        ),
+          _Footer(selected: section == ShellSection.settings),
+        ],
       ),
     );
   }
@@ -201,14 +188,14 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     final appKey = node.app?.id ?? VaultFilter.none;
     final open = !_collapsedApps.contains(appKey);
     return [
-      _TreeRow(
-        depth: 0,
+      _SourceRow(
+        tree: true,
         expanded: open,
         onToggle: () => setState(
           () =>
               open ? _collapsedApps.add(appKey) : _collapsedApps.remove(appKey),
         ),
-        leading: AppBadge(app: node.app),
+        leading: AppBadge(app: node.app, size: 14),
         label: node.app?.name ?? 'No app',
         count: node.count,
         selected: _isSelected(filter, app: appKey),
@@ -233,13 +220,13 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     final holdsSelection =
         filter.app == appKey && filter.platform == platformKey;
     final open = _platformOpen[key] ?? holdsSelection;
-    final bc = context.bcTheme;
     return [
-      _TreeRow(
+      _SourceRow(
+        tree: true,
         depth: 1,
         expanded: open,
         onToggle: () => setState(() => _platformOpen[key] = !open),
-        leading: Icon(_platformIcon(node.platform), size: 15, color: bc.muted),
+        icon: _platformSymbol(node.platform),
         label: VaultLabels.platform(node.platform),
         count: node.count,
         selected: _isSelected(filter, app: appKey, platform: platformKey),
@@ -251,7 +238,8 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
       if (open)
         for (final MapEntry(key: env, value: count)
             in node.environments.entries)
-          _TreeRow(
+          _SourceRow(
+            tree: true,
             depth: 2,
             leading: _EnvDot(env),
             label: VaultLabels.environment(env),
@@ -273,262 +261,222 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     ];
   }
 
-  static IconData _platformIcon(String? platform) => switch (platform) {
-    'ios' || 'macos' => LucideIcons.apple,
-    'android' => LucideIcons.smartphone,
-    'web' => LucideIcons.globe,
-    'server' => LucideIcons.server,
-    'windows' || 'linux' => LucideIcons.monitor,
-    _ => LucideIcons.box,
+  static DesktopSymbol _platformSymbol(String? platform) => switch (platform) {
+    'ios' || 'macos' => DesktopSymbol.platformApple,
+    'android' => DesktopSymbol.platformAndroid,
+    'web' => DesktopSymbol.platformWeb,
+    'server' => DesktopSymbol.platformServer,
+    'windows' || 'linux' => DesktopSymbol.platformDesktop,
+    _ => DesktopSymbol.platformOther,
   };
 }
 
 /// The vault this window shows, with its size. One vault per device in
 /// v1, so there's nothing to switch to yet.
-class _VaultCard extends StatelessWidget {
-  const _VaultCard({required this.count});
+class _VaultHeader extends StatelessWidget {
+  const _VaultHeader({required this.count});
 
   final int count;
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: bc.surface,
-        shape: BCShapes.continuous(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          spacing: 10,
-          children: [
-            DecoratedBox(
-              decoration: ShapeDecoration(
-                color: bc.accentSoft,
-                shape: BCShapes.continuous(BCRadius.xl),
-              ),
-              child: SizedBox.square(
-                dimension: 36,
-                child: Icon(LucideIcons.vault, size: 18, color: bc.accent),
+    final colors = context.desktopColors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Row(
+        spacing: 10,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.accent,
+              borderRadius: const BorderRadius.all(
+                Radius.circular(DesktopMetrics.menuRadius),
               ),
             ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  const BCText(
-                    'DevVault',
-                    type: BCTextType.bodySm,
-                    weight: BCTextWeight.semibold,
-                  ),
-                  BCText(
-                    '$count ${count == 1 ? 'item' : 'items'} · this device',
-                    type: BCTextType.bodyXs,
-                    color: BCTextColor.muted,
-                  ),
-                ],
+            child: SizedBox.square(
+              dimension: 28,
+              child: DesktopIcon(
+                DesktopSymbol.lock,
+                size: 15,
+                color: colors.onAccent,
               ),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DevVault',
+                  style: TextStyle(
+                    fontSize: DesktopMetrics.bodySize,
+                    fontWeight: FontWeight.w600,
+                    color: colors.text,
+                  ),
+                ),
+                Text(
+                  '$count ${count == 1 ? 'item' : 'items'} · this device',
+                  style: TextStyle(
+                    fontSize: DesktopMetrics.secondarySize,
+                    color: colors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// A row's hover and selection background, and its tap and semantics.
-class _RowSurface extends StatefulWidget {
-  const _RowSurface({
+/// One source-list row: a disclosure chevron on tree rows that open, an
+/// icon (or [leading]), the label and a count. The selected row is filled
+/// with the accent colour.
+class _SourceRow extends StatefulWidget {
+  const _SourceRow({
     required this.label,
     required this.selected,
     required this.onTap,
-    required this.height,
-    required this.padding,
-    required this.child,
-    this.expanded,
+    this.count,
+    this.icon,
+    this.iconColor,
+    this.leading,
+    this.tree = false,
+    this.depth = 0,
+    this.expanded = false,
+    this.onToggle,
   });
 
+  final DesktopSymbol? icon;
+  final Color? iconColor;
+  final Widget? leading;
   final String label;
 
-  /// Whether a tree row is open; null for rows that don't open.
-  final bool? expanded;
+  /// Shown at the trailing edge; null shows nothing.
+  final int? count;
   final bool selected;
   final VoidCallback onTap;
-  final double height;
-  final EdgeInsets padding;
-  final Widget child;
+
+  /// A row of the App › Platform › Environment tree, [depth] levels deep.
+  final bool tree;
+  final int depth;
+  final bool expanded;
+
+  /// Set on tree rows that open and close.
+  final VoidCallback? onToggle;
 
   @override
-  State<_RowSurface> createState() => _RowSurfaceState();
+  State<_SourceRow> createState() => _SourceRowState();
 }
 
-class _RowSurfaceState extends State<_RowSurface> {
+class _SourceRowState extends State<_SourceRow> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final color = widget.selected
-        ? bc.accentSoft
-        : _hovered
-        ? bc.surface
-        : null;
+    final colors = context.desktopColors;
+    final selected = widget.selected;
+    final icon = widget.icon;
+    final onToggle = widget.onToggle;
+    final count = widget.count;
+    final tree = widget.tree;
+    final countLabel = count == null
+        ? ''
+        : ', $count ${count == 1 ? 'item' : 'items'}';
     return Semantics(
       button: true,
-      selected: widget.selected,
-      expanded: widget.expanded,
-      label: widget.label,
+      selected: selected,
+      expanded: onToggle == null ? null : widget.expanded,
+      label: tree ? '${widget.label}$countLabel' : widget.label,
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: MouseRegion(
-        cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            height: widget.height,
-            padding: widget.padding,
-            decoration: ShapeDecoration(
-              color: color ?? bc.background.withValues(alpha: 0),
-              shape: BCShapes.continuous(14),
+          child: Container(
+            height: DesktopMetrics.sidebarRowHeight,
+            padding: EdgeInsets.only(
+              left: tree ? 2.0 + widget.depth * 14 : 6,
+              right: 8,
             ),
-            child: widget.child,
+            decoration: BoxDecoration(
+              color: selected
+                  ? colors.accent
+                  : _hovered
+                  ? colors.innerSeparator
+                  : null,
+              borderRadius: const BorderRadius.all(
+                Radius.circular(DesktopMetrics.menuRadius),
+              ),
+            ),
+            child: Row(
+              spacing: 6,
+              children: [
+                // Tree rows keep the chevron's column, so labels line up
+                // by depth whether or not the row opens.
+                if (tree)
+                  SizedBox(
+                    width: 12,
+                    child: onToggle == null
+                        ? null
+                        : GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: onToggle,
+                            child: DesktopIcon(
+                              widget.expanded
+                                  ? DesktopSymbol.chevronDown
+                                  : DesktopSymbol.chevronRight,
+                              size: 10,
+                              color: selected
+                                  ? colors.onAccent
+                                  : colors.tertiaryText,
+                            ),
+                          ),
+                  ),
+                SizedBox(
+                  width: 16,
+                  child: Center(
+                    child:
+                        widget.leading ??
+                        (icon == null
+                            ? null
+                            : DesktopIcon(
+                                icon,
+                                size: 14,
+                                color: selected
+                                    ? colors.onAccent
+                                    : widget.iconColor ?? colors.secondaryText,
+                              )),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: DesktopMetrics.bodySize,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      color: selected ? colors.onAccent : colors.text,
+                    ),
+                  ),
+                ),
+                if (count != null)
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: DesktopMetrics.secondarySize,
+                      color: selected ? colors.onAccent : colors.secondaryText,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A top-level destination: icon, label and a count or badge.
-class _NavRow extends StatelessWidget {
-  const _NavRow({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final color = selected ? bc.accent : bc.foreground;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: _RowSurface(
-        label: label,
-        selected: selected,
-        onTap: onTap,
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          spacing: 12,
-          children: [
-            Icon(icon, size: 18, color: color),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: BCTypography.textSm.copyWith(
-                  color: color,
-                  fontWeight: selected
-                      ? BCTypography.semiBold
-                      : BCTypography.medium,
-                ),
-              ),
-            ),
-            ?trailing,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A row of the App → Platform → Environment tree. [depth] 0 and 1 rows
-/// have a disclosure chevron when [onToggle] is set.
-class _TreeRow extends StatelessWidget {
-  const _TreeRow({
-    required this.depth,
-    required this.leading,
-    required this.label,
-    required this.count,
-    required this.selected,
-    required this.onTap,
-    this.expanded = false,
-    this.onToggle,
-  });
-
-  final int depth;
-  final Widget leading;
-  final String label;
-  final int count;
-  final bool selected;
-  final VoidCallback onTap;
-  final bool expanded;
-  final VoidCallback? onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    final indent = switch (depth) {
-      0 => 12.0,
-      1 => 36.0,
-      _ => 68.0,
-    };
-    final chevronSize = depth == 0 ? 14.0 : 13.0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: _RowSurface(
-        label: '$label, $count ${count == 1 ? 'item' : 'items'}',
-        expanded: onToggle == null ? null : expanded,
-        selected: selected,
-        onTap: onTap,
-        height: depth == 0 ? 36 : 34,
-        padding: EdgeInsets.only(left: indent, right: 12),
-        child: Row(
-          spacing: 10,
-          children: [
-            if (onToggle != null)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onToggle,
-                child: Icon(
-                  expanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
-                  size: chevronSize,
-                  color: bc.muted,
-                ),
-              ),
-            leading,
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: BCTypography.textSm.copyWith(
-                  color: selected ? bc.accent : bc.foreground,
-                  fontWeight: selected
-                      ? BCTypography.semiBold
-                      : depth == 0
-                      ? BCTypography.medium
-                      : BCTypography.regular,
-                ),
-              ),
-            ),
-            _Count(count, selected: selected),
-          ],
         ),
       ),
     );
@@ -544,55 +492,16 @@ class _EnvDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bc = context.bcTheme;
+    final colors = context.desktopColors;
     final color = switch (environment?.toLowerCase()) {
-      'production' || 'prod' => bc.success,
-      'staging' => bc.warning,
-      'development' || 'dev' => bc.accent,
-      _ => bc.muted,
+      'production' || 'prod' => colors.success,
+      'staging' => colors.warning,
+      'development' || 'dev' => colors.accentIcon,
+      _ => colors.tertiaryText,
     };
     return DecoratedBox(
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       child: const SizedBox.square(dimension: 7),
-    );
-  }
-}
-
-class _Count extends StatelessWidget {
-  const _Count(this.count, {this.selected = false});
-
-  final int count;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    return Text(
-      '$count',
-      style: BCTypography.textXs.copyWith(
-        color: selected ? bc.accent : bc.muted,
-      ),
-    );
-  }
-}
-
-/// A count that needs attention; nothing when it's zero.
-class _Badge extends StatelessWidget {
-  const _Badge(this.count, this.color);
-
-  final int count;
-  final BCChipColor color;
-
-  @override
-  Widget build(BuildContext context) {
-    if (count == 0) return const SizedBox.shrink();
-    return BCChip(
-      size: BCChipSize.sm,
-      variant: color == BCChipColor.defaultColor
-          ? BCChipVariant.secondary
-          : BCChipVariant.soft,
-      color: color,
-      child: Text('$count'),
     );
   }
 }
@@ -605,29 +514,31 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = BCText(
-      text,
-      type: BCTextType.bodySm,
-      weight: BCTextWeight.medium,
-      color: BCTextColor.muted,
-    );
+    final colors = context.desktopColors;
     final action = this.action;
-    if (action == null) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-        child: label,
-      );
-    }
     return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 2),
-      child: Row(
-        children: [
-          Expanded(child: label),
-          SizedBox(
-            height: 32,
-            child: Semantics(container: true, child: action),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(8, 14, 2, 2),
+      child: SizedBox(
+        height: 24,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize,
+                  fontWeight: FontWeight.w600,
+                  color: colors.secondaryText,
+                ),
+              ),
+            ),
+            if (action != null)
+              SizedBox.square(
+                dimension: 24,
+                child: Semantics(container: true, child: action),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -641,36 +552,70 @@ class _Hint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: BCText(text, type: BCTextType.bodyXs, color: BCTextColor.muted),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: DesktopMetrics.secondarySize,
+          color: context.desktopColors.secondaryText,
+        ),
+      ),
     );
   }
 }
 
-/// Every tag in the vault; one can be selected to filter the list.
-class _Tags extends StatelessWidget {
-  const _Tags({
-    required this.tags,
-    required this.selected,
-    required this.onSelected,
-  });
+/// Settings, and how long the vault stays open while idle.
+class _Footer extends ConsumerWidget {
+  const _Footer({required this.selected});
 
-  final List<String> tags;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
+  final bool selected;
+
+  /// "1m", "5m", "1h"; "Off" when idle never locks.
+  static String _lockLabel(Duration? after) => switch (after) {
+    null => 'Off',
+    Duration(inMinutes: final m) when m < 60 => '${m}m',
+    Duration(:final inHours) => '${inHours}h',
+  };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.desktopColors;
+    final after = ref.watch(settingsProvider.select((s) => s.autoLockAfter));
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: BCTagGroup<String>(
-        // Multiple mode so tapping the selected tag reports it as removed;
-        // the sidebar still keeps one tag at a time.
-        selectionMode: BCTagGroupSelectionMode.multiple,
-        selectedValues: {?selected},
-        onSelectionChange: (values) =>
-            onSelected(values.difference({?selected}).firstOrNull),
-        items: [for (final tag in tags) BCTagItem(value: tag, label: tag)],
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: _SourceRow(
+              icon: DesktopSymbol.settings,
+              label: 'Settings',
+              selected: selected,
+              onTap: () => context.go(Routes.settings),
+            ),
+          ),
+          Semantics(
+            label: after == null
+                ? 'Auto-lock is off'
+                : 'Locks after ${_lockLabel(after)} idle',
+            excludeSemantics: true,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 6, right: 6),
+              child: Row(
+                spacing: 3,
+                children: [
+                  DesktopIcon(DesktopSymbol.timer, size: 11),
+                  Text(
+                    _lockLabel(after),
+                    style: TextStyle(
+                      fontSize: DesktopMetrics.secondarySize,
+                      color: colors.secondaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

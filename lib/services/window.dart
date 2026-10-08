@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:macos_ui/macos_ui.dart' show MacosWindowUtilsConfig;
 import 'package:window_manager/window_manager.dart';
 
 import '../app/layout.dart';
@@ -7,8 +8,16 @@ import '../app/layout.dart';
 /// Sets up the desktop window before the first frame: title, the default
 /// size, and the minimum the three-pane layout (D03) needs. Does nothing on
 /// phones.
+///
+/// On macOS, macos_window_utils owns the window's look (transparent title
+/// bar, content under it, unified toolbar, the sidebar's vibrancy) and
+/// window_manager owns its size and position.
 Future<void> initWindow() async {
   if (kIsWeb || AppLayout.current != AppLayout.desktop) return;
+
+  if (defaultTargetPlatform == TargetPlatform.macOS) {
+    await const MacosWindowUtilsConfig().apply();
+  }
 
   await windowManager.ensureInitialized();
   const options = WindowOptions(

@@ -1,9 +1,12 @@
+import 'package:devvault/app/desktop_shell.dart' show ShellStatusBar;
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/core/expiry.dart';
 import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
+import 'package:devvault/shared/desktop/desktop_symbols.dart';
+import 'package:devvault/shared/desktop/desktop_theme.dart';
 
 import 'dart:io';
 import 'dart:ui' show Tristate;
@@ -11,7 +14,6 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
@@ -80,7 +82,7 @@ void main() {
       find.descendant(
         of: find
             .ancestor(
-              of: inSidebar('Expiring soon'),
+              of: inSidebar('Expiring in 30 days'),
               matching: find.byType(Row),
             )
             .first,
@@ -185,11 +187,17 @@ void main() {
     tester,
   ) async {
     await open(tester);
-    await tap(tester, chevron('iOS', LucideIcons.chevronRight));
+    await tap(
+      tester,
+      chevron('iOS', DesktopSymbol.chevronRight.of(DesktopKit.current)),
+    );
     expect(row('Production, 3 items'), findsOneWidget);
     expect(location(tester), Routes.vault());
 
-    await tap(tester, chevron('Kitchenly', LucideIcons.chevronDown));
+    await tap(
+      tester,
+      chevron('Kitchenly', DesktopSymbol.chevronDown.of(DesktopKit.current)),
+    );
     expect(inSidebar('iOS'), findsNothing);
     expect(inSidebar('Production'), findsNothing);
     expect(location(tester), Routes.vault());
@@ -250,11 +258,37 @@ void main() {
     expect(find.text('apns'), findsNothing);
   });
 
+  testWidgets('rows work from assistive tech too', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await open(tester);
+    tester.semantics.tap(find.semantics.byLabel('Expired'));
+    await tester.pumpAndSettle();
+    expect(location(tester), Routes.expiryShowing(expired: true));
+    semantics.dispose();
+  });
+
+  testWidgets('the footer says when the vault locks itself', (tester) async {
+    await open(tester);
+    expect(inSidebar('5m'), findsOneWidget);
+    expect(find.bySemanticsLabel('Locks after 5m idle'), findsOneWidget);
+  });
+
+  testWidgets('the status bar counts what the list shows', (tester) async {
+    await open(tester, Routes.vault(tag: 'ci'));
+    expect(
+      find.descendant(
+        of: find.byType(ShellStatusBar),
+        matching: find.text('2 items'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('Lock locks the vault and shows the unlock screen', (
     tester,
   ) async {
     await open(tester);
-    await tap(tester, find.text('Lock'));
+    await tap(tester, find.bySemanticsLabel(RegExp('^Lock now')));
     expect(appContainer(tester).read(vaultSessionProvider), isA<Locked>());
     expect(find.text('Unlock your vault'), findsOneWidget);
   });
