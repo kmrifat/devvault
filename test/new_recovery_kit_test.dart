@@ -1,13 +1,12 @@
 import 'dart:io';
 
-import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/create_vault/recovery_kit_card.dart';
 import 'package:devvault/features/settings/new_recovery_kit_dialog.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_core/vault_core.dart';
@@ -41,13 +40,13 @@ void main() {
   }
 
   Finder password() => find.descendant(
-    of: find.byType(PasswordField),
+    of: find.byType(NewRecoveryKitDialog),
     matching: find.byType(EditableText),
   );
 
   Finder button(String label) => find.descendant(
     of: find.byType(NewRecoveryKitDialog),
-    matching: find.widgetWithText(BCButton, label),
+    matching: find.widgetWithText(DesktopButton, label),
   );
 
   testWidgets('asks for the password, then shows a new key once', (
@@ -60,14 +59,14 @@ void main() {
     expect(find.text('New recovery kit'), findsOneWidget);
 
     // Nothing typed.
-    await tester.tap(button('Make new key'));
+    await tester.tap(button('Make New Key'));
     await tester.pumpAndSettle();
     expect(find.text('Enter your master password'), findsOneWidget);
 
     // Wrong password: nothing changes.
     await tester.enterText(password(), 'not my password');
     await tester.pump();
-    await tester.tap(button('Make new key'));
+    await tester.tap(button('Make New Key'));
     await settle(
       tester,
       () => find.text("That isn't your master password").evaluate().isNotEmpty,
@@ -76,7 +75,7 @@ void main() {
 
     await tester.enterText(password(), testPassword);
     await tester.pump();
-    await tester.tap(button('Make new key'));
+    await tester.tap(button('Make New Key'));
     await settle(
       tester,
       () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,
@@ -89,7 +88,7 @@ void main() {
     expect(newKey.split('-'), hasLength(14));
 
     // Done waits for the confirmation.
-    expect(tester.widget<BCButton>(button('Done')).isDisabled, isTrue);
+    expect(tester.widget<DesktopButton>(button('Done')).onPressed, isNull);
     await tester.tap(find.text("I've saved the new key"));
     await tester.pump();
     await tester.tap(button('Done'));

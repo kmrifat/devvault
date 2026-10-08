@@ -124,9 +124,13 @@ through `package:devvault/shared/desktop_ui.dart`:
   `DesktopSwitch`, `DesktopCheckbox`, `DesktopIconButton`,
   `DesktopSearchField`, and `DesktopForm` / `DesktopFormRow` for sheet
   forms.
-- `showDesktopSheet` + `DesktopSheet` (title, content, buttons bottom
-  right, Escape closes) and `DesktopGroupBox` for the sheets and the
-  inspector's boxes.
+- `showDesktopSheet` + `DesktopSheet` (title, optional icon tile and
+  message, content, buttons bottom right, Escape closes) and
+  `DesktopGroupBox` for the sheets and the inspector's boxes.
+  `DesktopFormRow` takes an `error` that replaces its note in red.
+- `showDesktopPanel` + `DesktopPanel`: a floating panel near the top of the
+  window, like Spotlight (quick open, ⌘K). `DesktopRadio` (the conflict
+  sheet's choices) and `DesktopProgress` (a spinner).
 - `DesktopSymbol` / `DesktopIcon`: icons by meaning, drawn from each OS's
   own set (Cupertino, Fluent, Yaru).
 - `DesktopWindow`: the main window's frame. In the app on macOS it is

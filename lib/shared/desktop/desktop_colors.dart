@@ -37,6 +37,7 @@ class DesktopColors {
     required this.conflict,
     required this.conflictBadge,
     required this.onConflictBadge,
+    required this.shadow,
   });
 
   /// Window and content background.
@@ -99,6 +100,9 @@ class DesktopColors {
   final Color conflictBadge;
   final Color onConflictBadge;
 
+  /// The shadow under floating panels (quick open).
+  final Color shadow;
+
   static const light = DesktopColors(
     window: Color(0xFFFFFFFF),
     sidebar: Color(0xFFECEAEF),
@@ -130,6 +134,7 @@ class DesktopColors {
     conflict: Color(0xFF8944AB),
     conflictBadge: Color(0xFFF1E4F8),
     onConflictBadge: Color(0xFF8944AB),
+    shadow: Color(0x33000000),
   );
 
   static const dark = DesktopColors(
@@ -161,6 +166,7 @@ class DesktopColors {
     conflict: Color(0xFFD49BF5),
     conflictBadge: Color(0xFF3A2846),
     onConflictBadge: Color(0xFFD49BF5),
+    shadow: Color(0x80000000),
   );
 
   static DesktopColors of(Brightness brightness) =>

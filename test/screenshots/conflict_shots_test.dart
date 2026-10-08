@@ -4,6 +4,7 @@ library;
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
+import 'package:flutter/material.dart' show Brightness;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -15,7 +16,7 @@ void main() {
   setUpAll(loadAppFonts);
 
   /// Puts "Upload keystore" in conflict with a version from another device
-  /// and opens the dialog (design frame D05).
+  /// and opens the sheet (design frame N05).
   Future<void> openConflict(WidgetTester tester) async {
     final container = appContainer(tester);
     final session = container.read(vaultSessionProvider) as Unlocked;
@@ -54,5 +55,12 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Name from the other device'));
   }
 
-  shot('D05-conflict', Routes.vault(), sample: true, interact: openConflict);
+  shot('N05-conflict', Routes.vault(), sample: true, interact: openConflict);
+  shot(
+    'N05-conflict-light',
+    Routes.vault(),
+    sample: true,
+    interact: openConflict,
+    brightness: Brightness.light,
+  );
 }

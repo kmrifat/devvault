@@ -7,7 +7,7 @@ import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/settings/change_password_dialog.dart';
 import 'package:devvault/services/folder_revealer.dart';
-import 'package:devvault/shared/widgets/password_field.dart';
+import 'package:devvault/shared/desktop_ui.dart' show DesktopFormRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_core/vault_core.dart';
@@ -153,8 +153,8 @@ void main() {
     group('change password', () {
       Finder field(String label) => find.descendant(
         of: find.ancestor(
-          of: find.text(label),
-          matching: find.byType(PasswordField),
+          of: find.text('$label:'),
+          matching: find.byType(DesktopFormRow),
         ),
         matching: find.byType(EditableText),
       );
@@ -174,7 +174,7 @@ void main() {
       /// Submits and gives Argon2id real time until the dialog settles.
       Future<void> submit(WidgetTester tester) async {
         await tester.runAsync(() async {
-          await tester.tap(find.text('Change password'));
+          await tester.tap(find.text('Change Password'));
           await Future<void>.delayed(const Duration(milliseconds: 20));
         });
         // Rebuild first, so the busy label (if any) is on screen.

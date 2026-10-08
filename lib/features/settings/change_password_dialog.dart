@@ -2,19 +2,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/password_policy.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart';
 
 /// Asks for the current master password and a new one, then rewraps the
 /// vault key. Only `vault.json` changes; every item stays as it is.
-Future<void> showChangePasswordDialog(BuildContext context) =>
-    BCDialog.show<void>(
+///
+/// A sheet on desktop, a bc_ui dialog on phones.
+Future<void> showChangePasswordDialog(BuildContext context) {
+  if (DesktopTheme.maybeOf(context) != null) {
+    return showDesktopSheet<void>(
       context,
-      builder: (_) => const BCDialogContent(
-        width: 460,
-        showCloseButton: true,
-        child: ChangePasswordForm(),
-      ),
+      builder: (_) => const ChangePasswordForm(),
     );
+  }
+  return BCDialog.show<void>(
+    context,
+    builder: (_) => const BCDialogContent(
+      width: 460,
+      showCloseButton: true,
+      child: ChangePasswordForm(),
+    ),
+  );
+}
 
 class ChangePasswordForm extends ConsumerStatefulWidget {
   const ChangePasswordForm({super.key});
@@ -98,6 +108,10 @@ class _ChangePasswordFormState extends ConsumerState<ChangePasswordForm> {
   @override
   Widget build(BuildContext context) {
     final strength = PasswordPolicy.strength(_next.text);
+    final hint = _next.text.isEmpty
+        ? 'At least ${PasswordPolicy.minLength} characters'
+        : 'Strength (estimate): ${strength.label}';
+    if (DesktopTheme.maybeOf(context) != null) return _desktop(hint);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,9 +137,7 @@ class _ChangePasswordFormState extends ConsumerState<ChangePasswordForm> {
           controller: _next,
           isDisabled: _busy,
           error: _nextError,
-          description: _next.text.isEmpty
-              ? 'At least ${PasswordPolicy.minLength} characters'
-              : 'Strength (estimate): ${strength.label}',
+          description: hint,
           textInputAction: TextInputAction.next,
           onChanged: (_) => setState(() {}),
         ),
@@ -160,6 +172,74 @@ class _ChangePasswordFormState extends ConsumerState<ChangePasswordForm> {
           ],
         ),
       ],
+    );
+  }
+
+  /// Desktop: a sheet with a classic form, one secure field per row.
+  Widget _desktop(String hint) {
+    Widget field(
+      String label,
+      TextEditingController controller, {
+      bool autofocus = false,
+      ValueChanged<String>? onChanged,
+    }) => Semantics(
+      label: label,
+      textField: true,
+      child: DesktopTextField(
+        controller: controller,
+        obscureText: true,
+        autofocus: autofocus,
+        enabled: !_busy,
+        onChanged: onChanged,
+        onSubmitted: (_) => _submit(),
+      ),
+    );
+    return PopScope(
+      canPop: !_busy,
+      child: DesktopSheet(
+        width: 480,
+        title: 'Change master password',
+        message:
+            'Your recovery key keeps working. Other devices ask for the new '
+            'password after they sync.',
+        actions: [
+          if (_busy) const DesktopProgress(semanticLabel: 'Changing'),
+          DesktopButton(
+            label: 'Cancel',
+            onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          ),
+          DesktopButton(
+            label: _busy ? 'Changing…' : 'Change Password',
+            kind: DesktopButtonKind.primary,
+            onPressed: _busy ? null : _submit,
+          ),
+        ],
+        child: DesktopForm(
+          labelWidth: 170,
+          children: [
+            DesktopFormRow(
+              label: 'Current password',
+              error: _currentError,
+              child: field('Current password', _current, autofocus: true),
+            ),
+            DesktopFormRow(
+              label: 'New password',
+              note: hint,
+              error: _nextError,
+              child: field(
+                'New password',
+                _next,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            DesktopFormRow(
+              label: 'Confirm new password',
+              error: _confirmError,
+              child: field('Confirm new password', _confirm),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

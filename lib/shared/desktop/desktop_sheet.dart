@@ -34,9 +34,19 @@ class DesktopSheet extends StatelessWidget {
     required this.actions,
     this.width = 520,
     this.leadingAction,
+    this.icon,
+    this.message,
   });
 
   final String title;
+
+  /// A tile left of the title (the item's type, a conflict mark).
+  final Widget? icon;
+
+  /// A line or two of secondary text under the title: what the sheet is
+  /// about, what happens next.
+  final String? message;
+
   final Widget child;
 
   /// Push buttons, Cancel first and the default action last.
@@ -50,6 +60,7 @@ class DesktopSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
+    final header = _SheetHeader(title: title, icon: icon, message: message);
     final buttons = Row(
       spacing: 8,
       children: [?leadingAction, const Spacer(), ...actions],
@@ -79,22 +90,17 @@ class DesktopSheet extends StatelessWidget {
           width: width,
           child: mac.MacosSheet(
             insetPadding: EdgeInsets.zero,
-            backgroundColor: colors.window,
+            // The frames draw sheets a shade darker than the window, so the
+            // white fields and tables inside stand out.
+            backgroundColor: colors.groupBox,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 16,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: DesktopMetrics.bodySize + 2,
-                      fontWeight: FontWeight.w600,
-                      color: colors.text,
-                    ),
-                  ),
+                  header,
                   Flexible(child: body),
                   buttons,
                 ],
@@ -105,16 +111,67 @@ class DesktopSheet extends StatelessWidget {
       ),
       DesktopKit.fluent => fl.ContentDialog(
         constraints: BoxConstraints(maxWidth: width),
-        title: Text(title),
+        title: header,
         content: body,
         actions: [buttons],
       ),
       DesktopKit.yaru => AlertDialog(
-        title: Text(title),
+        title: header,
         content: SizedBox(width: width, child: body),
         actions: [buttons],
       ),
     };
+  }
+}
+
+/// The sheet's title in bold, with its [icon] tile and [message] if any.
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({required this.title, this.icon, this.message});
+
+  final String title;
+  final Widget? icon;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final message = this.message;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      spacing: 3,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: DesktopMetrics.bodySize,
+              fontWeight: FontWeight.w700,
+              color: colors.text,
+            ),
+          ),
+        ),
+        if (message != null)
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: DesktopMetrics.secondarySize,
+              color: colors.secondaryText,
+            ),
+          ),
+      ],
+    );
+    final icon = this.icon;
+    if (icon == null) return text;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 10,
+      children: [
+        icon,
+        Expanded(child: text),
+      ],
+    );
   }
 }
 
