@@ -37,6 +37,11 @@ abstract final class DesktopMetrics {
   static const double formLabelGap = 8;
   static const double formRowGap = 10;
 
+  /// macOS form rows: a 22 pt control plus the focus-ring room macos_ui
+  /// keeps around a text field. Rows this tall sit flush, 31 pt apart, as
+  /// in the frames.
+  static const double formRowHeight = 31;
+
   /// Body text and secondary text.
   static const double bodySize = 13;
   static const double secondarySize = 11;

@@ -33,7 +33,16 @@ enum DesktopSymbol {
   platformWeb,
   platformServer,
   platformDesktop,
-  platformOther;
+  platformOther,
+  verified,
+  copy,
+  info,
+  alert,
+  privacy,
+  document,
+  remove,
+  reveal,
+  conceal;
 
   IconData of(DesktopKit kit) => switch (kit) {
     DesktopKit.macos => _macos,
@@ -67,6 +76,15 @@ enum DesktopSymbol {
     platformServer => CupertinoIcons.cube_box,
     platformDesktop => CupertinoIcons.desktopcomputer,
     platformOther => CupertinoIcons.cube,
+    verified => CupertinoIcons.checkmark_circle,
+    copy => CupertinoIcons.doc_on_doc,
+    info => CupertinoIcons.info_circle,
+    alert => CupertinoIcons.exclamationmark_circle,
+    privacy => CupertinoIcons.checkmark_shield,
+    document => CupertinoIcons.doc,
+    remove => CupertinoIcons.minus_circle,
+    reveal => CupertinoIcons.eye,
+    conceal => CupertinoIcons.eye_slash,
   };
 
   IconData get _fluent => switch (this) {
@@ -95,6 +113,15 @@ enum DesktopSymbol {
     platformServer => fl.FluentIcons.server,
     platformDesktop => fl.FluentIcons.t_v_monitor,
     platformOther => fl.FluentIcons.package,
+    verified => fl.FluentIcons.completed,
+    copy => fl.FluentIcons.copy,
+    info => fl.FluentIcons.info,
+    alert => fl.FluentIcons.error,
+    privacy => fl.FluentIcons.shield,
+    document => fl.FluentIcons.page,
+    remove => fl.FluentIcons.remove,
+    reveal => fl.FluentIcons.view,
+    conceal => fl.FluentIcons.hide,
   };
 
   IconData get _yaru => switch (this) {
@@ -123,6 +150,15 @@ enum DesktopSymbol {
     platformServer => yaru.YaruIcons.server,
     platformDesktop => yaru.YaruIcons.computer,
     platformOther => yaru.YaruIcons.package,
+    verified => yaru.YaruIcons.ok,
+    copy => yaru.YaruIcons.copy,
+    info => yaru.YaruIcons.information,
+    alert => yaru.YaruIcons.error,
+    privacy => yaru.YaruIcons.shield,
+    document => yaru.YaruIcons.document,
+    remove => yaru.YaruIcons.minus,
+    reveal => yaru.YaruIcons.eye,
+    conceal => yaru.YaruIcons.hide,
   };
 }
 

@@ -16,6 +16,7 @@ export 'desktop/desktop_icon_button.dart';
 export 'desktop/desktop_menu_bar.dart';
 export 'desktop/desktop_metrics.dart';
 export 'desktop/desktop_popup.dart';
+export 'desktop/desktop_progress.dart';
 export 'desktop/desktop_search_field.dart';
 export 'desktop/desktop_sheet.dart';
 export 'desktop/desktop_symbols.dart';

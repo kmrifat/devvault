@@ -22,7 +22,10 @@ class DesktopForm extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
-        spacing: DesktopMetrics.formRowGap,
+        // macOS rows are a fixed pitch instead (see DesktopFormRow).
+        spacing: context.desktopKit == DesktopKit.macos
+            ? 0
+            : DesktopMetrics.formRowGap,
         children: children,
       ),
     );
@@ -52,6 +55,12 @@ class DesktopFormRow extends StatelessWidget {
     final note = this.note;
     final row = Row(
       children: [
+        // macos_ui keeps room for the focus ring around a text field, so a
+        // field is taller than a pop-up of the same visible height. Every
+        // row is at least this tall, so rows keep an even pitch whatever
+        // control they hold.
+        if (context.desktopKit == DesktopKit.macos)
+          const SizedBox(height: DesktopMetrics.formRowHeight),
         SizedBox(
           width: labelWidth,
           child: Text(

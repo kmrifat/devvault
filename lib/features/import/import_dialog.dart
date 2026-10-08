@@ -10,13 +10,46 @@ import '../../data/expiry_alerts.dart';
 import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
+import '../../shared/desktop_ui.dart'
+    show
+        DesktopButton,
+        DesktopButtonKind,
+        DesktopChoice,
+        DesktopComboBox,
+        DesktopCheckbox,
+        DesktopForm,
+        DesktopFormRow,
+        DesktopIcon,
+        DesktopMetrics,
+        DesktopPopup,
+        DesktopProgress,
+        DesktopSheet,
+        DesktopSymbol,
+        DesktopTextField,
+        DesktopTheme,
+        DesktopThemeContext,
+        DesktopTokenField,
+        showDesktopSheet;
 import '../../shared/ui.dart';
 import 'import_draft.dart';
 import 'place_fields.dart';
 
-/// Imports files into the vault (design frame D04): asks for [files], or
-/// lets the user choose them, then opens the import dialog for each one and
-/// shows the last item imported.
+/// Opens [dialog]: a sheet in the desktop layout (N04), bc_ui's dialog or
+/// bottom sheet on a phone (B4).
+Future<ImportOutcome?> _present(BuildContext context, ImportDialog dialog) {
+  if (DesktopTheme.maybeOf(context) != null) {
+    return showDesktopSheet<ImportOutcome>(context, builder: (_) => dialog);
+  }
+  return BCDialog.show<ImportOutcome>(
+    context,
+    builder: (_) =>
+        BCDialogContent(width: 640, showCloseButton: true, child: dialog),
+  );
+}
+
+/// Imports files into the vault (design frames N04, B4): asks for [files],
+/// or lets the user choose them, then opens the import dialog for each one
+/// and shows the last item imported.
 Future<void> showImportDialog(
   BuildContext context, {
   List<PickedFile>? files,
@@ -28,14 +61,7 @@ Future<void> showImportDialog(
   var replaced = 0;
   for (final file in picked) {
     if (!context.mounted) return;
-    final outcome = await BCDialog.show<ImportOutcome>(
-      context,
-      builder: (_) => BCDialogContent(
-        width: 640,
-        showCloseButton: true,
-        child: ImportDialog(file: file),
-      ),
-    );
+    final outcome = await _present(context, ImportDialog(file: file));
     if (outcome == null) continue;
     lastId = outcome.itemId;
     if (outcome.replaced) {
@@ -69,13 +95,9 @@ Future<void> showReplaceFileDialog(BuildContext context, Item item) async {
   final container = ProviderScope.containerOf(context);
   final picked = await container.read(fileOpenerProvider).pick();
   if (picked.isEmpty || !context.mounted) return;
-  final outcome = await BCDialog.show<ImportOutcome>(
+  final outcome = await _present(
     context,
-    builder: (_) => BCDialogContent(
-      width: 640,
-      showCloseButton: true,
-      child: ImportDialog(file: picked.first, replacing: item),
-    ),
+    ImportDialog(file: picked.first, replacing: item),
   );
   if (outcome == null || !outcome.replaced || !context.mounted) return;
   BCToast.show(
@@ -260,6 +282,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (DesktopTheme.maybeOf(context) != null) return _sheet(context);
     final draft = _draft;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -525,6 +548,424 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
         onPrimary: _import,
         onCancel: () => Navigator.of(context).pop(),
       ),
+    ];
+  }
+
+  // -------------------------------------------------------------------------
+  // Desktop (N04): a sheet with a classic form. Same states and rules as the
+  // phone path above; only the look differs.
+  // -------------------------------------------------------------------------
+
+  /// The label column of the import form.
+  static const double _labelWidth = 110;
+
+  /// Fixed-width controls (IDs, pickers) leave room for a note beside them.
+  static const double _controlWidth = 200;
+
+  Widget _sheet(BuildContext context) {
+    final draft = _draft;
+    final replacing = _replacing;
+    final name = widget.file.name.split(RegExp(r'[/\\]')).last;
+    final cancel = DesktopButton(
+      label: 'Cancel',
+      onPressed: () => Navigator.of(context).pop(),
+    );
+    final (content, actions) = _sheetBody(context, cancel);
+    return DesktopSheet(
+      width: 580,
+      title: replacing == null
+          ? 'Import $name'
+          : 'Replace the file of “${replacing.title}”',
+      leading: TypeIconTile(
+        type: draft?.type ?? ItemType.genericFile,
+        size: 36,
+      ),
+      subtitle: _SheetFileLine(
+        type: _tooLarge ? null : draft?.type,
+        reading: !_tooLarge && draft == null,
+        generic: draft?.result.isGeneric ?? false,
+        size: widget.file.bytes.length,
+        sha256: _sha256,
+      ),
+      leadingAction: _busy && draft != null
+          ? const DesktopProgress(semanticLabel: 'Working')
+          // Room for it beside Cancel and one action.
+          : actions.length <= 2
+          ? const _SheetPrivacyNote()
+          : null,
+      actions: actions,
+      child: SingleChildScrollView(child: content),
+    );
+  }
+
+  /// What the sheet shows and which buttons it offers, by state: the same
+  /// states, in the same order, as [_body] on a phone.
+  (Widget, List<Widget>) _sheetBody(BuildContext context, Widget cancel) {
+    final draft = _draft;
+    if (_tooLarge) {
+      return (
+        SheetNotice(
+          symbol: DesktopSymbol.alert,
+          problem: true,
+          child: Text(
+            'This file is larger than '
+            '${Format.bytes(Vault.maxAttachmentBytes)}, the most one item '
+            'can hold.',
+          ),
+        ),
+        [cancel],
+      );
+    }
+    if (draft == null) {
+      return (
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Center(
+            child: DesktopProgress(size: 20, semanticLabel: 'Reading the file'),
+          ),
+        ),
+        [cancel],
+      );
+    }
+    final result = draft.result;
+    final duplicates = _duplicates;
+    final replacing = _replacing;
+    final notices = <Widget>[
+      if (replacing != null)
+        SheetNotice(
+          symbol: DesktopSymbol.document,
+          child: Text(
+            'Replaces the file of “${replacing.title}”. Its name, tags, '
+            'place and the fields you entered stay; what the file says and '
+            'its expiry come from this file, and its reminders start over.',
+          ),
+        ),
+      if (_error case final error?)
+        SheetNotice(
+          symbol: DesktopSymbol.alert,
+          problem: true,
+          child: Text(error),
+        ),
+      for (final warning in result.warnings)
+        SheetNotice(symbol: DesktopSymbol.info, child: Text(warning)),
+    ];
+    Widget column(List<Widget> children) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
+      children: [
+        // Under the header, as in N04.
+        SizedBox(
+          height: 0.5,
+          child: ColoredBox(color: context.desktopColors.innerSeparator),
+        ),
+        ...notices,
+        ...children,
+      ],
+    );
+
+    if (duplicates.isNotEmpty) {
+      final existing = duplicates.first;
+      return (
+        column([
+          SheetNotice(
+            symbol: DesktopSymbol.copy,
+            child: Text(
+              'This exact file is already in your vault as '
+              '“${existing.title}”.',
+            ),
+          ),
+        ]),
+        [
+          cancel,
+          DesktopButton(
+            label: 'Import anyway',
+            onPressed: _busy
+                ? null
+                : () => setState(() => _ignoreDuplicates = true),
+          ),
+          DesktopButton(
+            label: 'Replace',
+            onPressed: _busy ? null : () => _replaceInstead(existing),
+          ),
+          DesktopButton(
+            label: 'Open existing',
+            kind: DesktopButtonKind.primary,
+            onPressed: _busy
+                ? null
+                : () => Navigator.of(context).pop((
+                    itemId: existing.id,
+                    imported: false,
+                    replaced: false,
+                  )),
+          ),
+        ],
+      );
+    }
+    if (widget.replacing case final target?
+        when target.attachments.any((a) => a.sha256 == _sha256)) {
+      return (
+        column([
+          SheetNotice(
+            symbol: DesktopSymbol.copy,
+            child: Text('This is the file “${target.title}” already has.'),
+          ),
+        ]),
+        [cancel],
+      );
+    }
+    if (result.needsSecrets) {
+      return (
+        column([
+          DesktopForm(
+            labelWidth: _labelWidth,
+            children: [
+              for (final (i, request) in result.secretsNeeded.indexed)
+                DesktopFormRow(
+                  label: request.label,
+                  child: SheetNote(
+                    tone: request.rejected ? NoteTone.problem : NoteTone.hint,
+                    note: request.rejected
+                        ? "That ${request.label.toLowerCase()} didn't open "
+                              'the file.'
+                        : 'Needed to read what’s inside. Stays on this '
+                              'device, encrypted with the vault.',
+                    control: Semantics(
+                      label: request.label,
+                      child: DesktopTextField(
+                        key: ValueKey('import-secret-${request.key}'),
+                        controller: _secret(request.key),
+                        obscureText: true,
+                        autofocus: i == 0,
+                        onSubmitted: (_) => _unlock(),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ]),
+        [
+          cancel,
+          DesktopButton(
+            label: 'Unlock file',
+            kind: DesktopButtonKind.primary,
+            onPressed: _busy ? null : _unlock,
+          ),
+        ],
+      );
+    }
+    if (result.needsChoice) {
+      return (
+        column([
+          DesktopForm(
+            labelWidth: _labelWidth,
+            children: [
+              DesktopFormRow(
+                label: 'App in the file',
+                child: SheetNote(
+                  width: _controlWidth,
+                  control: DesktopPopup<String>(
+                    value: draft.choice,
+                    placeholder: 'Choose an app',
+                    choices: [
+                      for (final option in result.options)
+                        DesktopChoice(option.id, option.label),
+                    ],
+                    onChanged: (id) {
+                      draft.choice = id;
+                      _parse();
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ]),
+        [cancel],
+      );
+    }
+    if (!draft.fitsReplaced) {
+      final target = _replacing!;
+      final targetKind = target.type?.label ?? 'item';
+      return (
+        column([
+          SheetNotice(
+            symbol: DesktopSymbol.alert,
+            problem: true,
+            child: Text(
+              'This is ${_article(draft.type.label)} ${draft.type.label}, '
+              'but “${target.title}” is ${_article(targetKind)} '
+              '$targetKind. Choose a file of the same kind, or import this '
+              'one as a new item.',
+            ),
+          ),
+        ]),
+        [cancel],
+      );
+    }
+    return (
+      column(_sheetForm(context, draft)),
+      [
+        cancel,
+        DesktopButton(
+          label: replacing == null ? 'Add to Vault' : 'Replace file',
+          kind: DesktopButtonKind.primary,
+          onPressed: _busy ? null : _import,
+        ),
+      ],
+    );
+  }
+
+  /// The form for a file that's ready: what it says, what only the user
+  /// knows, where the item belongs, and its expiry.
+  List<Widget> _sheetForm(BuildContext context, ImportDraft draft) {
+    final result = draft.result;
+    final session = ref.watch(vaultSessionProvider);
+    final unlocked = session is Unlocked ? session : null;
+    final apps = [...?unlocked?.index.apps.values]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final items = unlocked?.index.items.values ?? const <Item>[];
+    final replacing = _replacing;
+    return [
+      if (result.facts.isNotEmpty) _SheetFacts(facts: result.facts),
+      DesktopForm(
+        labelWidth: _labelWidth,
+        children: [
+          if (replacing == null)
+            DesktopFormRow(
+              label: 'Name',
+              child: SheetNote(
+                tone: NoteTone.problem,
+                note: _errors['title'],
+                control: DesktopTextField(controller: _title),
+              ),
+            ),
+          for (final field in draft.requiredFields)
+            DesktopFormRow(
+              label: field.label,
+              child: SheetNote(
+                width: _controlWidth,
+                tone: _errors.containsKey(field.key)
+                    ? NoteTone.problem
+                    : NoteTone.needed,
+                note: _errors[field.key] ?? 'Required · not in the file',
+                control: Semantics(
+                  label: field.label,
+                  child: DesktopTextField(
+                    key: ValueKey('import-field-${field.key}'),
+                    controller: _field(field.key),
+                    placeholder: field.example,
+                    mono: true,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ),
+            ),
+          if (draft.asksPurpose &&
+              replacing?.fields[ImportDraft.purposeKey] == null)
+            DesktopFormRow(
+              label: 'Used for',
+              child: SheetNote(
+                // Fits "App Store Connect API" (macOS sizes the menu to
+                // the button).
+                width: _controlWidth + 30,
+                note: 'Optional · the file doesn’t say',
+                // One choice, or none: "Not set" stores nothing.
+                control: DesktopPopup<String>(
+                  value: draft.purpose?.name ?? '',
+                  choices: [
+                    const DesktopChoice('', 'Not set'),
+                    for (final purpose in KeyPurpose.values)
+                      DesktopChoice(purpose.name, purpose.label),
+                  ],
+                  onChanged: (name) => setState(
+                    () => draft.purpose = KeyPurpose.values
+                        .where((p) => p.name == name)
+                        .firstOrNull,
+                  ),
+                ),
+              ),
+            ),
+          if (replacing == null) ...[
+            DesktopFormRow(
+              label: 'App',
+              child: SheetNote(
+                width: _controlWidth,
+                control: DesktopPopup<String>(
+                  value: draft.appId ?? '',
+                  choices: [
+                    const DesktopChoice('', 'No app'),
+                    for (final app in apps) DesktopChoice(app.id, app.name),
+                  ],
+                  onChanged: (id) =>
+                      setState(() => draft.appId = id.isEmpty ? null : id),
+                ),
+              ),
+            ),
+            DesktopFormRow(
+              label: 'Platform',
+              child: SheetNote(
+                width: _controlWidth,
+                note: 'Type your own, or pick one',
+                control: DesktopComboBox(
+                  key: const ValueKey('import-platform'),
+                  value: draft.platform ?? '',
+                  menuLabel: 'Platform suggestions',
+                  suggestions: placeSuggestions(
+                    ItemTemplates.platforms,
+                    items.map((i) => i.platform),
+                  ),
+                  onChanged: (text) =>
+                      setState(() => draft.platform = typedPlace(text)),
+                ),
+              ),
+            ),
+            DesktopFormRow(
+              label: 'Environment',
+              child: SheetNote(
+                width: _controlWidth,
+                control: DesktopComboBox(
+                  key: const ValueKey('import-environment'),
+                  value: draft.environment ?? '',
+                  menuLabel: 'Environment suggestions',
+                  suggestions: placeSuggestions(
+                    ItemTemplates.environments,
+                    items.map((i) => i.environment),
+                  ),
+                  onChanged: (text) =>
+                      setState(() => draft.environment = typedPlace(text)),
+                ),
+              ),
+            ),
+            DesktopFormRow(
+              label: 'Tags',
+              child: DesktopTokenField(
+                tokens: draft.tags,
+                placeholder: 'Press Return after each tag',
+                onChanged: (tags) => setState(() => draft.tags = tags),
+              ),
+            ),
+          ],
+          if (draft.secrets.isNotEmpty)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(
+                start: _labelWidth + DesktopMetrics.formLabelGap,
+              ),
+              child: SheetNote(
+                note: 'Saved as a secret field, encrypted with the vault.',
+                control: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: DesktopCheckbox(
+                    label: 'Keep the password with the item',
+                    value: draft.keepSecrets,
+                    onChanged: (v) => setState(() => draft.keepSecrets = v),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      _SheetExpiry(expiresAt: result.expiresAt),
     ];
   }
 
@@ -799,6 +1240,192 @@ class _Actions extends StatelessWidget {
             child: Text(label),
           ),
       ],
+    );
+  }
+}
+
+/// The sheet's subtitle: what the file was read as, its size and short
+/// hash. A check only when a parser recognised it.
+class _SheetFileLine extends StatelessWidget {
+  const _SheetFileLine({
+    required this.type,
+    required this.reading,
+    required this.generic,
+    required this.size,
+    required this.sha256,
+  });
+
+  final ItemType? type;
+  final bool reading;
+  final bool generic;
+  final int size;
+  final String sha256;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final type = this.type;
+    final recognised = type != null && !generic;
+    return Row(
+      spacing: 4,
+      children: [
+        if (!reading)
+          DesktopIcon(
+            recognised ? DesktopSymbol.verified : DesktopSymbol.info,
+            size: 12,
+            color: recognised ? colors.success : colors.secondaryText,
+          ),
+        Flexible(
+          child: Text(
+            [
+              if (reading) 'Reading…' else ?type?.label,
+              Format.bytes(size),
+              'SHA-256 ${Format.shortHash(sha256)}',
+            ].join(' · '),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bottom left of the sheet: where the file is read.
+class _SheetPrivacyNote extends StatelessWidget {
+  const _SheetPrivacyNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 6,
+      children: [
+        DesktopIcon(DesktopSymbol.privacy, size: 12, color: colors.success),
+        Text(
+          'Read on this device, stored encrypted.',
+          style: TextStyle(
+            fontSize: DesktopMetrics.secondarySize,
+            color: colors.secondaryText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the file says, read-only, in a box marked as coming from the file.
+class _SheetFacts extends StatelessWidget {
+  const _SheetFacts({required this.facts});
+
+  final Map<String, ItemField> facts;
+
+  /// Lines the values up with the form's controls below the box.
+  static const double _labelWidth = 99;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final mono = AppText.mono(
+      context,
+      fontSize: 12,
+    ).copyWith(color: colors.text);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 6,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Details',
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize,
+                  fontWeight: FontWeight.w600,
+                  color: colors.secondaryText,
+                ),
+              ),
+            ),
+            const SourceTag('From the file'),
+          ],
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.groupBoxInner,
+            border: Border.all(color: colors.groupBoxStroke, width: 0.5),
+            borderRadius: const BorderRadius.all(
+              Radius.circular(DesktopMetrics.menuRadius + 2),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final MapEntry(:key, :value) in facts.entries)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: DesktopMetrics.formLabelGap,
+                      children: [
+                        SizedBox(
+                          width: _labelWidth,
+                          child: Text(
+                            Format.fieldLabel(key),
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: DesktopMetrics.bodySize - 1,
+                              color: colors.secondaryText,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: value.secret
+                              ? Text(SecretRow.mask, style: mono)
+                              : SelectableText(value.value, style: mono),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The expiry as the file gives it, with where it came from; or that the
+/// file has none. Nothing is inferred.
+class _SheetExpiry extends StatelessWidget {
+  const _SheetExpiry({required this.expiresAt});
+
+  final DateTime? expiresAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final expiry = expiresAt;
+    return SheetNotice(
+      symbol: DesktopSymbol.expiring,
+      child: expiry == null
+          ? const Text(
+              'No expiry date in the file, so this item won’t raise expiry '
+              'warnings. You can set one later in the editor.',
+            )
+          : Row(
+              spacing: 8,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Expires '
+                    '${DateFormat.yMMMd().add_Hm().format(expiry.toLocal())}',
+                  ),
+                ),
+                const SourceTag('From the file'),
+              ],
+            ),
     );
   }
 }

@@ -122,8 +122,9 @@ through `package:devvault/shared/desktop_ui.dart`:
 - Controls: `DesktopTextField` (also the secure field), `DesktopComboBox`,
   `DesktopPopup`, `DesktopTokenField`, `DesktopButton`, `DesktopSegmented`,
   `DesktopSwitch`, `DesktopCheckbox`, `DesktopIconButton`,
-  `DesktopSearchField`, and `DesktopForm` / `DesktopFormRow` for sheet
-  forms.
+  `DesktopSearchField`, `DesktopProgress` (a spinner), and `DesktopForm` /
+  `DesktopFormRow` for sheet forms (on macOS, rows sit at a fixed 31 pt
+  pitch, since a text field keeps room for its focus ring).
 - `showDesktopSheet` + `DesktopSheet` (title, content, buttons bottom
   right, Escape closes) and `DesktopGroupBox` for the sheets and the
   inspector's boxes.
