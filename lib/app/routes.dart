@@ -32,6 +32,7 @@ abstract final class Routes {
   /// [Routes.item] to push the item screen instead.
   static String vault({
     String? item,
+    String? org,
     String? app,
     String? platform,
     String? env,
@@ -42,6 +43,7 @@ abstract final class Routes {
   }) {
     final query = <String, String>{
       'item': ?item,
+      'org': ?org,
       'app': ?app,
       'platform': ?platform,
       'env': ?env,

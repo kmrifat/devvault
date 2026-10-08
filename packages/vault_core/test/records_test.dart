@@ -217,6 +217,227 @@ void main() {
     expect(decodeRecord(ObjectType.app, encodeRecord(app)), isA<AppRecord>());
   });
 
+  group('apps: organization, kind and identifiers (SPEC §6.2)', () {
+    Map<String, Object?> appJson([Map<String, Object?> fields = const {}]) => {
+      'schema': 1,
+      'id': id,
+      'name': 'Billing API',
+      'bundle_ids': <String>[],
+      'package_names': <String>[],
+      'icon_blob_id': null,
+      'created_at': '2025-02-03T10:00:00Z',
+      'updated_at': '2025-02-03T10:00:00Z',
+      'rev': rev.toString(),
+      'device_id': device,
+      ...fields,
+    };
+
+    test('round-trip with every field set', () {
+      final json = appJson({
+        'organization': 'Acme Corp',
+        'kind': 'backend',
+        'bundle_ids': ['com.acme.billing'],
+        'package_names': ['com.acme.billing.android'],
+        'identifiers': [
+          {'kind': 'domain', 'value': 'api.acme.example'},
+          {'kind': 'url', 'value': 'https://acme.example/billing'},
+          {'kind': 'repository', 'value': 'github.com/acme/billing'},
+          {'kind': 'other', 'value': 'Stripe acct_1'},
+        ],
+      });
+      final app = AppRecord.fromJson(json);
+      expect(app.organization, 'Acme Corp');
+      expect(app.kind, AppKind.backend);
+      expect(app.label, 'Acme Corp › Billing API');
+      expect(app.allIdentifiers.map((i) => i.kind), [
+        IdentifierKind.bundleId,
+        IdentifierKind.packageName,
+        IdentifierKind.domain,
+        IdentifierKind.url,
+        IdentifierKind.repository,
+        IdentifierKind.other,
+      ]);
+      expect(app.toJson(), json);
+      final again = decodeRecord(ObjectType.app, encodeRecord(app));
+      expect(encodeRecord(again), encodeRecord(app));
+    });
+
+    test('an app written before these fields reads and rewrites unchanged', () {
+      final json = appJson({
+        'name': 'Kitchenly',
+        'bundle_ids': ['com.kitchenly.app'],
+        'package_names': ['com.kitchenly.android'],
+      });
+      final app = AppRecord.fromJson(json);
+      expect(app.organization, isNull);
+      expect(app.kindName, isNull);
+      expect(app.identifiers, isEmpty);
+      expect(app.label, 'Kitchenly');
+      expect(app.allIdentifiers, [
+        AppIdentifier.of(IdentifierKind.bundleId, 'com.kitchenly.app'),
+        AppIdentifier.of(IdentifierKind.packageName, 'com.kitchenly.android'),
+      ]);
+      // No new keys: the bytes are exactly what an older writer stored.
+      expect(app.toJson(), json);
+      expect(utf8.decode(encodeRecord(app)), jsonEncode(sortKeys(json)));
+    });
+
+    test('unknown kinds and fields are kept, at both levels', () {
+      final json = appJson({
+        'kind': 'game',
+        'pinned': true,
+        'identifiers': [
+          {'kind': 'npm_package', 'value': '@acme/billing', 'scope': 'org'},
+          {'kind': 'domain', 'value': 'acme.example', 'primary': true},
+        ],
+      });
+      final app = AppRecord.fromJson(json);
+      expect(app.kind, isNull);
+      expect(app.kindName, 'game');
+      expect(app.identifiers.first.kind, isNull);
+      expect(app.identifiers.first.kindLabel, 'npm_package');
+      expect(app.unknownFields, {'pinned': true});
+      expect(app.toJson(), json);
+      // And through a rewrite by this version.
+      final renamed = app.copyWith(name: 'Billing');
+      expect(renamed.toJson()['pinned'], true);
+      expect(renamed.toJson()['identifiers'], json['identifiers']);
+      expect(renamed.toJson()['kind'], 'game');
+    });
+
+    test('an older client still reads bundle IDs and package names, and '
+        'keeps the new fields when it rewrites the app', () {
+      final app = AppRecord(
+        id: id,
+        name: 'Billing API',
+        organization: 'Acme Corp',
+        kindName: AppKind.mobile.wireName,
+        identifiers: [
+          AppIdentifier.of(IdentifierKind.bundleId, 'com.acme.app'),
+          AppIdentifier.of(IdentifierKind.packageName, 'com.acme.android'),
+          AppIdentifier.of(IdentifierKind.domain, 'acme.example'),
+        ],
+        createdAt: DateTime.utc(2025),
+        updatedAt: DateTime.utc(2025),
+        rev: rev,
+        deviceId: device,
+      );
+      final stored =
+          jsonDecode(utf8.decode(encodeRecord(app))) as Map<String, Object?>;
+      // What the older reader looks at: only the arrays it always had.
+      expect(stored['bundle_ids'], ['com.acme.app']);
+      expect(stored['package_names'], ['com.acme.android']);
+      expect(stored['identifiers'], [
+        {'kind': 'domain', 'value': 'acme.example'},
+      ]);
+
+      // The older writer: its own fields, plus everything else verbatim
+      // (SPEC §6: writers preserve unknown fields).
+      const olderKnown = {
+        'schema',
+        'id',
+        'name',
+        'bundle_ids',
+        'package_names',
+        'icon_blob_id',
+        'created_at',
+        'updated_at',
+        'rev',
+        'device_id',
+      };
+      final rewritten = {
+        for (final e in stored.entries)
+          if (!olderKnown.contains(e.key)) e.key: e.value,
+        for (final e in stored.entries)
+          if (olderKnown.contains(e.key)) e.key: e.value,
+        'bundle_ids': [...stored['bundle_ids']! as List, 'com.acme.widget'],
+      };
+      final back = AppRecord.fromJson(rewritten);
+      expect(back.organization, 'Acme Corp');
+      expect(back.kind, AppKind.mobile);
+      expect(back.bundleIds, ['com.acme.app', 'com.acme.widget']);
+      expect(back.identifiers, [
+        AppIdentifier.of(IdentifierKind.domain, 'acme.example'),
+      ]);
+    });
+
+    test('values are trimmed; empty ones and repeats within a kind dropped; '
+        'bundle IDs and package names stored in their arrays', () {
+      final app = AppRecord.fromJson(
+        appJson({
+          'organization': '  Acme Corp ',
+          'kind': ' ',
+          'bundle_ids': [' com.acme.app ', 'com.acme.app', ''],
+          'identifiers': [
+            {'kind': 'domain', 'value': ' acme.example '},
+            {'kind': 'domain', 'value': 'acme.example'},
+            {'kind': 'repository', 'value': 'acme.example'},
+            {'kind': 'url', 'value': '   '},
+            {'kind': ' ', 'value': 'nothing'},
+            {'kind': 'bundle_id', 'value': 'com.acme.app'},
+            {'kind': 'package_name', 'value': ' com.acme.android'},
+          ],
+        }),
+      );
+      expect(app.organization, 'Acme Corp');
+      expect(app.kindName, isNull);
+      expect(app.bundleIds, ['com.acme.app']);
+      expect(app.packageNames, ['com.acme.android']);
+      expect(app.identifiers, [
+        AppIdentifier.of(IdentifierKind.domain, 'acme.example'),
+        AppIdentifier.of(IdentifierKind.repository, 'acme.example'),
+      ]);
+      final json = app.toJson();
+      expect(json.containsKey('kind'), isFalse);
+      expect(
+        AppRecord.fromJson(appJson({'organization': ''})).toJson(),
+        isNot(contains('organization')),
+      );
+    });
+
+    test('malformed identifiers make the record unreadable', () {
+      for (final bad in <Object?>[
+        'domain:acme.example',
+        ['acme.example'],
+        [
+          {'kind': 'domain'},
+        ],
+        [
+          {'kind': 3, 'value': 'x'},
+        ],
+      ]) {
+        expect(
+          () => AppRecord.fromJson(appJson({'identifiers': bad})),
+          throwsA(isA<VaultFormatException>()),
+          reason: '$bad',
+        );
+      }
+      expect(
+        () => AppRecord.fromJson(appJson({'organization': 7})),
+        throwsA(isA<VaultFormatException>()),
+      );
+    });
+
+    test('copyWith replaces identifiers and clears with an empty string', () {
+      final app = AppRecord.fromJson(
+        appJson({'organization': 'Acme', 'kind': 'web'}),
+      );
+      final edited = app.copyWith(
+        organization: '',
+        kindName: '',
+        identifiers: [
+          AppIdentifier.of(IdentifierKind.bundleId, 'com.acme.app'),
+          AppIdentifier.of(IdentifierKind.domain, 'acme.example'),
+        ],
+      );
+      expect(edited.organization, isNull);
+      expect(edited.kindName, isNull);
+      expect(edited.bundleIds, ['com.acme.app']);
+      expect(edited.identifiers.single.value, 'acme.example');
+      expect(edited.toString(), isNot(contains('Billing')));
+    });
+  });
+
   test('tombstones round-trip and know what they delete', () {
     final json = {
       'schema': 1,

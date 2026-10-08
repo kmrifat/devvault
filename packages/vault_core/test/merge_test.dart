@@ -244,6 +244,30 @@ void main() {
       expect(merged.name, 'Kitchenly Pro');
       expect(merged.bundleIds, ['com.k.app', 'com.k.widget']);
     });
+
+    test('organization and kind: the changed side wins; other identifiers '
+        'merge as sets per kind', () {
+      final domain = AppIdentifier.of(IdentifierKind.domain, 'k.example');
+      final repo = AppIdentifier.of(IdentifierKind.repository, 'gh/k/app');
+      final url = AppIdentifier.of(IdentifierKind.url, 'https://k.example');
+      final base = app(a, 'Kitchenly', []).copyWith(identifiers: [domain]);
+      final local = base.copyWith(
+        organization: 'Acme',
+        identifiers: [domain, repo],
+        rev: a.tick(),
+      );
+      final remote = base.copyWith(
+        kindName: AppKind.web.wireName,
+        identifiers: [url],
+        rev: b.tick(),
+        deviceId: b.id,
+      );
+      final merged = mergeApps(base: base, local: local, remote: remote);
+      expect(merged.organization, 'Acme');
+      expect(merged.kind, AppKind.web);
+      // The remote side removed the domain; the local side added the repo.
+      expect(merged.identifiers, [repo, url]);
+    });
   });
 
   group('property: no secret is ever dropped', () {

@@ -253,7 +253,7 @@ class _QuickOpenState extends ConsumerState<QuickOpen> {
 /// A result's second line: its type, then where it belongs.
 String _subtitle(Item item, AppRecord? app) => [
   item.type?.label ?? item.typeName,
-  if (app case final app?) app.name,
+  if (app case final app?) app.label,
   if (item.platform != null) VaultLabels.platform(item.platform),
   if (item.environment != null) VaultLabels.environment(item.environment),
 ].join(' · ');

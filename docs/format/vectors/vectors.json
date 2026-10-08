@@ -50,5 +50,231 @@
     "001759827600000-00001-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
     "001759827600000-00001-ffffffff-ffff-4fff-bfff-ffffffffffff",
     "001759827600001-00000-00000000-0000-4000-8000-000000000000"
+  ],
+  "app_records": [
+    {
+      "about": "Written before organization, kind and identifiers existed: rewritten byte for byte.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Kitchenly",
+        "bundle_ids": [
+          "com.kitchenly.app"
+        ],
+        "package_names": [
+          "com.kitchenly.android"
+        ],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4"
+      },
+      "canonical": "{\"bundle_ids\":[\"com.kitchenly.app\"],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"name\":\"Kitchenly\",\"package_names\":[\"com.kitchenly.android\"],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": [
+        {
+          "kind": "bundle_id",
+          "value": "com.kitchenly.app"
+        },
+        {
+          "kind": "package_name",
+          "value": "com.kitchenly.android"
+        }
+      ]
+    },
+    {
+      "about": "Every field set; bundle IDs stay in bundle_ids.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [
+          "com.acme.billing"
+        ],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "organization": "Acme Corp",
+        "kind": "backend",
+        "identifiers": [
+          {
+            "kind": "domain",
+            "value": "api.acme.example"
+          },
+          {
+            "kind": "url",
+            "value": "https://billing.acme.example/admin"
+          },
+          {
+            "kind": "repository",
+            "value": "github.com/acme/billing-api"
+          },
+          {
+            "kind": "other",
+            "value": "Stripe account acct_1Acme"
+          }
+        ]
+      },
+      "canonical": "{\"bundle_ids\":[\"com.acme.billing\"],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"identifiers\":[{\"kind\":\"domain\",\"value\":\"api.acme.example\"},{\"kind\":\"url\",\"value\":\"https://billing.acme.example/admin\"},{\"kind\":\"repository\",\"value\":\"github.com/acme/billing-api\"},{\"kind\":\"other\",\"value\":\"Stripe account acct_1Acme\"}],\"kind\":\"backend\",\"name\":\"Billing API\",\"organization\":\"Acme Corp\",\"package_names\":[],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": [
+        {
+          "kind": "bundle_id",
+          "value": "com.acme.billing"
+        },
+        {
+          "kind": "domain",
+          "value": "api.acme.example"
+        },
+        {
+          "kind": "url",
+          "value": "https://billing.acme.example/admin"
+        },
+        {
+          "kind": "repository",
+          "value": "github.com/acme/billing-api"
+        },
+        {
+          "kind": "other",
+          "value": "Stripe account acct_1Acme"
+        }
+      ]
+    },
+    {
+      "about": "Normalized: values trimmed, empty ones and repeats within a kind dropped, bundle_id and package_name entries moved to their arrays.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [
+          " com.acme.app ",
+          "com.acme.app",
+          ""
+        ],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "organization": "  Acme Corp ",
+        "kind": "web",
+        "identifiers": [
+          {
+            "kind": "domain",
+            "value": " acme.example "
+          },
+          {
+            "kind": "domain",
+            "value": "acme.example"
+          },
+          {
+            "kind": "url",
+            "value": "   "
+          },
+          {
+            "kind": "bundle_id",
+            "value": "com.acme.app"
+          },
+          {
+            "kind": "bundle_id",
+            "value": "com.acme.widget"
+          },
+          {
+            "kind": "package_name",
+            "value": "com.acme.android"
+          },
+          {
+            "kind": "repository",
+            "value": "acme.example"
+          }
+        ]
+      },
+      "canonical": "{\"bundle_ids\":[\"com.acme.app\",\"com.acme.widget\"],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"identifiers\":[{\"kind\":\"domain\",\"value\":\"acme.example\"},{\"kind\":\"repository\",\"value\":\"acme.example\"}],\"kind\":\"web\",\"name\":\"Billing API\",\"organization\":\"Acme Corp\",\"package_names\":[\"com.acme.android\"],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": [
+        {
+          "kind": "bundle_id",
+          "value": "com.acme.app"
+        },
+        {
+          "kind": "bundle_id",
+          "value": "com.acme.widget"
+        },
+        {
+          "kind": "package_name",
+          "value": "com.acme.android"
+        },
+        {
+          "kind": "domain",
+          "value": "acme.example"
+        },
+        {
+          "kind": "repository",
+          "value": "acme.example"
+        }
+      ]
+    },
+    {
+      "about": "Empty organization and identifiers: left out.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "organization": " ",
+        "kind": null,
+        "identifiers": []
+      },
+      "canonical": "{\"bundle_ids\":[],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"name\":\"Billing API\",\"package_names\":[],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": []
+    },
+    {
+      "about": "Kinds and fields this version does not know: kept as they are.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "kind": "game",
+        "pinned": true,
+        "identifiers": [
+          {
+            "kind": "npm_package",
+            "value": "@acme/billing",
+            "scope": "org"
+          },
+          {
+            "kind": "domain",
+            "value": "acme.example",
+            "primary": true
+          }
+        ]
+      },
+      "canonical": "{\"bundle_ids\":[],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"identifiers\":[{\"kind\":\"npm_package\",\"scope\":\"org\",\"value\":\"@acme/billing\"},{\"kind\":\"domain\",\"primary\":true,\"value\":\"acme.example\"}],\"kind\":\"game\",\"name\":\"Billing API\",\"package_names\":[],\"pinned\":true,\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": [
+        {
+          "kind": "npm_package",
+          "value": "@acme/billing"
+        },
+        {
+          "kind": "domain",
+          "value": "acme.example"
+        }
+      ]
+    }
   ]
 }

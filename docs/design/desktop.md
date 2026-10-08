@@ -39,7 +39,10 @@ and exported here under `desktop/`.
     - the vault switcher;
     - the smart lists, with counts: All items, Expiring in 30 days,
       Expired, Conflicts;
-    - the Apps tree (app › platform › environment);
+    - the Apps tree (app › platform › environment). Once any app has an
+      organization, apps are grouped under it (then "Personal" for apps
+      without one, and "No app" last); an organization row lists its
+      apps' items;
     - Tags;
     - a footer with the auto-lock time.
   - The **toolbar** has the title and path, Import, New, the search field

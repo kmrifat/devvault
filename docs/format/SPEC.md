@@ -323,12 +323,81 @@ Records are UTF-8 JSON objects. Common rules:
 
 ### 6.2 App
 
+An app is anything the user keeps credentials for: a mobile, web or
+desktop app, a backend service, a CLI or tool, a library. Items point at it
+with `app_id`.
+
 ```json
-{ "schema": 1, "id": "a1b2…", "name": "Kitchenly",
-  "bundle_ids": ["com.kitchenly.app"], "package_names": ["com.kitchenly.app"],
+{ "schema": 1, "id": "a1b2…", "name": "Billing API",
+  "organization": "Acme Corp",
+  "kind": "backend",
+  "bundle_ids": ["com.acme.billing"], "package_names": [],
+  "identifiers": [
+    { "kind": "domain", "value": "api.acme.com" },
+    { "kind": "repository", "value": "github.com/acme/billing-api" }
+  ],
   "icon_blob_id": null,
   "created_at": "…", "updated_at": "…", "rev": "…", "device_id": "…" }
 ```
+
+| Field | Rule |
+|---|---|
+| `name` | Required string. |
+| `organization` | Optional string: who the app is for (an employer, a client), as the user typed it. Never defaulted or inferred. |
+| `kind` | Optional string, chosen by the user, never inferred: `mobile`, `web`, `desktop`, `backend`, `cli` (CLI or tool), `library`, `other`. A value a reader doesn't know MUST be kept and MAY be shown as it is. |
+| `bundle_ids` | List of strings: Apple bundle IDs. Always written, `[]` when empty. |
+| `package_names` | List of strings: Android package names. Always written, `[]` when empty. |
+| `identifiers` | Optional list of `{"kind": string, "value": string}`: every other identifier. Kinds: `domain`, `url`, `repository`, `other`. An entry of a kind a reader doesn't know MUST be kept, in place, with any extra fields it has. |
+| `icon_blob_id` | Optional blob id. |
+
+`organization`, `kind` and `identifiers` were added within schema 1: they
+are optional, so a record without them is valid and means "not set", and
+readers that predate them keep them as unknown fields (§6). Readers MUST
+treat a missing field, `null` and (for `identifiers`) `[]` the same.
+
+**Identifiers.** Taken together, an app's identifiers are one list of
+(kind, value) pairs, where `bundle_ids` holds the kind `bundle_id` and
+`package_names` the kind `package_name`. A reader shows them in this
+order: `bundle_ids`, then `package_names`, then `identifiers` in stored
+order. All of them, and `organization`, are searchable metadata: none of
+them is secret.
+
+**Writer rules.** A writer normalizes every app record it writes. The same
+rules applied by a reader give what the writer would store.
+
+1. `organization` and `kind` are trimmed (Unicode white space at both
+   ends). If the result is empty, or the field is `null`, it is left out.
+2. Each identifier's `kind` and `value` are trimmed. An entry whose kind or
+   value is then empty is dropped.
+3. Bundle IDs and package names MUST be written in `bundle_ids` /
+   `package_names`, never in `identifiers`, so that readers that predate
+   `identifiers` still see them. An `identifiers` entry of kind `bundle_id`
+   or `package_name` is moved to the end of its array (its extra fields,
+   if any, are dropped).
+4. Within a kind, a value that repeats one before it (after trimming;
+   compared exactly, case-sensitively) is dropped. The first is kept, so
+   order is otherwise preserved.
+5. `identifiers` is left out when it ends up empty.
+
+A record that uses none of the new fields therefore encodes exactly as it
+did before they existed. `docs/format/vectors/vectors.json` (`app_records`)
+holds records as a writer might have stored them, each with the exact
+plaintext a conforming writer stores for it (`canonical`: compact, keys
+sorted) and the identifier list a reader shows. A field of the wrong JSON
+type (for example an `identifiers` entry without a string `value`) makes
+the record unreadable, like any other malformed record (§10).
+
+**Older clients.** A client that predates these fields reads `bundle_ids`
+and `package_names` as before, and keeps `organization`, `kind` and
+`identifiers` unchanged when it rewrites the record (§6). It cannot merge
+them field by field: when it merges a concurrent edit (ADR-0004), its local
+copy of those fields wins as a whole.
+
+**Merging.** `name`, `organization`, `kind` and `icon_blob_id` merge like
+item fields: the side that changed since the base wins, and on a clash the
+local value stays (apps have no conflict slot). `bundle_ids`,
+`package_names` and `identifiers` merge as sets per kind: everything either
+side added, minus what either side removed since the base.
 
 ### 6.3 Blob
 
@@ -493,7 +562,11 @@ A conforming reader:
    its location, and quarantines anything that fails.
 4. Opens blobs on demand and verifies the attachment's `sha256`.
 5. Keeps unknown fields and unknown types.
+6. Reads an app's identifiers from `bundle_ids`, `package_names` and
+   `identifiers` together, and normalizes app records as §6.2 says.
 
 The test vectors in `docs/format/vectors/` (P0-14) cover every step above,
 plus a complete `mini-vault/` that a conforming reader can unlock with the
-password `correct horse battery staple`.
+password `correct horse battery staple`. Its `mini-vault.json` lists each
+app record's fields (`app_records`), including an app with an
+organization, a kind and identifiers.

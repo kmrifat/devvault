@@ -29,7 +29,41 @@
     }
   },
   "apps": {
-    "faf3ad88-4000-4edb-a4a8-03ba341039cb": "Kitchenly"
+    "faf3ad88-4000-4edb-a4a8-03ba341039cb": "Kitchenly",
+    "822bb816-4c48-4776-a88a-fccaa58ca5a1": "Billing API"
+  },
+  "app_records": {
+    "faf3ad88-4000-4edb-a4a8-03ba341039cb": {
+      "name": "Kitchenly",
+      "organization": null,
+      "kind": null,
+      "bundle_ids": [
+        "com.kitchenly.app"
+      ],
+      "package_names": [
+        "com.kitchenly.app"
+      ],
+      "identifiers": []
+    },
+    "822bb816-4c48-4776-a88a-fccaa58ca5a1": {
+      "name": "Billing API",
+      "organization": "Acme Corp",
+      "kind": "backend",
+      "bundle_ids": [
+        "com.acme.billing"
+      ],
+      "package_names": [],
+      "identifiers": [
+        {
+          "kind": "domain",
+          "value": "api.acme.example"
+        },
+        {
+          "kind": "repository",
+          "value": "github.com/acme/billing-api"
+        }
+      ]
+    }
   },
   "tombstones": [
     "2e3b73da-cb72-43ff-8d2a-5d02e47b4cac"

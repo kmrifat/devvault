@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vault_core/vault_core.dart';
 
 import '../test_overrides.dart';
 import 'harness.dart';
@@ -61,6 +62,75 @@ void main() {
     sample: true,
     interact: editKeystore,
     brightness: Brightness.light,
+  );
+
+  /// Ledgerly as a backend service for a client, with a domain and a
+  /// repository; Kitchenly stays personal. Then Ledgerly is selected.
+  Future<void> addOrganization(WidgetTester tester) async {
+    final session = appContainer(tester).read(vaultSessionProvider) as Unlocked;
+    final ledgerly = session.index.apps.values.firstWhere(
+      (a) => a.name == 'Ledgerly',
+    );
+    await tester.runAsync(
+      () => appContainer(tester)
+          .read(vaultSessionProvider.notifier)
+          .saveApp(
+            ledgerly.copyWith(
+              organization: 'Acme Corp',
+              kindName: AppKind.backend.wireName,
+              identifiers: [
+                AppIdentifier.of(IdentifierKind.domain, 'api.ledgerly.example'),
+                AppIdentifier.of(
+                  IdentifierKind.repository,
+                  'github.com/acme/ledgerly',
+                ),
+              ],
+            ),
+          ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(VaultSidebar),
+        matching: find.text('Ledgerly'),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  shot(
+    'N03-vault-organizations',
+    Routes.vault(),
+    sample: true,
+    interact: addOrganization,
+  );
+  shot(
+    'N03-app-editor',
+    Routes.vault(),
+    sample: true,
+    interact: (tester) async {
+      await addOrganization(tester);
+      await tester.tap(find.text('Edit app…'));
+    },
+  );
+  shot(
+    'B2-vault-organizations',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      final session =
+          appContainer(tester).read(vaultSessionProvider) as Unlocked;
+      final ledgerly = session.index.apps.values.firstWhere(
+        (a) => a.name == 'Ledgerly',
+      );
+      await tester.runAsync(
+        () =>
+            appContainer(tester)
+                .read(vaultSessionProvider.notifier)
+                .saveApp(ledgerly.copyWith(organization: 'Acme Corp')),
+      );
+    },
   );
   shot('B2-vault', Routes.vault(), device: ShotDevice.mobile, sample: true);
   shot(

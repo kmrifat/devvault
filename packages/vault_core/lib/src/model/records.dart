@@ -8,6 +8,7 @@ import '../format/json_reader.dart';
 import '../format/timestamps.dart';
 import '../format/vault_header.dart' show sortKeys;
 import '../sync/hlc.dart';
+import 'app_identity.dart';
 import 'item_type.dart';
 
 /// Record schema this version writes (SPEC §6).
@@ -368,7 +369,15 @@ class Item implements SyncedRecord {
   String toString() => 'Item($id, $typeName)';
 }
 
-/// An app that items belong to (SPEC §6.2).
+/// An app that items belong to (SPEC §6.2): a mobile, web or desktop app,
+/// a backend service, a CLI … anything the user keeps credentials for.
+///
+/// The constructor normalizes what it is given, the same way for a record
+/// read from disk and one built in the UI: [organization] and identifier
+/// values are trimmed, empty ones dropped, and duplicates within a kind
+/// dropped (the first is kept). Bundle IDs and package names passed in
+/// [identifiers] move to [bundleIds] / [packageNames], so they are always
+/// written where older clients read them.
 @immutable
 class AppRecord implements SyncedRecord {
   AppRecord({
@@ -378,13 +387,23 @@ class AppRecord implements SyncedRecord {
     required this.updatedAt,
     required this.rev,
     required this.deviceId,
+    String? organization,
+    String? kindName,
     List<String> bundleIds = const [],
     List<String> packageNames = const [],
+    List<AppIdentifier> identifiers = const [],
     this.iconBlobId,
     this.schema = recordSchema,
     Map<String, Object?> unknownFields = const {},
-  }) : bundleIds = List.unmodifiable(bundleIds),
-       packageNames = List.unmodifiable(packageNames),
+  }) : organization = _trimmed(organization),
+       kindName = _trimmed(kindName),
+       bundleIds = _legacy(bundleIds, identifiers, IdentifierKind.bundleId),
+       packageNames = _legacy(
+         packageNames,
+         identifiers,
+         IdentifierKind.packageName,
+       ),
+       identifiers = _others(identifiers),
        unknownFields = Map.unmodifiable(unknownFields) {
     if (!isCanonicalUuid(id)) {
       throw const VaultFormatException('app.id is not a UUID');
@@ -394,8 +413,25 @@ class AppRecord implements SyncedRecord {
   @override
   final String id;
   final String name;
+
+  /// Who the app is for (an employer, a client), as the user typed it.
+  /// Null when not set; never defaulted or inferred.
+  final String? organization;
+
+  /// The stored `kind` ([AppKind.wireName]), kept even when this version
+  /// doesn't know it. Null when not set; never inferred.
+  final String? kindName;
+
+  /// Apple bundle IDs (`bundle_ids`).
   final List<String> bundleIds;
+
+  /// Android package names (`package_names`).
   final List<String> packageNames;
+
+  /// Every other identifier (`identifiers`): domains, URLs, repositories …
+  /// Never holds a bundle ID or package name.
+  final List<AppIdentifier> identifiers;
+
   final String? iconBlobId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -406,17 +442,73 @@ class AppRecord implements SyncedRecord {
   final int schema;
   final Map<String, Object?> unknownFields;
 
+  /// The known kind, or `null` when not set or newer than this version.
+  AppKind? get kind => AppKind.fromWireName(kindName);
+
+  /// Every identifier in one list: bundle IDs, then package names, then
+  /// the rest in their stored order.
+  List<AppIdentifier> get allIdentifiers => [
+    for (final id in bundleIds) AppIdentifier.of(IdentifierKind.bundleId, id),
+    for (final id in packageNames)
+      AppIdentifier.of(IdentifierKind.packageName, id),
+    ...identifiers,
+  ];
+
+  /// What a picker shows: "Acme Corp › Billing API", or just the name.
+  String get label =>
+      organization == null ? name : '$organization \u203a $name';
+
   @override
   ObjectType get objectType => ObjectType.app;
 
   bool get isReadOnly => schema > recordSchema;
 
+  static String? _trimmed(String? text) {
+    final value = text?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  /// [values] plus the [identifiers] of [kind], trimmed, without empties
+  /// or repeats.
+  static List<String> _legacy(
+    List<String> values,
+    List<AppIdentifier> identifiers,
+    IdentifierKind kind,
+  ) => List.unmodifiable({
+    for (final value in [
+      ...values,
+      for (final id in identifiers)
+        if (id.kindName.trim() == kind.wireName) id.value,
+    ])
+      if (value.trim() case final v when v.isNotEmpty) v,
+  });
+
+  /// The identifiers that aren't bundle IDs or package names, trimmed,
+  /// without empties or repeats within a kind.
+  static List<AppIdentifier> _others(List<AppIdentifier> identifiers) {
+    final seen = <AppIdentifier>{};
+    for (final id in identifiers) {
+      final kind = id.kindName.trim();
+      final value = id.value.trim();
+      if (kind.isEmpty || value.isEmpty) continue;
+      if (IdentifierKind.fromWireName(kind)?.isLegacy ?? false) continue;
+      final trimmed = kind == id.kindName && value == id.value
+          ? id
+          : AppIdentifier(kind, value, unknownFields: id.unknownFields);
+      seen.add(trimmed);
+    }
+    return List.unmodifiable(seen);
+  }
+
   static const _known = {
     'schema',
     'id',
     'name',
+    'organization',
+    'kind',
     'bundle_ids',
     'package_names',
+    'identifiers',
     'icon_blob_id',
     'created_at',
     'updated_at',
@@ -430,8 +522,14 @@ class AppRecord implements SyncedRecord {
       schema: r.integer('schema'),
       id: r.string('id'),
       name: r.string('name'),
+      organization: r.optionalString('organization'),
+      kindName: r.optionalString('kind'),
       bundleIds: r.strings('bundle_ids'),
       packageNames: r.strings('package_names'),
+      identifiers: [
+        for (final entry in r.list('identifiers'))
+          AppIdentifier.fromJson(entry),
+      ],
       iconBlobId: r.optionalString('icon_blob_id'),
       createdAt: r.timestamp('created_at'),
       updatedAt: r.timestamp('updated_at'),
@@ -441,14 +539,21 @@ class AppRecord implements SyncedRecord {
     );
   }
 
+  /// `organization`, `kind` and `identifiers` are left out when not set,
+  /// so an app that uses none of them encodes exactly as before they
+  /// existed.
   @override
   Map<String, Object?> toJson() => {
     ...unknownFields,
     'schema': schema,
     'id': id,
     'name': name,
+    'organization': ?organization,
+    'kind': ?kindName,
     'bundle_ids': bundleIds,
     'package_names': packageNames,
+    if (identifiers.isNotEmpty)
+      'identifiers': [for (final i in identifiers) i.toJson()],
     'icon_blob_id': iconBlobId,
     'created_at': formatTimestamp(createdAt),
     'updated_at': formatTimestamp(updatedAt),
@@ -456,6 +561,36 @@ class AppRecord implements SyncedRecord {
     'device_id': deviceId,
   };
 
+  /// A copy with changes. [identifiers] replaces every identifier, bundle
+  /// IDs and package names included; to clear [organization] or the kind,
+  /// pass an empty string.
+  AppRecord copyWith({
+    String? name,
+    String? organization,
+    String? kindName,
+    List<AppIdentifier>? identifiers,
+    String? iconBlobId,
+    DateTime? updatedAt,
+    Hlc? rev,
+    String? deviceId,
+  }) => AppRecord(
+    id: id,
+    name: name ?? this.name,
+    organization: organization ?? this.organization,
+    kindName: kindName ?? this.kindName,
+    bundleIds: identifiers == null ? bundleIds : const [],
+    packageNames: identifiers == null ? packageNames : const [],
+    identifiers: identifiers ?? this.identifiers,
+    iconBlobId: iconBlobId ?? this.iconBlobId,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    rev: rev ?? this.rev,
+    deviceId: deviceId ?? this.deviceId,
+    schema: schema,
+    unknownFields: unknownFields,
+  );
+
+  /// Never prints the name or identifiers.
   @override
   String toString() => 'AppRecord($id)';
 }

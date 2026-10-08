@@ -428,7 +428,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
     final session = ref.watch(vaultSessionProvider);
     final apps = session is Unlocked
         ? (session.index.apps.values.toList()..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
           ))
         : <AppRecord>[];
     final replacing = _replacing;
@@ -498,7 +498,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
             label: 'App',
             none: 'No app',
             value: draft.appId,
-            options: {for (final app in apps) app.id: app.name},
+            options: {for (final app in apps) app.id: app.label},
             onChanged: (v) => setState(() => draft.appId = v),
           ),
           platform: PlaceChoice(
@@ -820,7 +820,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
     final session = ref.watch(vaultSessionProvider);
     final unlocked = session is Unlocked ? session : null;
     final apps = [...?unlocked?.index.apps.values]
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
     final items = unlocked?.index.items.values ?? const <Item>[];
     final replacing = _replacing;
     return [
@@ -892,7 +892,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
                   value: draft.appId ?? '',
                   choices: [
                     const DesktopChoice('', 'No app'),
-                    for (final app in apps) DesktopChoice(app.id, app.name),
+                    for (final app in apps) DesktopChoice(app.id, app.label),
                   ],
                   onChanged: (id) =>
                       setState(() => draft.appId = id.isEmpty ? null : id),
