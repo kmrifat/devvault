@@ -59,8 +59,10 @@ final class SyncFailed extends SyncStatus {
   final DateTime? lastSync;
 }
 
-/// Runs sync and decides when (P2-08): on unlock, 2 s after an edit, every
-/// 60 s while the app is in front, and on request (⌘R, the status chip).
+/// Runs sync and decides when (P2-08, P3-07): on unlock, 2 s after an edit,
+/// when the app comes back to the front, every 60 s while it's in front,
+/// and on request (⌘R, the status chip, pull to refresh on a phone). Never
+/// in the background.
 /// Runs never overlap, and they take the session's write lock, so an edit
 /// and a sync never touch the vault files at the same time.
 class SyncController extends Notifier<SyncStatus> {
@@ -99,11 +101,23 @@ class SyncController extends Notifier<SyncStatus> {
   @override
   SyncStatus build() {
     final backend = ref.watch(storageBackendProvider);
+    if (backend == null) {
+      ref.onDispose(() {
+        _soon?.cancel();
+        _periodic?.cancel();
+      });
+      return const SyncOff();
+    }
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (ref.read(vaultSessionProvider) is Unlocked) syncNow();
+      },
+    );
     ref.onDispose(() {
       _soon?.cancel();
       _periodic?.cancel();
+      lifecycle.dispose();
     });
-    if (backend == null) return const SyncOff();
 
     ref.listen(vaultSessionProvider, (previous, next) {
       if (next is! Unlocked) {
