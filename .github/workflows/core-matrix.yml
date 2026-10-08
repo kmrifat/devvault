@@ -40,3 +40,64 @@ jobs:
       - name: Test
         working-directory: packages/vault_core
         run: dart test
+
+  # P0-15: a vault written on one OS opens on the others. Each OS makes a
+  # vault (real randomness, default Argon2id), then each opens the other
+  # two by password and by recovery key and compares every item and file.
+  cross-make:
+    name: Make a vault (${{ matrix.os }})
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Make
+        working-directory: packages/vault_core
+        run: dart run tool/cross_vault.dart make ../../cross-vault
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vault-${{ runner.os }}
+          path: cross-vault
+          retention-days: 1
+
+  cross-open:
+    name: Open the others' vaults (${{ matrix.os }})
+    needs: cross-make
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vault-*
+          path: cross
+      - name: Open
+        shell: bash
+        working-directory: packages/vault_core
+        run: |
+          others=()
+          for dir in ../../cross/vault-*; do
+            [[ "$dir" == *"/vault-${{ runner.os }}" ]] || others+=("$dir")
+          done
+          test "${#others[@]}" -eq 2
+          dart run tool/cross_vault.dart open "${others[@]}"
