@@ -129,7 +129,7 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
                       alignment: Alignment.centerLeft,
                       child: BCButton(
                         variant: BCButtonVariant.ghost,
-                        size: BCButtonSize.sm,
+                        size: SettingsLayout.buttonSize(context),
                         onPressed: () => context.pop(),
                         startContent: const Icon(
                           LucideIcons.chevronLeft,
@@ -231,14 +231,14 @@ class _CurrentSetup extends ConsumerWidget {
                 ),
               ),
               BCButton(
-                size: BCButtonSize.sm,
+                size: SettingsLayout.buttonSize(context),
                 variant: BCButtonVariant.secondary,
                 onPressed: () =>
                     ref.read(syncControllerProvider.notifier).syncNow(),
                 child: const Text('Sync now'),
               ),
               BCButton(
-                size: BCButtonSize.sm,
+                size: SettingsLayout.buttonSize(context),
                 variant: BCButtonVariant.dangerSoft,
                 onPressed: onTurnOff,
                 child: const Text('Turn off'),

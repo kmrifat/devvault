@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+
+import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_filter.dart';
@@ -44,13 +47,27 @@ class _TouchTargets extends MinimumTapTargetGuideline {
 /// button. No single blue passes both in dark (one wants luminance below
 /// 0.183, the other above 0.184), so that label is a known, open design
 /// decision (P4-08 PR). bc_ui buttons don't carry the button flag, so
-/// tappable nodes are skipped here; all other text is held to 4.5:1.
-class _DarkContrast extends MinimumTextContrastGuideline {
-  const _DarkContrast();
+/// in dark mode tappable nodes are skipped; all other text is held to
+/// 4.5:1, and in light mode everything is.
+///
+/// On a phone the bottom nav floats over the page: text that scrolled
+/// under it ([covered]) is hidden by design, not low contrast, so it's
+/// treated like text off screen.
+class _Contrast extends MinimumTextContrastGuideline {
+  const _Contrast({required this.dark, this.covered});
+
+  final bool dark;
+  final Rect? covered;
 
   @override
   bool shouldSkipNode(SemanticsData data) =>
-      super.shouldSkipNode(data) || data.hasAction(SemanticsAction.tap);
+      super.shouldSkipNode(data) ||
+      (dark && data.hasAction(SemanticsAction.tap));
+
+  @override
+  bool isNodeOffScreen(Rect paintBounds, ui.FlutterView window) =>
+      super.isNodeOffScreen(paintBounds, window) ||
+      (covered?.overlaps(paintBounds) ?? false);
 }
 
 /// The P4-08 accessibility pass, kept as a regression test: every main
@@ -145,12 +162,20 @@ void main() {
             layout,
             brightness,
           );
+          final nav = find.byType(BCBottomNav);
+          final dpr = tester.view.devicePixelRatio;
           await expectLater(
             tester,
             meetsGuideline(
-              brightness == Brightness.dark
-                  ? const _DarkContrast()
-                  : textContrastGuideline,
+              _Contrast(
+                dark: brightness == Brightness.dark,
+                covered: nav.evaluate().isEmpty
+                    ? null
+                    : Rect.fromPoints(
+                        tester.getTopLeft(nav) * dpr,
+                        tester.getBottomRight(nav) * dpr,
+                      ),
+              ),
             ),
           );
           semantics.dispose();

@@ -140,7 +140,7 @@ class SettingsScreen extends ConsumerWidget {
                             'Changing it rewrites only vault.json; items '
                             'stay as they are.',
                         suffix: BCButton(
-                          size: BCButtonSize.sm,
+                          size: SettingsLayout.buttonSize(context),
                           variant: BCButtonVariant.secondary,
                           isDisabled: vault == null,
                           onPressed: () => showChangePasswordDialog(context),
@@ -154,7 +154,7 @@ class SettingsScreen extends ConsumerWidget {
                             'Lost it? Make a new key as a PDF, printout or '
                             'text file. The old key stops working.',
                         suffix: BCButton(
-                          size: BCButtonSize.sm,
+                          size: SettingsLayout.buttonSize(context),
                           variant: BCButtonVariant.secondary,
                           isDisabled: vault == null,
                           onPressed: () => showNewRecoveryKitDialog(context),
@@ -169,7 +169,7 @@ class SettingsScreen extends ConsumerWidget {
                             're-encrypted under a new key, with a new '
                             'recovery key.',
                         suffix: BCButton(
-                          size: BCButtonSize.sm,
+                          size: SettingsLayout.buttonSize(context),
                           variant: BCButtonVariant.secondary,
                           isDisabled: vault == null,
                           onPressed: () => showRotateVaultKeyDialog(context),
@@ -396,7 +396,7 @@ class _VaultFacts extends ConsumerWidget {
             ],
           ),
           suffix: BCButton(
-            size: BCButtonSize.sm,
+            size: SettingsLayout.buttonSize(context),
             variant: BCButtonVariant.ghost,
             isIconOnly: true,
             onPressed: () async {
@@ -432,7 +432,7 @@ class _VaultFacts extends ConsumerWidget {
           ),
           suffix: revealer.isSupported
               ? BCButton(
-                  size: BCButtonSize.sm,
+                  size: SettingsLayout.buttonSize(context),
                   variant: BCButtonVariant.secondary,
                   onPressed: () => revealer.reveal(folder),
                   child: const Text('Show'),
