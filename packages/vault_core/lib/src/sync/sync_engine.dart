@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../crypto/vault_crypto.dart';
 import '../format/envelope.dart';
 import '../format/vault_header.dart';
+import '../keys/vault_keys.dart';
 import '../model/records.dart';
+import '../store/vault_store.dart';
 import '../vault/vault.dart';
 import 'merge.dart';
 import 'storage_backend.dart';
@@ -122,6 +125,224 @@ class SyncEngine {
     return {for (final (key, _) in await _localChanges(state)) key};
   }
 
+  // ------------------------------------------------------- key adoption
+
+  /// Takes the vault key the bucket has now, after [RemoteKeyChanged]: the
+  /// key was rotated on another device (SPEC §9), or `vault.json` was
+  /// replaced. [password] must open the remote `vault.json`, which a
+  /// tampered one can't (SPEC §4.4); otherwise [WrongPassword] and nothing
+  /// changes.
+  ///
+  /// Edits made here and not synced yet are opened with the old key first,
+  /// then the local copy is replaced by the bucket's, and the edits are
+  /// merged on top (ADR-0004) and pushed: nothing written here is lost.
+  /// Returns the vault reopened under the new key; this engine's vault is
+  /// locked. Sync on with a new engine for it.
+  ///
+  /// The new copy is built in `<vault>.adopting/` and only swapped in once
+  /// it's complete, so a failure part way leaves this device as it was.
+  Future<KeyAdoption> adoptRemoteKey(
+    String password, {
+    required VaultCrypto crypto,
+  }) async {
+    final body = await backend.get('$_prefix$_header');
+    if (body == null) throw const RemoteKeyChanged();
+    final remoteHeader = VaultHeader.parse(String.fromCharCodes(body.bytes));
+    if (remoteHeader.vaultId != vault.vaultId) {
+      throw const VaultKeyMismatch();
+    }
+    final newKey = await VaultKeys.unlockWithPassword(
+      crypto,
+      remoteHeader,
+      password,
+    );
+
+    // 1. Rescue what changed here, while the old key still opens it.
+    final state = await stateStore.load();
+    final rescued = <_Rescued>[];
+    for (final key in await pendingChanges()) {
+      final slot = _slotOf(key);
+      if (slot == null || slot.$1 == ObjectType.blob) continue;
+      final (type, id) = slot;
+      final bytes = await vault.store.read(type, id);
+      if (bytes == null) continue; // a deletion: its tombstone is rescued
+      final local = vault.openRecord(type, id, bytes);
+      if (local == null) continue;
+      // For a deletion, the base is the item as it was last synced: the
+      // deletion only wins if nobody edited it since (ADR-0004).
+      final (baseType, baseKey) = local is Tombstone
+          ? (ObjectType.item, '${ObjectType.item.folder}/$id.enc')
+          : (type, key);
+      final baseBytes = await stateStore.base(baseKey);
+      final base = baseBytes == null
+          ? null
+          : vault.openRecord(baseType, id, baseBytes);
+      final files = <String, Uint8List>{};
+      if (local is Item) {
+        for (final a in local.attachments) {
+          try {
+            files[a.blobId] = await vault.readAttachment(a);
+          } on AttachmentCorrupt {
+            // Not here: the rotation carried it over, or it's lost anyway.
+          }
+        }
+      }
+      rescued.add(_Rescued(local, base, files));
+    }
+    final uploaded = {
+      for (final key in state.remote.keys)
+        if (_slotOf(key) case (ObjectType.blob, final id)) id,
+    };
+
+    // 2. Build the vault as the bucket has it, next to this one, and put
+    //    the edits back on top. Until the swap below, a failure (offline,
+    //    a crash) leaves this device's vault as it was.
+    final store = vault.store;
+    final staging = VaultStore(Directory('${store.root.path}.adopting'));
+    final stagingState = SyncStateStore(staging);
+    for (final dir in [staging.root, stagingState.root]) {
+      if (dir.existsSync()) await dir.delete(recursive: true);
+    }
+    await staging.open();
+    await staging.writeHeader(remoteHeader);
+    final building = await Vault.unlockWithKey(
+      crypto: crypto,
+      store: staging,
+      vaultKey: newKey,
+      deviceId: vault.deviceId,
+      now: _now,
+    );
+    var conflicts = 0;
+    try {
+      final engine = SyncEngine(
+        vault: building,
+        backend: backend,
+        stateStore: stagingState,
+        rootPrefix: rootPrefix,
+        maxAttempts: maxAttempts,
+        now: _now,
+      );
+      await engine.sync();
+      for (final r in rescued) {
+        conflicts += await engine._reapply(r, uploaded);
+      }
+      if (rescued.isNotEmpty) await engine.sync();
+    } catch (_) {
+      building.lock();
+      rethrow;
+    }
+
+    // 3. Swap it in: the old copy (old key) goes, the new one takes its
+    //    place, and the vault reopens there.
+    final keyBytes = building.withVaultKeyBytes(Uint8List.fromList);
+    building.lock();
+    vault.lock();
+    final retired = Directory('${store.root.path}.retired');
+    if (retired.existsSync()) await retired.delete(recursive: true);
+    await store.root.rename(retired.path);
+    await staging.root.rename(store.root.path);
+    await stateStore.clear();
+    await stagingState.root.rename(stateStore.root.path);
+    await retired.delete(recursive: true);
+    final adopted = await Vault.unlockWithKey(
+      crypto: crypto,
+      store: VaultStore(store.root),
+      vaultKey: crypto.keyFromBytes(keyBytes),
+      deviceId: building.deviceId,
+      now: _now,
+    );
+    keyBytes.fillRange(0, keyBytes.length, 0);
+    return KeyAdoption(adopted, rescued: rescued.length, conflicts: conflicts);
+  }
+
+  /// Merges one rescued record into the adopted vault. Returns 1 when the
+  /// merge kept a conflict.
+  Future<int> _reapply(_Rescued r, Set<String> uploaded) async {
+    Future<Item> moveFiles(Item item) async => item.copyWith(
+      attachments: [
+        for (final a in item.attachments) await _moveFile(a, r.files, uploaded),
+      ],
+    );
+
+    switch (r.local) {
+      case final Item local:
+        final mine = await moveFiles(local);
+        final base = r.base is Item ? await moveFiles(r.base! as Item) : null;
+        final theirs = await vault.readItem(local.id);
+        if (theirs != null) {
+          final result = mergeItems(base: base, local: mine, remote: theirs);
+          await vault.putItem(result.value);
+          return result.conflicted ? 1 : 0;
+        }
+        final tombstone = await _localTombstone(local.id);
+        final kept = tombstone == null
+            ? mine
+            : resolveDeletion(base: base, live: mine, tombstone: tombstone);
+        if (kept == null) return 0;
+        await vault.store.delete(ObjectType.tombstone, local.id);
+        await vault.putItem(kept);
+        return 0;
+      case final AppRecord local:
+        final theirs = (await vault.loadAll()).apps[local.id];
+        await vault.putApp(
+          theirs == null
+              ? local
+              : mergeApps(
+                  base: r.base is AppRecord ? r.base! as AppRecord : null,
+                  local: local,
+                  remote: theirs,
+                ),
+        );
+        return 0;
+      case final Tombstone local:
+        final live = await vault.readItem(local.id);
+        if (live != null && local.kind == TombstoneKind.item) {
+          // Edited there since: the edit wins, the deletion is recorded.
+          final kept = resolveDeletion(
+            base: r.base is Item ? r.base! as Item : null,
+            live: live,
+            tombstone: local,
+          );
+          if (kept != null) {
+            await vault.putItem(kept);
+            return 0;
+          }
+        }
+        await vault.delete(local.id, local.kind);
+        return 0;
+    }
+    return 0;
+  }
+
+  /// Where [a]'s file lives under the new key: the id the rotation gave it
+  /// if it was in the bucket, a new blob if it only existed here.
+  Future<Attachment> _moveFile(
+    Attachment a,
+    Map<String, Uint8List> files,
+    Set<String> uploaded,
+  ) async {
+    final rotated = vault.rotatedBlobId(a.blobId);
+    final bytes = files[a.blobId];
+    if (uploaded.contains(a.blobId) || bytes == null) {
+      return Attachment(
+        blobId: rotated,
+        filename: a.filename,
+        mime: a.mime,
+        size: a.size,
+        sha256: a.sha256,
+        unknownFields: a.unknownFields,
+      );
+    }
+    return vault.addAttachment(bytes, filename: a.filename, mime: a.mime);
+  }
+
+  Future<Tombstone?> _localTombstone(String id) async {
+    final bytes = await vault.store.read(ObjectType.tombstone, id);
+    if (bytes == null) return null;
+    final record = vault.openRecord(ObjectType.tombstone, id, bytes);
+    return record is Tombstone ? record : null;
+  }
+
   // ---------------------------------------------------------------- pull
 
   Future<void> _pull(SyncState state, SyncReport report) async {
@@ -186,6 +407,12 @@ class SyncEngine {
     final base = await stateStore.base(_header);
     if (!_same(body.bytes, local)) {
       final remoteHeader = VaultHeader.parse(String.fromCharCodes(body.bytes));
+      if (remoteHeader.vaultId == vault.vaultId &&
+          remoteHeader.vkId != vault.header.vkId) {
+        // Rotated on another device, or replaced: nothing is touched until
+        // the user adopts it with the master password.
+        throw const RemoteKeyChanged();
+      }
       if (local != null && base != null && !_same(local, base)) {
         report.notices.add(
           'The master password was also changed on another device. That '
@@ -481,4 +708,43 @@ class SyncEngine {
     }
     return true;
   }
+}
+
+/// The bucket's `vault.json` has another vault key than this device
+/// (SPEC §4.4): rotated on another device, or replaced. Sync stops before
+/// touching anything; [SyncEngine.adoptRemoteKey] takes the new key once
+/// the user enters the master password.
+class RemoteKeyChanged extends VaultKeyMismatch {
+  const RemoteKeyChanged();
+
+  @override
+  String toString() => 'RemoteKeyChanged';
+}
+
+/// The outcome of [SyncEngine.adoptRemoteKey].
+class KeyAdoption {
+  const KeyAdoption(
+    this.vault, {
+    required this.rescued,
+    required this.conflicts,
+  });
+
+  /// The vault, open under the new key.
+  final Vault vault;
+
+  /// Records changed here before the switch and merged back on top.
+  final int rescued;
+
+  /// Of those, how many kept a conflict to resolve.
+  final int conflicts;
+}
+
+/// A record changed here, opened with the old key, with its last synced
+/// version and the bytes of its files.
+class _Rescued {
+  _Rescued(this.local, this.base, this.files);
+
+  final SyncedRecord local;
+  final SyncedRecord? base;
+  final Map<String, Uint8List> files;
 }

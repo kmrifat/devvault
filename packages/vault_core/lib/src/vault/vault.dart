@@ -282,6 +282,10 @@ class Vault {
 
   /// The id an old blob gets under the new key. Derived, not random, so a
   /// resumed rotation finds the blobs it already wrote.
+  /// The id a rotation to this vault's key gave the blob [oldId] (SPEC §9),
+  /// for a device catching up on a rotation done elsewhere.
+  String rotatedBlobId(String oldId) => _rotatedBlobId(_key, oldId);
+
   String _rotatedBlobId(SecureKey newKey, String oldId) =>
       VaultKeys.uuidFromBytes(
         _crypto.keyedHash(

@@ -48,12 +48,23 @@ final class Unlocked extends VaultSession {
   final VaultIndex index;
 }
 
-/// Finds the vault on this device: the first folder under [vaultsDir] that
-/// holds a `vault.json`. One vault per device in v1.
+/// Finds the vault on this device: the first folder under [vaultsDir],
+/// named after its vault id, that holds a `vault.json`. Working folders
+/// next to it (`.sync`, `.adopting`) are skipped. One vault per device in
+/// v1.
 VaultStore? findVault(Directory vaultsDir) {
   if (!vaultsDir.existsSync()) return null;
-  final folders = vaultsDir.listSync().whereType<Directory>().toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final folders =
+      vaultsDir
+          .listSync()
+          .whereType<Directory>()
+          .where(
+            (d) => isCanonicalUuid(
+              d.uri.pathSegments.lastWhere((s) => s.isNotEmpty),
+            ),
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   for (final folder in folders) {
     final store = VaultStore(folder);
     if (store.exists) return store;
@@ -195,6 +206,19 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
       ref.read(_biometricRevision.notifier).bump();
     }
   }
+
+  /// Swaps in the vault [adopt] reopens under a new key (a rotation done on
+  /// another device), under the write lock. A key kept behind biometrics
+  /// is the old one, so it's deleted (SPEC §9.1).
+  Future<KeyAdoption> adoptKey(
+    Future<KeyAdoption> Function(Vault current) adopt,
+  ) => exclusive(() async {
+    final current = _vault;
+    final adoption = await adopt(current);
+    await _forgetBiometricKey(current.vaultId);
+    await _open(adoption.vault);
+    return adoption;
+  });
 
   /// Whether [password] is the current master password. Runs Argon2id, so
   /// it takes as long as an unlock.

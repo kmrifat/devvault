@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/sync_controller.dart';
 import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/sync/adopt_key_dialog.dart';
 import 'package:devvault/features/sync/sync_status_chip.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -142,6 +146,93 @@ void main() {
           .toString(),
       Routes.settingsSync,
     );
+  });
+
+  testWidgets('a key rotated on another device is adopted with the password', (
+    tester,
+  ) async {
+    await open(tester);
+    await until(tester, () => synced(tester));
+    final id = vaultId(tester);
+
+    // Another device: joins from the bucket, rotates the key, pushes.
+    late String rotatedVkId;
+    await tester.runAsync(() async {
+      final dir = Directory.systemTemp.createTempSync('other_device_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final root = Directory('${dir.path}/$id');
+      for (final object in await bucket.list('$id/')) {
+        final file = File(
+          '${root.path}/${object.key.substring(id.length + 1)}',
+        );
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes((await bucket.get(object.key))!.bytes);
+      }
+      final other = await Vault.unlock(
+        crypto: testCrypto,
+        store: VaultStore(root),
+        password: testPassword,
+        deviceId: '00000000-0000-4000-8000-0000000000ee',
+        now: () => testNow,
+      );
+      await SyncEngine(vault: other, backend: bucket).sync();
+      (await other.rotateVaultKey(testPassword)).dispose();
+      await SyncEngine(vault: other, backend: bucket).sync();
+      rotatedVkId = other.header.vkId;
+    });
+
+    await tester.runAsync(
+      () =>
+          appContainer(tester).read(syncControllerProvider.notifier).syncNow(),
+    );
+    await until(tester, () => status(tester) is SyncKeyChanged);
+    await tester.pump();
+    expect(find.text('Vault key changed'), findsOneWidget);
+
+    await tester.tap(find.text('Vault key changed'));
+    await tester.pumpAndSettle();
+    expect(find.text('The vault key changed'), findsOneWidget);
+
+    Future<void> submit(String password) async {
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AdoptKeyForm),
+          matching: find.byType(EditableText),
+        ),
+        password,
+      );
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Use the new key'));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      // Real I/O, then the dialog animates closed (which takes frame time),
+      // and a sync may follow (its spinner never settles).
+      for (
+        var i = 0;
+        i < 400 &&
+            (find.text('Switching…').evaluate().isNotEmpty ||
+                status(tester) is SyncRunning ||
+                i == 0);
+        i++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await submit('not my password');
+    expect(find.textContaining("doesn't open the new key"), findsOneWidget);
+    expect(status(tester), isA<SyncKeyChanged>());
+
+    await submit(testPassword);
+    expect(find.text('The vault key changed'), findsNothing);
+    final session = appContainer(tester).read(vaultSessionProvider) as Unlocked;
+    expect(session.vault.header.vkId, rotatedVkId);
+    expect(session.index.items, hasLength(12));
+    await until(tester, () => status(tester) is SyncIdle);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('without storage it says so and ⌘R does nothing', (tester) async {

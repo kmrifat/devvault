@@ -9,6 +9,7 @@ import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
 import '../../data/sync_setup.dart';
 import '../../shared/ui.dart';
+import 'adopt_key_dialog.dart';
 
 /// The toolbar's sync line (design frame D03: "Synced · R2 · 2 min ago").
 /// Tap to sync now; when sync is off or failing, it opens the settings.
@@ -90,6 +91,13 @@ class _SyncStatusChipState extends ConsumerState<SyncStatusChip> {
         'Offline${lastSync == null ? '' : ' · synced${since(lastSync)}'}',
         sync,
         'Changes stay on this device until the storage is reachable',
+      ),
+      SyncKeyChanged() => (
+        BCChipColor.warning,
+        LucideIcons.keyRound,
+        'Vault key changed',
+        () => showAdoptKeyDialog(context),
+        'Changed on another device: enter your master password to go on',
       ),
       SyncFailed(:final message) => (
         BCChipColor.danger,

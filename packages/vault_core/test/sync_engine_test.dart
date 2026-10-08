@@ -307,6 +307,141 @@ void main() {
     );
   });
 
+  group('a vault key rotated on another device', () {
+    /// A and B in sync, with a file on one item; then A rotates and pushes.
+    Future<(Vault, Vault, Item, Item)> rotatedOnA() async {
+      final a = await createOnA();
+      final kept = await addItem(a, 'Kept', secret: 'k1');
+      final file = await a.addAttachment(
+        Uint8List.fromList([7, 7, 7]),
+        filename: 'AuthKey.p8',
+      );
+      final withFile = await a.putItem(
+        (await addItem(a, 'With file')).copyWith(attachments: [file]),
+      );
+      await engine(a).sync();
+      final b = await joinOnB(a.vaultId);
+      await engine(b).sync();
+      (await a.rotateVaultKey(_password)).dispose();
+      await engine(a).sync();
+      return (a, b, kept, withFile);
+    }
+
+    test('stops sync on B before touching anything', () async {
+      final (_, b, kept, _) = await rotatedOnA();
+      await expectLater(engine(b).sync(), throwsA(isA<RemoteKeyChanged>()));
+      expect((await items(b))[kept.id]?.title, 'Kept');
+    });
+
+    test('a wrong password changes nothing', () async {
+      final (_, b, kept, _) = await rotatedOnA();
+      await expectLater(
+        engine(b).adoptRemoteKey('not the password', crypto: crypto),
+        throwsA(isA<WrongPassword>()),
+      );
+      expect((await items(b))[kept.id]?.title, 'Kept');
+    });
+
+    test('B adopts it and keeps what it changed meanwhile', () async {
+      final (a, b, kept, withFile) = await rotatedOnA();
+      // Offline on B while A rotated: an edit, a new item with a new file,
+      // and a deletion.
+      await b.putItem((await items(b))[kept.id]!.copyWith(title: 'Kept (B)'));
+      final fresh = await b.addAttachment(
+        Uint8List.fromList([1, 2, 3, 4]),
+        filename: 'new.jks',
+      );
+      final added = await b.putItem(
+        (await addItem(b, 'Added on B')).copyWith(attachments: [fresh]),
+      );
+      await b.delete(withFile.id, TombstoneKind.item);
+
+      final adoption = await engine(b)
+          .adoptRemoteKey(_password, crypto: crypto);
+      final b2 = adoption.vault;
+      expect(b.isLocked, isTrue);
+      expect(b2.header.vkId, a.header.vkId);
+      expect(adoption.rescued, 3);
+
+      final onB = await items(b2);
+      expect(onB[kept.id]!.title, 'Kept (B)');
+      expect(onB[kept.id]!.fields['value']!.value, 'k1');
+      expect(await b2.readAttachment(onB[added.id]!.attachments.single), [
+        1,
+        2,
+        3,
+        4,
+      ]);
+      expect(onB, isNot(contains(withFile.id)));
+
+      // A gets B's changes under the new key.
+      await engine(a).sync();
+      final onA = await items(a);
+      expect(onA[kept.id]!.title, 'Kept (B)');
+      expect(await a.readAttachment(onA[added.id]!.attachments.single), [
+        1,
+        2,
+        3,
+        4,
+      ]);
+      expect(onA, isNot(contains(withFile.id)));
+    });
+
+    test('going offline part way leaves B as it was', () async {
+      final (_, b, kept, _) = await rotatedOnA();
+      await b.putItem((await items(b))[kept.id]!.copyWith(title: 'Kept (B)'));
+      // The adoption reads vault.json, then lists the bucket to pull: that
+      // list fails.
+      bucket.failNext(StorageOp.list, const StorageUnavailable('offline'));
+      await expectLater(
+        engine(b).adoptRemoteKey(_password, crypto: crypto),
+        throwsA(isA<StorageUnavailable>()),
+      );
+      expect(b.isLocked, isFalse);
+      expect((await items(b))[kept.id]?.title, 'Kept (B)');
+      expect(Directory('${b.store.root.path}.adopting').existsSync(), isTrue);
+
+      // Back online, it goes through and the edit survives.
+      final b2 = (await engine(
+        b,
+      ).adoptRemoteKey(_password, crypto: crypto)).vault;
+      expect((await items(b2))[kept.id]?.title, 'Kept (B)');
+      expect(Directory('${b.store.root.path}.adopting').existsSync(), isFalse);
+    });
+
+    test('an edit made there still beats a deletion made here', () async {
+      final (a, b, kept, _) = await rotatedOnA();
+      await a.putItem(
+        (await items(a))[kept.id]!.copyWith(title: 'Edited on A'),
+      );
+      await engine(a).sync();
+      await b.delete(kept.id, TombstoneKind.item);
+
+      final b2 = (await engine(
+        b,
+      ).adoptRemoteKey(_password, crypto: crypto)).vault;
+      final item = (await items(b2))[kept.id]!;
+      expect(item.title, 'Edited on A');
+      expect(Conflict.of(item).deletions.single['device_id'], _deviceB);
+    });
+
+    test('files B had from before keep working under the new key', () async {
+      final (a, b, _, withFile) = await rotatedOnA();
+      await b.putItem(
+        (await items(b))[withFile.id]!.copyWith(title: 'Renamed on B'),
+      );
+      final b2 = (await engine(
+        b,
+      ).adoptRemoteKey(_password, crypto: crypto)).vault;
+      final item = (await items(b2))[withFile.id]!;
+      expect(item.title, 'Renamed on B');
+      expect(await b2.readAttachment(item.attachments.single), [7, 7, 7]);
+      await engine(a).sync();
+      final onA = (await items(a))[withFile.id]!;
+      expect(await a.readAttachment(onA.attachments.single), [7, 7, 7]);
+    });
+  });
+
   test('attachments travel as blobs', () async {
     final a = await createOnA();
     final bytes = Uint8List.fromList(List.generate(4096, (i) => i % 256));

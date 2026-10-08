@@ -249,6 +249,7 @@ Format: **ID · title** (estimate). **D:** dependencies. **AC:** acceptance crit
 - **P2-12 · Blob GC** (0.5d). A blob is deleted only if nothing references it (items, conflicts, recent tombstones) and it is more than 30 days old. Runs once a day; supports a dry run.
 - **P2-13 · Windows + Linux bring-up** (2d). Credential Manager on Windows and libsecret on Linux, with a degraded mode when no keyring is available; Ctrl shortcuts; packaging (MSIX/zip, AppImage/tarball).
 - **P2-14 · P2 gate** (1d). An acceptance run against MinIO and R2, written up in `docs/acceptance/p2.md`:
+- **P2-15 · Adopt a rotated key** (1d). After a rotation on another device (P4-08), sync stops; the master password must open the bucket's new `vault.json` (SPEC §4.4). Unsynced local edits are rescued with the old key, merged on top of the bucket's vault and pushed; the new copy is built aside and swapped in only when complete.
   - the S3 request log for a password change;
   - objects unreadable without the VK;
   - AAD swap test (copy `items/a.enc` over `b.enc`);
