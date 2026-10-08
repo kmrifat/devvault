@@ -72,7 +72,7 @@ milestone (M0, P0, P1a, P1b, P1c, P2, P3, P4).
 - One branch and PR per sub-task: branch `<milestone>/<nn>-<slug>`
   (e.g. `p0/04-aead-envelope`), PR title `P0-04 · …`.
 - Before every PR: `dart format`, `flutter analyze` (no issues),
-  `flutter test --exclude-tags golden`, `flutter test --tags golden`, and
+  `flutter test --exclude-tags golden`, `TZ=UTC flutter test --tags golden`, and
   `dart test` in each package.
 - Board: a milestone card goes `in_progress` when its first sub-task starts,
   `review` when its last PR is open, and `done` once merged.
