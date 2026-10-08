@@ -113,7 +113,7 @@ void main() {
             ),
             children: const [
               DesktopLockBox(child: Text('Argon2id')),
-              DesktopFieldMessage('Use at least 12 characters', indent: 120),
+              DesktopFieldMessage('Use at least 4 characters', indent: 120),
             ],
           ),
         );
@@ -122,7 +122,7 @@ void main() {
           'Create a master password',
           'No one can reset or recover it for you.',
           'Argon2id',
-          'Use at least 12 characters',
+          'Use at least 4 characters',
           'Continue',
         ]) {
           expect(find.text(text), findsOneWidget, reason: text);

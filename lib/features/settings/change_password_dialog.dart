@@ -109,7 +109,10 @@ class _ChangePasswordFormState extends ConsumerState<ChangePasswordForm> {
   Widget build(BuildContext context) {
     final strength = PasswordPolicy.strength(_next.text);
     final hint = _next.text.isEmpty
-        ? 'At least ${PasswordPolicy.minLength} characters'
+        ? 'At least ${PasswordPolicy.minLength} characters; '
+              '${PasswordPolicy.recommendedLength} or more is much safer'
+        : strength == PasswordStrength.weak
+        ? 'Strength (estimate): Weak. ${PasswordPolicy.shortWarning}'
         : 'Strength (estimate): ${strength.label}';
     if (DesktopTheme.maybeOf(context) != null) return _desktop(hint);
     return Column(

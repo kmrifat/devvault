@@ -220,7 +220,8 @@ class _StrengthMeter extends StatelessWidget {
           value: strength.meter,
           size: BCProgressSize.sm,
           color: switch (strength) {
-            PasswordStrength.tooShort => BCProgressColor.danger,
+            PasswordStrength.tooShort ||
+            PasswordStrength.weak => BCProgressColor.danger,
             PasswordStrength.fair => BCProgressColor.warning,
             PasswordStrength.good ||
             PasswordStrength.strong => BCProgressColor.success,
@@ -241,6 +242,13 @@ class _StrengthMeter extends StatelessWidget {
             ),
           ],
         ),
+        // Allowed, but said plainly.
+        if (strength == PasswordStrength.weak)
+          const BCText(
+            PasswordPolicy.shortWarning,
+            type: BCTextType.bodyXs,
+            color: BCTextColor.muted,
+          ),
       ],
     );
   }

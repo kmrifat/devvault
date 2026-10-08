@@ -185,7 +185,7 @@ Format: **ID · title** (estimate). **D:** dependencies. **AC:** acceptance crit
 
 ### P1a · Desktop: unlock, vault three-pane, items, lock
 - **P1-01 · Vault session + lock-aware routing** (1d). States: noVault, locked, unlocking, unlocked. Redirects send noVault to `/create` and locked to `/unlock`, and a deep link resumes after unlock.
-- **P1-02 · D01 Create password** (1d). Two `BCPasswordInput`s, at least 12 characters, a strength hint, Argon2 progress. The password is not kept after use.
+- **P1-02 · D01 Create password** (1d). Two `BCPasswordInput`s, at least 4 characters (shorter than 12 is allowed with a warning), a strength hint, Argon2 progress. The password is not kept after use.
 - **P1-03 · D02 Recovery kit** (1d). Grouped key in mono; copy via the clipboard guard and Save .txt. The user must confirm before continuing, and the key is shown only once.
 - **P1-04 · D00 Unlock** (0.5d). Inline error, backoff after 5 failures, a recovery link.
 - **P1-05 · Recovery unlock + reset** (0.5d). AC: the recovery key alone can set a new password (end-to-end widget test).

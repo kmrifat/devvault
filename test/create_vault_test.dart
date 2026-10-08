@@ -1,4 +1,5 @@
 import 'package:devvault/app/layout.dart';
+import 'package:devvault/core/password_policy.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/shared/desktop_ui.dart'
@@ -40,10 +41,10 @@ void main() {
         tester,
       ) async {
         await openCreate(tester, layout: layout);
-        await tester.enterText(field('Master password'), 'too short');
+        await tester.enterText(field('Master password'), 'abc');
         await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
-        expect(find.text('Use at least 12 characters'), findsOneWidget);
+        expect(find.text('Use at least 4 characters'), findsOneWidget);
 
         await tester.enterText(
           field('Master password'),
@@ -68,6 +69,19 @@ void main() {
         await tester.pump();
         expect(find.text('Strong'), findsOneWidget);
         expect(find.text('28 characters · an estimate'), findsOneWidget);
+      });
+
+      testWidgets('a short password is allowed, with a warning', (
+        tester,
+      ) async {
+        await openCreate(tester, layout: layout);
+        await tester.enterText(field('Master password'), 'abcd');
+        await tester.pump();
+        expect(find.text('Weak'), findsOneWidget);
+        expect(find.text(PasswordPolicy.shortWarning), findsOneWidget);
+        // A warning, not an error: the policy allows it.
+        expect(PasswordPolicy.problem('abcd'), isNull);
+        expect(find.text('Use at least 4 characters'), findsNothing);
       });
     });
   }

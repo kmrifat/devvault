@@ -221,10 +221,10 @@ void main() {
 
       testWidgets('checks the form before trying', (tester) async {
         await openDialog(tester);
-        await fill(tester, '', 'short');
+        await fill(tester, '', 'abc');
         await submit(tester);
         expect(find.text('Enter your current password'), findsOneWidget);
-        expect(find.text('Use at least 12 characters'), findsOneWidget);
+        expect(find.text('Use at least 4 characters'), findsOneWidget);
 
         await fill(tester, testPassword, 'a brand new passphrase', 'typo');
         await submit(tester);
