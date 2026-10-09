@@ -202,17 +202,18 @@ class TreePlace {
   final String? platform;
   final String? env;
 
-  /// [item] moved here; nothing else about it changes.
+  /// [item] moved here; nothing else about it changes. It goes through
+  /// the record's own JSON, since `copyWith` can't clear a value, so
+  /// fields this version doesn't know are kept too.
   Item applyTo(Item item) {
-    String? value(String? v) => v == VaultFilter.none ? null : v;
-    return item.copyWith(
-      appId: value(app),
-      clearApp: app == VaultFilter.none,
-      platform: value(platform),
-      clearPlatform: platform == VaultFilter.none,
-      environment: value(env),
-      clearEnvironment: env == VaultFilter.none,
-    );
+    String? value(String? wanted, String? current) =>
+        wanted == null ? current : (wanted == VaultFilter.none ? null : wanted);
+    return Item.fromJson({
+      ...item.toJson(),
+      'app_id': value(app, item.appId),
+      'platform': value(platform, item.platform),
+      'environment': value(env, item.environment),
+    });
   }
 
   /// Whether [item] already sits here in [index]'s tree, where an item
