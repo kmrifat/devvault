@@ -63,7 +63,7 @@ class _AdoptKeyFormState extends ConsumerState<AdoptKeyForm> {
           .adoptRemoteKey(_password.text);
       if (!mounted) return;
       final kept = adoption.rescued;
-      BCToast.show(
+      showAppToast(
         context,
         BCToastData(
           title: 'Switched to the new vault key',

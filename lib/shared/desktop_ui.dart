@@ -30,6 +30,7 @@ export 'desktop/desktop_sheet.dart';
 export 'desktop/desktop_symbols.dart';
 export 'desktop/desktop_text_field.dart';
 export 'desktop/desktop_theme.dart';
+export 'desktop/desktop_toast.dart';
 export 'desktop/desktop_toggles.dart';
 export 'desktop/desktop_token_field.dart';
 export 'desktop/desktop_window.dart';

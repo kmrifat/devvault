@@ -1,10 +1,17 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The toast cards on screen. bc_ui doesn't export its card widget, so this
-/// matches it by type name; [toastTexts] fails loudly if that ever changes.
+/// The toasts on screen: bc_ui's cards on phones, the desktop layer's
+/// banners and snackbars (`showDesktopToast`) and Fluent's `InfoBar`s.
+/// Neither bc_ui nor the desktop layer exports its toast widget, so this
+/// matches them by type name; [toastTexts] fails loudly if that ever
+/// changes.
 final _toastCards = find.byWidgetPredicate(
-  (w) => w.runtimeType.toString() == '_BCToastCard',
+  (w) => const {
+    '_BCToastCard',
+    '_Toast',
+    'InfoBar',
+  }.contains(w.runtimeType.toString()),
 );
 
 /// Every piece of text in the toasts on screen: titles, descriptions and

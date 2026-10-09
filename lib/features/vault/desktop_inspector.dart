@@ -12,7 +12,7 @@ import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
-import '../../shared/ui.dart' show BCToast, BCToastData;
+import '../../shared/ui.dart' show BCToastData, showAppToast;
 import '../../shared/widgets/mono_text.dart';
 import '../../shared/widgets/provenance_label.dart';
 import '../../shared/widgets/secret_row.dart' show SecretRow;
@@ -570,7 +570,7 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
     }
     if (!mounted) return;
     if (widget.field.secret) {
-      BCToast.show(
+      showAppToast(
         context,
         BCToastData(
           title: '${widget.label} copied',

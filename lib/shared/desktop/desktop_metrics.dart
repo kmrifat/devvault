@@ -72,6 +72,11 @@ abstract final class DesktopMetrics {
   /// Floating panels (quick open): corner radius, width, and how far below
   /// the top of the window they sit.
   static const double panelRadius = 12;
+
+  /// A toast: the macOS banner's width, and the Linux snackbar's range.
+  static const double toastWidth = 340;
+  static const double toastMinWidth = 280;
+  static const double toastMaxWidth = 520;
   static const double panelWidth = 600;
   static const double panelTop = 120;
 

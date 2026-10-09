@@ -72,7 +72,7 @@ Future<void> showPhoneImport(BuildContext context) async {
       );
       if (saved == null || !context.mounted) return;
       context.go(const VaultFilter().location(item: saved.id));
-      BCToast.show(
+      showAppToast(
         context,
         BCToastData(
           title: '“${saved.title}” added',

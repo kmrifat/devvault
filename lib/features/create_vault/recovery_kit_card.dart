@@ -162,7 +162,7 @@ mixin RecoveryKitActions<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool kitBusy = false;
 
   void _toast(String title, {String? description, bool ok = true}) {
-    BCToast.show(
+    showAppToast(
       context,
       BCToastData(
         title: title,

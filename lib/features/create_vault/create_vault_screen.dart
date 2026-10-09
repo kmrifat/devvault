@@ -62,7 +62,7 @@ class _CreateVaultScreenState extends ConsumerState<CreateVaultScreen> {
     } on Object {
       if (!mounted) return;
       setState(() => _busy = false);
-      BCToast.show(
+      showAppToast(
         context,
         const BCToastData(
           title: "Couldn't create the vault",

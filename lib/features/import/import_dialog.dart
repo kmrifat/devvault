@@ -73,7 +73,7 @@ Future<void> showImportDialog(
   if (lastId == null || !context.mounted) return;
   context.go(const VaultFilter().location(item: lastId));
   if (imported + replaced > 0) {
-    BCToast.show(
+    showAppToast(
       context,
       BCToastData(
         title: imported == 0
@@ -100,7 +100,7 @@ Future<void> showReplaceFileDialog(BuildContext context, Item item) async {
     ImportDialog(file: picked.first, replacing: item),
   );
   if (outcome == null || !outcome.replaced || !context.mounted) return;
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: 'File replaced',

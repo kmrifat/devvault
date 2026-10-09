@@ -89,7 +89,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
           .changePassword(_password.text);
       ref.read(passwordResetPendingProvider.notifier).done();
       if (!mounted) return;
-      BCToast.show(
+      showAppToast(
         context,
         const BCToastData(
           title: 'New master password set',
@@ -100,7 +100,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     } on Object {
       if (!mounted) return;
       setState(() => _busy = false);
-      BCToast.show(
+      showAppToast(
         context,
         const BCToastData(
           title: "Couldn't save the new password",
