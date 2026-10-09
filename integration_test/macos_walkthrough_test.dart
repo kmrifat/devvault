@@ -1888,35 +1888,21 @@ class _Walk {
     expect(find.text('Move to organization…'), findsOneWidget);
     expect(find.text('Remove from Globex Walk'), findsOneWidget);
     await shot('explorer-shift-f10-menu');
-    // The menu should take the keyboard: ↓ to its first command, Escape
-    // to close it.
+    // The menu takes the keyboard (WALK-02): Escape closes it and the
+    // cursor is back on the row.
     await press(LogicalKeyboardKey.escape);
-    final stillOpen = find.text('Move to organization…').evaluate().isNotEmpty;
-    // KNOWN ISSUE WALK-02 (should fix): focus stays on the tree, so
-    // Escape doesn't close the menu and the arrows move the tree's cursor
-    // behind it.
-    knownIssue(
-      'WALK-02',
-      !stillOpen,
-      'Escape closes the menu Shift-F10 opened',
-    );
-    if (stillOpen) {
-      final before = location;
-      await press(LogicalKeyboardKey.arrowDown);
-      await press(LogicalKeyboardKey.enter);
-      note(
-        'with the menu open, ↓ then Return went to the tree: '
-        '$before → $location; menu still open: '
-        '${find.text('Move to organization…').evaluate().isNotEmpty}',
-      );
-      await shot('explorer-menu-after-escape');
-      // Close it with a click elsewhere.
-      await tester.tapAt(
-        tester.getCenter(find.byType(ShellStatusBar)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await settle();
-    }
+    expect(find.text('Move to organization…'), findsNothing);
+    await shot('explorer-menu-after-escape');
+    // ↓ then Return runs the menu's Edit app…, not the tree's row below.
+    final before = location;
+    await press(LogicalKeyboardKey.f10, shift: true);
+    await press(LogicalKeyboardKey.arrowDown);
+    await press(LogicalKeyboardKey.enter);
+    expect(find.text('Move to organization…'), findsNothing);
+    expect(find.text('Edit app'), findsWidgets);
+    expect(location, before);
+    await shot('explorer-menu-edit-app');
+    await tap(button('Cancel'));
     // Typing jumps to a row by name.
     await tap(sidebarRow('Walkthrough App'));
     await press(LogicalKeyboardKey.home);
@@ -1932,15 +1918,8 @@ class _Walk {
     expect(find.text('Move to app…'), findsOneWidget);
     expect(find.text('Delete item…'), findsOneWidget);
     await shot('explorer-item-menu');
+    // Escape closes the right-click menu too.
     await press(LogicalKeyboardKey.escape);
-    if (find.text('Move to app…').evaluate().isNotEmpty) {
-      note('Escape left the right-click menu open too');
-      await tester.tapAt(
-        tester.getCenter(find.byType(ShellStatusBar)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await settle();
-    }
     expect(find.text('Move to app…'), findsNothing);
   }
 

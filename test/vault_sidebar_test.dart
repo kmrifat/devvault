@@ -957,6 +957,36 @@ void main() {
       // Only the menu has this ("Edit app…" is also the list's button).
       expect(find.text('Move to organization…'), findsOneWidget);
     });
+
+    testWidgets('the menu Shift-F10 opens takes the keyboard: ↓ and Return '
+        'run its command, Escape gives the cursor back', (tester) async {
+      await open(tester);
+      final ledgerly = appId(tester, 'Ledgerly');
+      await tap(tester, row('Ledgerly'));
+
+      // ↓ goes from New item… to Edit app…, not to the next row.
+      await press(tester, LogicalKeyboardKey.f10, shift: true);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(find.byType(AppEditor), findsOneWidget);
+      expect(find.text('Move to organization…'), findsNothing);
+      expect(location(tester), Routes.vault(app: ledgerly));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // The cursor on another row than the selection: Escape closes the
+      // menu and the cursor is still there.
+      await tap(tester, row('Ledgerly'));
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await press(tester, LogicalKeyboardKey.f10, shift: true);
+      expect(find.text('Move to organization…'), findsOneWidget);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await press(tester, LogicalKeyboardKey.escape);
+      expect(find.text('Move to organization…'), findsNothing);
+      expect(location(tester), Routes.vault(app: ledgerly));
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(location(tester), Routes.vault(app: appId(tester, 'Kitchenly')));
+    });
   });
 
   group('explorer drag-hover', () {

@@ -220,7 +220,11 @@ through `package:devvault/shared/desktop_ui.dart`:
   commands, destructive ones in red (the inspector's Replace file… and
   Delete item…). `DesktopContextMenu` opens the same kind of menu where
   its child is right-clicked (long-pressed on touch), and exposes each
-  command as a semantics action (the sidebar rows' menus). `DesktopScopeBar`: recessed scope buttons that narrow a
+  command as a semantics action (the sidebar rows' menus). An open menu
+  takes the keyboard (`DesktopMenuFocus`): opened from the keyboard its
+  first command is highlighted, after a click nothing is until ↓ or ↑;
+  Return or Space runs a command and Escape closes it, giving the
+  keyboard back where it was. `DesktopScopeBar`: recessed scope buttons that narrow a
   list (the table's All / Expiring / Files / Secrets); a segmented control
   is for settings.
 - `DesktopLockWindow` for the lock screens (unlock, create, recovery kit,
