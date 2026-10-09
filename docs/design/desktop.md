@@ -212,7 +212,10 @@ The shell (`lib/app/desktop_shell.dart`) puts the source list
 in that frame. The vault branch is the item table
 (`lib/features/vault/vault_list_pane.dart`) beside the inspector
 (`desktop_inspector.dart`); the status bar shows the selected item's
-created / updated line.
+created / updated line. On Expiry (N06) the status bar counts the items
+with and without a date ("6 dated · 36 without a date", or "1 expired"
+under Expired) and says whether reminders are on, from the Expiry
+reminders setting.
 
 Each control is drawn by the running OS's kit and behaves the same on all
 three (`test/desktop_controls_test.dart`). A pop-up's long choice ends in
