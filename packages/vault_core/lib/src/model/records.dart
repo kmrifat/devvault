@@ -606,13 +606,122 @@ class AppRecord implements SyncedRecord {
   String toString() => 'AppRecord($id)';
 }
 
+/// An organization (SPEC §6.7): declares that an organization with this
+/// [name] exists, even with no apps. Apps join it by name, through
+/// [AppRecord.organization]; the record holds no list of them.
+///
+/// [name] is trimmed like [AppRecord.organization]; an empty one is
+/// malformed.
+@immutable
+class OrganizationRecord implements SyncedRecord {
+  OrganizationRecord({
+    required this.id,
+    required String name,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.rev,
+    required this.deviceId,
+    this.schema = recordSchema,
+    Map<String, Object?> unknownFields = const {},
+  }) : name = name.trim(),
+       unknownFields = Map.unmodifiable(unknownFields) {
+    if (!isCanonicalUuid(id)) {
+      throw const VaultFormatException('organization.id is not a UUID');
+    }
+    if (this.name.isEmpty) {
+      throw const VaultFormatException('organization.name is empty');
+    }
+  }
+
+  @override
+  final String id;
+
+  /// What apps name in their `organization`, as the user typed it.
+  final String name;
+
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  @override
+  final Hlc rev;
+  @override
+  final String deviceId;
+  final int schema;
+  final Map<String, Object?> unknownFields;
+
+  @override
+  ObjectType get objectType => ObjectType.organization;
+
+  bool get isReadOnly => schema > recordSchema;
+
+  static const _known = {
+    'schema',
+    'id',
+    'name',
+    'created_at',
+    'updated_at',
+    'rev',
+    'device_id',
+  };
+
+  factory OrganizationRecord.fromJson(Object? json) {
+    final r = JsonReader(json, 'organization');
+    return OrganizationRecord(
+      schema: r.integer('schema'),
+      id: r.string('id'),
+      name: r.string('name'),
+      createdAt: r.timestamp('created_at'),
+      updatedAt: r.timestamp('updated_at'),
+      rev: Hlc.parse(r.value('rev')),
+      deviceId: r.string('device_id'),
+      unknownFields: r.unknown(_known),
+    );
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    ...unknownFields,
+    'schema': schema,
+    'id': id,
+    'name': name,
+    'created_at': formatTimestamp(createdAt),
+    'updated_at': formatTimestamp(updatedAt),
+    'rev': rev.toString(),
+    'device_id': deviceId,
+  };
+
+  /// A copy with changes.
+  OrganizationRecord copyWith({
+    String? name,
+    DateTime? updatedAt,
+    Hlc? rev,
+    String? deviceId,
+  }) => OrganizationRecord(
+    id: id,
+    name: name ?? this.name,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    rev: rev ?? this.rev,
+    deviceId: deviceId ?? this.deviceId,
+    schema: schema,
+    unknownFields: unknownFields,
+  );
+
+  /// Never prints the name.
+  @override
+  String toString() => 'OrganizationRecord($id)';
+}
+
 /// What a tombstone deletes.
 enum TombstoneKind {
-  item('item'),
-  app('app');
+  item('item', ObjectType.item),
+  app('app', ObjectType.app),
+  organization('organization', ObjectType.organization);
 
-  const TombstoneKind(this.wireName);
+  const TombstoneKind(this.wireName, this.recordType);
   final String wireName;
+
+  /// The type of the record it deletes.
+  final ObjectType recordType;
 }
 
 /// A deletion marker (SPEC §6.4). Its id is the deleted record's id.
@@ -660,8 +769,9 @@ class Tombstone implements SyncedRecord {
     final kind = switch (r.value('kind')) {
       'item' => TombstoneKind.item,
       'app' => TombstoneKind.app,
+      'organization' => TombstoneKind.organization,
       _ => throw const VaultFormatException(
-        'tombstone.kind must be item or app',
+        'tombstone.kind must be item, app or organization',
       ),
     };
     return Tombstone(
@@ -705,6 +815,7 @@ SyncedRecord decodeRecord(ObjectType type, List<int> plaintext) {
   return switch (type) {
     ObjectType.item => Item.fromJson(json),
     ObjectType.app => AppRecord.fromJson(json),
+    ObjectType.organization => OrganizationRecord.fromJson(json),
     ObjectType.tombstone => Tombstone.fromJson(json),
     _ => throw ArgumentError.value(type, 'type', 'not a JSON record'),
   };

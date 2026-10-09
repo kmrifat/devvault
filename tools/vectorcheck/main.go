@@ -30,11 +30,12 @@ import (
 
 var typeCodes = map[string]byte{
 	"item": 1, "app": 2, "blob": 3, "tombstone": 4,
-	"vk_wrap_password": 5, "vk_wrap_recovery": 6,
+	"vk_wrap_password": 5, "vk_wrap_recovery": 6, "organization": 7,
 }
 
 var folders = map[string]string{
 	"items": "item", "apps": "app", "blobs": "blob", "tombstones": "tombstone",
+	"organizations": "organization",
 }
 
 const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -413,7 +414,8 @@ func checkMiniVault(dir string) {
 			Identifiers  []appIdentifierVec `json:"identifiers"`
 			Notes        *string            `json:"notes"`
 		} `json:"app_records"`
-		Tombstones []string `json:"tombstones"`
+		Organizations map[string]string `json:"organizations"`
+		Tombstones    []string          `json:"tombstones"`
 	}
 	must(0, json.Unmarshal(must(os.ReadFile(filepath.Join(dir, "mini-vault.json"))), &expected))
 	root := filepath.Join(dir, "mini-vault", expected.VaultID)
@@ -539,13 +541,31 @@ func checkMiniVault(dir string) {
 		}
 	}
 	ok("mini-vault: %d app records in canonical form", len(expected.AppRecords))
+	// SPEC §6.7: an organization record holds a trimmed, non-empty name.
+	if len(expected.Organizations) == 0 {
+		fail("organizations is empty")
+	}
+	for id, name := range expected.Organizations {
+		rec := records["organization:"+id]
+		got, isString := rec["name"].(string)
+		if rec == nil || !isString || got != name || got != strings.TrimSpace(got) || got == "" {
+			fail("organization %s", id)
+		}
+	}
+	for key := range records {
+		if id, isOrg := strings.CutPrefix(key, "organization:"); isOrg {
+			if _, listed := expected.Organizations[id]; !listed {
+				fail("organization %s is not listed", id)
+			}
+		}
+	}
 	for _, id := range expected.Tombstones {
 		if records["tombstone:"+id] == nil || records["item:"+id] != nil {
 			fail("tombstone %s", id)
 		}
 	}
-	ok("mini-vault: %d items, %d apps, %d tombstones, attachments match sha256",
-		len(expected.Items), len(expected.Apps), len(expected.Tombstones))
+	ok("mini-vault: %d items, %d apps, %d organizations, %d tombstones, attachments match sha256",
+		len(expected.Items), len(expected.Apps), len(expected.Organizations), len(expected.Tombstones))
 }
 
 func main() {

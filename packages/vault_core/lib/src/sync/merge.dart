@@ -257,6 +257,36 @@ AppRecord mergeApps({
   );
 }
 
+/// Merges two concurrent versions of an organization like [mergeApps]: the
+/// name a side changed since [base] wins, and on a clash the local one
+/// stays.
+OrganizationRecord mergeOrganizations({
+  OrganizationRecord? base,
+  required OrganizationRecord local,
+  required OrganizationRecord remote,
+}) {
+  if (local.rev == remote.rev) return local;
+  if (base != null && local.rev == base.rev) return remote;
+  if (base != null && remote.rev == base.rev) return local;
+  final name = local.name == remote.name || base?.name != local.name
+      ? local.name
+      : remote.name;
+  return OrganizationRecord(
+    id: local.id,
+    name: name,
+    createdAt: local.createdAt.isBefore(remote.createdAt)
+        ? local.createdAt
+        : remote.createdAt,
+    updatedAt: local.updatedAt.isAfter(remote.updatedAt)
+        ? local.updatedAt
+        : remote.updatedAt,
+    rev: local.rev > remote.rev ? local.rev : remote.rev,
+    deviceId: local.deviceId,
+    schema: local.schema > remote.schema ? local.schema : remote.schema,
+    unknownFields: {...remote.unknownFields, ...local.unknownFields},
+  );
+}
+
 /// Three-way set merge: everything either side added, minus what either
 /// side removed from [base]. Without a base, the union. Local order first.
 List<T> _mergeSet<T>(List<T>? base, List<T> local, List<T> remote) {

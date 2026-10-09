@@ -523,6 +523,71 @@ void main() {
     });
   });
 
+  group('organizations (SPEC §6.7)', () {
+    Map<String, Object?> orgJson([Map<String, Object?> fields = const {}]) => {
+      'schema': 1,
+      'id': id,
+      'name': 'Acme Corp',
+      'created_at': '2025-02-03T10:00:00Z',
+      'updated_at': '2025-02-03T10:00:00Z',
+      'rev': rev.toString(),
+      'device_id': device,
+      ...fields,
+    };
+
+    test('round-trip', () {
+      final org = OrganizationRecord.fromJson(orgJson());
+      expect(org.name, 'Acme Corp');
+      expect(org.objectType, ObjectType.organization);
+      expect(org.isReadOnly, isFalse);
+      expect(org.toJson(), orgJson());
+      final again = decodeRecord(ObjectType.organization, encodeRecord(org));
+      expect(again, isA<OrganizationRecord>());
+      expect(utf8.decode(encodeRecord(again)), utf8.decode(encodeRecord(org)));
+    });
+
+    test('the name is trimmed', () {
+      final org = OrganizationRecord.fromJson(orgJson({'name': '  Acme  '}));
+      expect(org.name, 'Acme');
+      expect(org.toJson()['name'], 'Acme');
+      expect(org.copyWith(name: ' Globex\n').name, 'Globex');
+    });
+
+    test('an empty name or a bad id is malformed, and never echoed', () {
+      for (final json in [
+        orgJson({'name': '   '}),
+        orgJson({'name': ''}),
+        orgJson({'name': null}),
+        orgJson({'name': 42}),
+        orgJson({'id': 'Secret Corp'}),
+      ]) {
+        expect(
+          () => OrganizationRecord.fromJson(json),
+          throwsA(
+            isA<VaultFormatException>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(isNot(contains('Acme')), isNot(contains('Secret'))),
+            ),
+          ),
+        );
+      }
+    });
+
+    test('unknown fields are kept; a newer schema is read-only', () {
+      final json = orgJson({'schema': 2, 'colour': 'teal'});
+      final org = OrganizationRecord.fromJson(json);
+      expect(org.isReadOnly, isTrue);
+      expect(org.toJson(), json);
+      expect(org.copyWith(name: 'Globex').toJson()['colour'], 'teal');
+    });
+
+    test('toString never prints the name', () {
+      final org = OrganizationRecord.fromJson(orgJson());
+      expect(org.toString(), 'OrganizationRecord($id)');
+    });
+  });
+
   test('tombstones round-trip and know what they delete', () {
     final json = {
       'schema': 1,
@@ -539,5 +604,9 @@ void main() {
       () => Tombstone.fromJson({...json, 'kind': 'blob'}),
       throwsA(isA<VaultFormatException>()),
     );
+    final org = Tombstone.fromJson({...json, 'kind': 'organization'});
+    expect(org.kind, TombstoneKind.organization);
+    expect(org.kind.recordType, ObjectType.organization);
+    expect(org.toJson()['kind'], 'organization');
   });
 }

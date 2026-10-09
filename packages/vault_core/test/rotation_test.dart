@@ -31,8 +31,8 @@ void main() {
   final fileA = Uint8List.fromList(List.generate(3000, (i) => i % 251));
   final fileB = Uint8List.fromList(List.generate(500, (i) => 255 - i % 256));
 
-  /// A vault with two items holding files, a plain secret, an app and a
-  /// tombstone. Returns the recovery key.
+  /// A vault with two items holding files, a plain secret, an app, an
+  /// organization and two tombstones. Returns the recovery key.
   Future<RecoveryKey> seed() async {
     final (vault, recoveryKey) = await Vault.create(
       crypto: crypto,
@@ -81,6 +81,11 @@ void main() {
         deviceId: device,
       ),
     );
+    await vault.putOrganization(vault.newOrganization(name: 'Globex'));
+    final gone = await vault.putOrganization(
+      vault.newOrganization(name: 'Initech'),
+    );
+    await vault.delete(gone.id, TombstoneKind.organization);
     vault.lock();
     return recoveryKey;
   }
@@ -96,6 +101,9 @@ void main() {
           for (final a in item.attachments) await vault.readAttachment(a),
         ],
       'apps': contents.apps.values.map((a) => a.name).toList(),
+      'organizations': contents.organizations.values
+          .map((o) => o.name)
+          .toList(),
       'tombstones': contents.tombstones.length,
     };
   }
@@ -111,6 +119,8 @@ void main() {
 
     expect(vault.header.vkId, isNot(oldVkId));
     expect(await snapshot(vault), before);
+    expect(before['organizations'], ['Globex']);
+    expect(before['tombstones'], 2);
     final newBlobs = await vault.store.list(ObjectType.blob);
     expect(newBlobs, hasLength(oldBlobs.length));
     expect(newBlobs.toSet().intersection(oldBlobs.toSet()), isEmpty);
@@ -197,7 +207,7 @@ void main() {
       probeDir.deleteSync(recursive: true);
     });
 
-    for (var crashAt = 0; crashAt < 9; crashAt++) {
+    for (var crashAt = 0; crashAt < 11; crashAt++) {
       test('#$crashAt either resumes on unlock or never started', () async {
         expect(crashAt, lessThan(rotationWrites), reason: 'write exists');
         await seed();
@@ -246,7 +256,7 @@ void main() {
     }
 
     test('covers every write the rotation makes', () {
-      expect(rotationWrites, 9);
+      expect(rotationWrites, 11);
     });
   });
 }
