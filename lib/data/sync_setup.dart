@@ -211,12 +211,14 @@ class SyncSetupNotifier extends Notifier<SyncSetup?> {
   );
 
   /// Keeps the setup: settings beside the vault, keys in the keychain,
-  /// capabilities in the sync state. Sync starts right away.
+  /// capabilities in the sync state. Sync starts right away. Takes the
+  /// session's write lock, so a sync still running finishes first and its
+  /// bookkeeping isn't overwritten.
   Future<void> save(
     SyncSettings settings,
     AwsCredentials credentials,
     StorageCapabilities capabilities,
-  ) async {
+  ) => ref.read(vaultSessionProvider.notifier).exclusive(() async {
     final vault = _vault;
     await ref
         .read(credentialStoreProvider)
@@ -244,18 +246,24 @@ class SyncSetupNotifier extends Notifier<SyncSetup?> {
       credentials: credentials,
       capabilities: capabilities,
     );
-  }
+  });
 
   /// Stops syncing on this device: forgets the settings, the keys and the
   /// sync bookkeeping. The vault and the bucket are left as they are.
-  Future<void> turnOff() async {
-    final vault = _vault;
-    await ref
-        .read(credentialStoreProvider)
-        .delete(credentialKey(vault.vaultId));
-    await SyncStateStore(vault.store).clear();
-    state = null;
-  }
+  ///
+  /// Takes the session's write lock, which a sync holds until its blob GC
+  /// is done: a run already going finishes before the bookkeeping is
+  /// deleted, so it can't write it back, and one still waiting finds sync
+  /// off and does nothing.
+  Future<void> turnOff() =>
+      ref.read(vaultSessionProvider.notifier).exclusive(() async {
+        final vault = _vault;
+        await ref
+            .read(credentialStoreProvider)
+            .delete(credentialKey(vault.vaultId));
+        await SyncStateStore(vault.store).clear();
+        state = null;
+      });
 }
 
 final syncSetupProvider = NotifierProvider<SyncSetupNotifier, SyncSetup?>(

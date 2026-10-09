@@ -158,6 +158,9 @@ class SyncController extends Notifier<SyncStatus> {
     state = SyncRunning(lastSync: _lastSync);
     try {
       final report = await notifier.exclusive(() async {
+        // Sync was turned off, or set up again, while this run waited for
+        // the lock: this backend is no longer the vault's.
+        if (!_isCurrent(backend)) return null;
         final result = await SyncEngine(
           vault: session.vault,
           backend: backend,
@@ -178,6 +181,8 @@ class SyncController extends Notifier<SyncStatus> {
         if (await gc.isDue()) lastBlobGc = await gc.run();
         return result;
       });
+      // The status belongs to whatever setup replaced this one.
+      if (report == null || !_isCurrent(backend)) return null;
       lastReport = report;
       _lastSync = ref.read(clockProvider)();
       final current = ref.read(vaultSessionProvider);
@@ -220,6 +225,9 @@ class SyncController extends Notifier<SyncStatus> {
     }
     return null;
   }
+
+  bool _isCurrent(StorageBackend backend) =>
+      identical(ref.read(storageBackendProvider), backend);
 
   /// Takes the bucket's new vault key after [SyncKeyChanged]: [password]
   /// must open the bucket's `vault.json`, or [WrongPassword] and nothing

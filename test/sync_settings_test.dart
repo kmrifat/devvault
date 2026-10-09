@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
@@ -106,6 +108,7 @@ void main() {
     late Object? probeError;
     late StorageCapabilities probed;
     late MemoryBackend bucket;
+    late _GcGate gc;
 
     Future<void> open(WidgetTester tester) async {
       tester.view
@@ -122,6 +125,7 @@ void main() {
         conditionalDelete: false,
       );
       bucket = MemoryBackend();
+      gc = _GcGate(bucket);
       await pumpUnlockedApp(
         tester,
         location: Routes.settingsSync,
@@ -139,7 +143,7 @@ void main() {
             return probed;
           }),
           storageBackendProvider.overrideWith(
-            (ref) => ref.watch(syncSetupProvider) == null ? null : bucket,
+            (ref) => ref.watch(syncSetupProvider) == null ? null : gc,
           ),
         ],
       );
@@ -430,6 +434,115 @@ void main() {
       await tester.pump(const Duration(seconds: 10));
     });
 
+    /// Gives sync's real I/O, and its timers, time until [done].
+    Future<void> runUntil(WidgetTester tester, bool Function() done) async {
+      for (var i = 0; i < 500 && !done(); i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      expect(done(), isTrue, reason: 'timed out');
+    }
+
+    /// Turns sync on without the form, and runs until [done].
+    Future<void> turnOn(WidgetTester tester, bool Function() done) async {
+      unawaited(
+        appContainer(tester)
+            .read(syncSetupProvider.notifier)
+            .save(
+              const SyncSettings(accountId: _accountId, bucket: 'my-devvault'),
+              const AwsCredentials(
+                accessKeyId: _accessKey,
+                secretAccessKey: _secretKey,
+              ),
+              probed,
+            ),
+      );
+      await runUntil(tester, done);
+    }
+
+    Directory syncFolder(WidgetTester tester) =>
+        Directory('${vault(tester).store.root.path}.sync');
+
+    testWidgets('turning sync off waits for a blob GC still running', (
+      tester,
+    ) async {
+      await open(tester);
+      final release = gc.hold();
+      await turnOn(tester, () => gc.reached);
+
+      // GC is held mid-run, before it saves the sync state.
+      var off = false;
+      unawaited(
+        appContainer(tester)
+            .read(syncSetupProvider.notifier)
+            .turnOff()
+            .whenComplete(() => off = true),
+      );
+      for (var i = 0; i < 20; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(off, isFalse, reason: 'turned off under a running GC');
+      expect(keychain.values, isNotEmpty);
+      expect(syncFolder(tester).existsSync(), isTrue);
+
+      release();
+      await runUntil(tester, () => off);
+      final controller = appContainer(tester)
+          .read(syncControllerProvider.notifier);
+      expect(controller.lastBlobGc, isNotNull); // it finished
+      expect(keychain.values, isEmpty);
+      expect(syncFolder(tester).existsSync(), isFalse);
+      expect(appContainer(tester).read(syncControllerProvider), isA<SyncOff>());
+      await settleSync(tester);
+      expect(syncFolder(tester).existsSync(), isFalse);
+    });
+
+    testWidgets('a sync waiting its turn finds sync off and does nothing', (
+      tester,
+    ) async {
+      await open(tester);
+      await turnOn(
+        tester,
+        () => switch (appContainer(tester).read(syncControllerProvider)) {
+          SyncIdle(lastSync: _?) => true,
+          _ => false,
+        },
+      );
+      final container = appContainer(tester);
+      final session = container.read(vaultSessionProvider.notifier);
+      final edit = Completer<void>();
+      // An edit holds the lock; turning off and then a sync queue behind.
+      unawaited(session.exclusive(() => edit.future));
+      var off = false;
+      unawaited(
+        container
+            .read(syncSetupProvider.notifier)
+            .turnOff()
+            .whenComplete(() => off = true),
+      );
+      final lists = bucket.log.length;
+      var synced = false;
+      unawaited(
+        container
+            .read(syncControllerProvider.notifier)
+            .syncNow()
+            .whenComplete(() => synced = true),
+      );
+
+      edit.complete();
+      await runUntil(tester, () => synced || bucket.log.length > lists);
+      expect(bucket.log, hasLength(lists), reason: 'synced after turning off');
+      expect(off, isTrue);
+      expect(syncFolder(tester).existsSync(), isFalse);
+      expect(container.read(syncControllerProvider), isA<SyncOff>());
+      await settleSync(tester);
+    });
+
     test('AwsCredentials never prints the secret', () {
       expect(
         const AwsCredentials(
@@ -460,4 +573,48 @@ void main() {
       Routes.settingsSync,
     );
   });
+}
+
+/// [inner], except that blob GC's listing (`<vault_id>/blobs/`) can be held
+/// until the test releases it.
+class _GcGate implements StorageBackend {
+  _GcGate(this.inner);
+
+  final StorageBackend inner;
+  Completer<void>? _hold;
+
+  /// Whether GC has reached the held listing.
+  bool reached = false;
+
+  /// Holds the next GC listing; call the result to let it go on.
+  void Function() hold() {
+    final hold = _hold = Completer<void>();
+    return hold.complete;
+  }
+
+  @override
+  Future<List<RemoteObject>> list(String prefix) async {
+    if (prefix.endsWith('/${ObjectType.blob.folder}/')) {
+      if (_hold case final hold?) {
+        reached = true;
+        await hold.future;
+        _hold = null;
+      }
+    }
+    return inner.list(prefix);
+  }
+
+  @override
+  Future<RemoteBody?> get(String key) => inner.get(key);
+
+  @override
+  Future<String> put(
+    String key,
+    Uint8List bytes, {
+    WriteCondition condition = const WriteCondition.always(),
+  }) => inner.put(key, bytes, condition: condition);
+
+  @override
+  Future<void> delete(String key, {String? ifMatch}) =>
+      inner.delete(key, ifMatch: ifMatch);
 }
