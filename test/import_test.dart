@@ -548,12 +548,14 @@ void main() {
       await tester.enterText(tags, 'ci');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
+      // One typed without Return is kept on import.
+      await tester.enterText(tags, ' crashlytics ');
 
       await tapImport(tester, () => index(tester).all.isNotEmpty);
       final item = index(tester).all.single;
       expect(item.platform, 'watchos');
       expect(item.environment, 'staging');
-      expect(item.tags, ['firebase', 'ci']);
+      expect(item.tags, ['firebase', 'ci', 'crashlytics']);
       expect(item.appId, isNull);
     });
 

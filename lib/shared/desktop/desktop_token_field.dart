@@ -6,7 +6,12 @@ import 'desktop_theme.dart';
 
 /// A token field for tags: each tag is a pill, and the user types new ones
 /// at the end. Return or a comma adds the typed tag; Backspace in the empty
-/// input removes the last one; a pill's × removes that one.
+/// input removes the last one; a pill's × removes that one. Leaving the
+/// field adds what was typed, too.
+///
+/// A form passes a [controller] and calls [DesktopTokenController.commit]
+/// on save, so a tag typed without Return isn't lost (Save by keyboard
+/// doesn't leave the field).
 ///
 /// No kit has one, so DevVault draws it in its own colours, sized like the
 /// kit's text fields (22 pt on macOS).
@@ -16,32 +21,53 @@ class DesktopTokenField extends StatefulWidget {
     required this.tokens,
     required this.onChanged,
     this.placeholder,
+    this.controller,
   });
 
   final List<String> tokens;
   final ValueChanged<List<String>> onChanged;
   final String? placeholder;
 
+  /// Holds the text typed but not yet a token.
+  final DesktopTokenController? controller;
+
   @override
   State<DesktopTokenField> createState() => _DesktopTokenFieldState();
 }
 
+/// The text typed into a [DesktopTokenField] but not yet made a token.
+class DesktopTokenController extends TextEditingController {
+  /// [tokens] with the typed tag added the way Return adds it (trimmed;
+  /// nothing if it's empty or already there), and the input cleared.
+  List<String> commit(List<String> tokens) {
+    final tag = text.trim();
+    clear();
+    if (tag.isEmpty || tokens.contains(tag)) return tokens;
+    return [...tokens, tag];
+  }
+}
+
 class _DesktopTokenFieldState extends State<DesktopTokenField> {
-  final _input = TextEditingController();
-  late final _focus = FocusNode(onKeyEvent: _onKey);
+  DesktopTokenController? _ownInput;
+  late final _focus = FocusNode(onKeyEvent: _onKey)..addListener(_onFocus);
+
+  DesktopTokenController get _input =>
+      widget.controller ?? (_ownInput ??= DesktopTokenController());
 
   @override
   void dispose() {
-    _input.dispose();
+    _ownInput?.dispose();
     _focus.dispose();
     super.dispose();
   }
 
-  void _commit(String text) {
-    final tag = text.trim();
-    _input.clear();
-    if (tag.isEmpty || widget.tokens.contains(tag)) return;
-    widget.onChanged([...widget.tokens, tag]);
+  void _commit() {
+    final tokens = _input.commit(widget.tokens);
+    if (!identical(tokens, widget.tokens)) widget.onChanged(tokens);
+  }
+
+  void _onFocus() {
+    if (!_focus.hasFocus && mounted) _commit();
   }
 
   void _remove(String tag) => widget.onChanged([...widget.tokens]..remove(tag));
@@ -58,7 +84,9 @@ class _DesktopTokenFieldState extends State<DesktopTokenField> {
   }
 
   void _onChanged(String text) {
-    if (text.contains(',')) _commit(text.replaceAll(',', ''));
+    if (!text.contains(',')) return;
+    _input.text = text.replaceAll(',', '');
+    _commit();
   }
 
   @override
@@ -111,8 +139,8 @@ class _DesktopTokenFieldState extends State<DesktopTokenField> {
                         cursorColor: colors.accent,
                         cursorWidth: 1,
                         onChanged: _onChanged,
-                        onSubmitted: (text) {
-                          _commit(text);
+                        onSubmitted: (_) {
+                          _commit();
                           _focus.requestFocus();
                         },
                         decoration: InputDecoration.collapsed(
