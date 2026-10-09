@@ -4,6 +4,7 @@ import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/create_vault/desktop_recovery_kit_view.dart';
 import 'package:devvault/features/create_vault/recovery_kit_card.dart';
 import 'package:devvault/features/settings/new_recovery_kit_dialog.dart';
 import 'package:devvault/shared/desktop_ui.dart' show DesktopButton;
@@ -90,11 +91,16 @@ void main() {
     await tester.tap(button('Rotate Key'));
     await settle(
       tester,
-      () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,
+      () => find.byType(DesktopRecoveryKitPanel).evaluate().isNotEmpty,
     );
     expect(find.text('Your new recovery key'), findsOneWidget);
+    // N02's desktop push buttons, not the phone's card (WALK-06).
+    expect(find.byType(RecoveryKitCard), findsNothing);
+    for (final label in ['Save PDF…', 'Print…', 'Save as Text…', 'Copy']) {
+      expect(button(label), findsOneWidget);
+    }
     final newRecovery = tester
-        .widget<RecoveryKitCard>(find.byType(RecoveryKitCard))
+        .widget<DesktopRecoveryKitPanel>(find.byType(DesktopRecoveryKitPanel))
         .kit
         .recoveryKey;
     await tester.tap(find.text("I've saved the new key"));
@@ -202,8 +208,9 @@ void main() {
       tester,
       () => find.text('Key rotation finished').evaluate().isNotEmpty,
     );
+    expect(find.byType(RecoveryKitCard), findsNothing);
     final shown = tester
-        .widget<RecoveryKitCard>(find.byType(RecoveryKitCard))
+        .widget<DesktopRecoveryKitPanel>(find.byType(DesktopRecoveryKitPanel))
         .kit
         .recoveryKey;
     await tester.runAsync(() async {

@@ -7,10 +7,11 @@ import '../../services/recovery_kit.dart';
 import '../../shared/ui.dart';
 
 /// The recovery key, shown large, with the ways to keep it: a PDF, a
-/// printout, a text file or the clipboard (cleared after 30 s).
+/// printout, a text file or the clipboard (cleared after the setting's
+/// time).
 ///
 /// Used on a phone's first run and when the user makes a new kit from
-/// Settings (P4-05); the desktop first run (N02) has its own layout and
+/// Settings (P4-05). Desktop uses `DesktopRecoveryKitPanel` (N02), which
 /// shares the actions through [RecoveryKitActions]. Documents are built in
 /// memory and handed straight to the save or print dialog; the PDF bytes
 /// are wiped afterwards.
@@ -149,8 +150,9 @@ class _KeyGrid extends StatelessWidget {
 }
 
 /// What can be done with a recovery kit: copy the key (through the
-/// clipboard guard, cleared after 30 s), save it as text or PDF, or print
-/// it. Shared by [RecoveryKitCard] and the desktop recovery kit (N02).
+/// clipboard guard, cleared after the user's setting), save it as text or
+/// PDF, or print it. Shared by [RecoveryKitCard] and the desktop recovery
+/// kit (N02).
 ///
 /// PDFs are built in memory and handed straight to the save or print
 /// dialog; their bytes are wiped afterwards. Feedback names the action,
@@ -173,11 +175,15 @@ mixin RecoveryKitActions<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   }
 
   Future<void> copyKit() async {
-    await ref.read(clipboardGuardProvider).copySecret(kit.recoveryKey);
+    final guard = ref.read(clipboardGuardProvider);
+    // The time this copy is cleared after: the setting, read by the guard.
+    final after = guard.clearAfter;
+    await guard.copySecret(kit.recoveryKey);
     if (mounted) {
       _toast(
         'Recovery key copied',
-        description: 'It clears from the clipboard in 30 seconds.',
+        description:
+            'It clears from the clipboard in ${after.inSeconds} seconds.',
       );
     }
   }
