@@ -4,6 +4,7 @@ import 'package:devvault/app/routes.dart';
 import 'package:devvault/core/expiry.dart';
 import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/app_editor/app_editor.dart';
 import 'package:devvault/features/item_editor/item_editor.dart';
 import 'package:devvault/features/vault/vault_heading.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
@@ -16,6 +17,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -865,6 +867,151 @@ void main() {
       expect(inSidebar('Acme Corp'), findsNothing);
       // The selection follows the new name.
       expect(location(tester), Routes.vault(org: 'Globex'));
+    });
+  });
+
+  group('explorer keyboard', () {
+    Future<void> press(
+      WidgetTester tester,
+      LogicalKeyboardKey key, {
+      bool shift = false,
+    }) async {
+      if (shift) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(key);
+      if (shift) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+    }
+
+    Item item(WidgetTester tester, String title) =>
+        index(tester).items.values.firstWhere((i) => i.title == title);
+
+    testWidgets('arrows move the cursor, open, close and step in and out; '
+        'Enter opens the row', (tester) async {
+      await open(tester);
+      final kitchenly = appId(tester, 'Kitchenly');
+      final ledgerly = appId(tester, 'Ledgerly');
+      final stripe = item(tester, 'Stripe secret key');
+
+      // A click puts the cursor on the row, and the explorer takes focus.
+      await tap(tester, row('Ledgerly'));
+      expect(row('Stripe secret key'), findsOneWidget);
+
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(inSidebar('Stripe secret key'), findsNothing);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(row('Stripe secret key'), findsOneWidget);
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(location(tester), Routes.vault(item: stripe.id, app: ledgerly));
+
+      // ← on an item steps out to its app; ↑ goes to the app above.
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await press(tester, LogicalKeyboardKey.space);
+      expect(location(tester), Routes.vault(app: kitchenly));
+    });
+
+    testWidgets('Home, End and typing jump to rows', (tester) async {
+      await open(tester);
+      await tap(tester, row('Ledgerly'));
+
+      await press(tester, LogicalKeyboardKey.end);
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(location(tester), Routes.vault(app: VaultFilter.none));
+
+      await press(tester, LogicalKeyboardKey.home);
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(location(tester), Routes.vault(app: appId(tester, 'Kitchenly')));
+
+      await press(tester, LogicalKeyboardKey.keyL);
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(location(tester), Routes.vault(app: appId(tester, 'Ledgerly')));
+    });
+
+    testWidgets('F2 edits, Delete asks to delete, Shift-F10 opens the menu', (
+      tester,
+    ) async {
+      await open(tester);
+      await tap(tester, row('Ledgerly'));
+
+      await press(tester, LogicalKeyboardKey.f2);
+      expect(find.byType(AppEditor), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      await tap(tester, row('Ledgerly'));
+      await press(tester, LogicalKeyboardKey.delete);
+      expect(find.text('Delete “Ledgerly”?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      await tap(tester, row('Ledgerly'));
+      await press(tester, LogicalKeyboardKey.f10, shift: true);
+      // Only the menu has this ("Edit app…" is also the list's button).
+      expect(find.text('Move to organization…'), findsOneWidget);
+    });
+  });
+
+  group('explorer drag-hover', () {
+    Finder listed(String title) => find.descendant(
+      of: find.byType(VaultListPane),
+      matching: find.text(title),
+    );
+
+    Future<TestGesture> grab(WidgetTester tester, String title) async {
+      final gesture = await tester.startGesture(
+        tester.getCenter(listed(title)),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump();
+      await gesture.moveBy(const Offset(-30, 0));
+      await tester.pump();
+      return gesture;
+    }
+
+    testWidgets('a closed app held under a drag opens, so the drop can go '
+        'onto its items', (tester) async {
+      await open(tester);
+      final ledgerly = appId(tester, 'Ledgerly');
+      expect(inSidebar('Stripe secret key'), findsNothing);
+
+      final gesture = await grab(tester, 'GitHub deploy key');
+      await gesture.moveTo(tester.getCenter(row('Ledgerly')));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump();
+      expect(row('Stripe secret key'), findsOneWidget);
+
+      await gesture.moveTo(tester.getCenter(row('Stripe secret key')));
+      await tester.pump();
+      await gesture.up();
+      for (
+        var i = 0;
+        i < 300 &&
+            index(tester).items.values
+                    .firstWhere((i) => i.title == 'GitHub deploy key')
+                    .appId !=
+                ledgerly;
+        i++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(row('Ledgerly, 2 items'), findsOneWidget);
+    });
+
+    testWidgets('passing over a closed app doesn’t open it', (tester) async {
+      await open(tester);
+      final gesture = await grab(tester, 'GitHub deploy key');
+      await gesture.moveTo(tester.getCenter(row('Ledgerly')));
+      await tester.pump(const Duration(milliseconds: 200));
+      await gesture.moveTo(tester.getCenter(inSidebar('Tags')));
+      await tester.pump(const Duration(seconds: 1));
+      expect(inSidebar('Stripe secret key'), findsNothing);
+      await gesture.up();
+      await tester.pumpAndSettle();
     });
   });
 
