@@ -45,6 +45,20 @@ void main() {
     expect(find.textContaining('tool_timeout_sec = 150'), findsOneWidget);
   });
 
+  testWidgets('keep running needs agents on', (tester) async {
+    await open(tester);
+    final c = appContainer(tester);
+    await tester.tap(find.text('Keep running when the window is closed'));
+    await tester.pumpAndSettle();
+    // Agents are off: nothing to keep running for.
+    expect(c.read(settingsProvider).keepRunningWhenClosed, isTrue);
+    c.read(settingsProvider.notifier).setAgentsEnabled(true);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep running when the window is closed'));
+    await tester.pumpAndSettle();
+    expect(c.read(settingsProvider).keepRunningWhenClosed, isFalse);
+  });
+
   testWidgets('macOS only for now', (tester) async {
     await open(tester, supported: false);
     expect(find.text('Available on macOS for now.'), findsOneWidget);

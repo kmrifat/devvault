@@ -21,6 +21,7 @@ import 'layout.dart';
 import 'router.dart';
 import 'routes.dart';
 import 'session_redirect.dart';
+import 'window_close.dart';
 import 'theme.dart';
 
 class DevVaultApp extends ConsumerStatefulWidget {
@@ -159,11 +160,18 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
         // Desktop controls are drawn by the OS's own kit (ADR-0005). Around
         // the Navigator, so menus the kits open as routes are themed too.
         if (_layout != AppLayout.desktop) return app;
+        final window = widget.nativeWindow
+            ? KeepRunningOnClose(child: app)
+            : app;
         return DesktopTheme(
           nativeWindow: widget.nativeWindow,
           child: DesktopCommandsScope(
             commands: _commands,
-            child: AppMenus(router: _router, commands: _commands, child: app),
+            child: AppMenus(
+              router: _router,
+              commands: _commands,
+              child: window,
+            ),
           ),
         );
       },
