@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/agent_setup.dart';
 import '../../data/agent_bridge.dart';
 import '../../data/agent_clients.dart';
 import '../../data/providers.dart';
@@ -8,8 +9,8 @@ import '../../shared/desktop_ui.dart';
 import 'desktop_settings.dart' show DesktopSettingsBox, DesktopSettingsRow;
 
 /// Settings › AI Agents (design frame N07d, P5-06): whether agents may
-/// connect, whether metadata asks, how to set up Claude Code, the paired
-/// clients, and what they did this session.
+/// connect, whether metadata asks, how to set up each kind of agent, the
+/// paired clients, and what they did this session.
 class DesktopAgentsPane extends ConsumerWidget {
   const DesktopAgentsPane({super.key});
 
@@ -22,13 +23,6 @@ class DesktopAgentsPane extends ConsumerWidget {
     final helper =
         ref.watch(agentHelperPathProvider) ??
         '/Applications/DevVault.app/Contents/Helpers/devvault-mcp';
-    final command = "claude mcp add --scope user devvault -- '$helper'";
-    final colors = context.desktopColors;
-    final mono = AppText.mono(
-      context,
-      fontSize: DesktopMetrics.secondarySize,
-      color: colors.text,
-    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,31 +63,74 @@ class DesktopAgentsPane extends ConsumerWidget {
                 semanticLabel: 'Read metadata without asking',
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DesktopSettingsRow(
-                  title: 'Set up Claude Code',
-                  description: 'Run this once in a terminal:',
-                  trailing: DesktopButton(
-                    label: 'Copy',
-                    icon: DesktopSymbol.copy,
-                    onPressed: () => ref
-                        .read(clipboardGuardProvider)
-                        .clipboard
-                        .write(command),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-                  child: Text(command, style: mono),
-                ),
-              ],
-            ),
+            _AgentSetupRow(helper: helper),
           ],
         ),
         _Clients(clients: bridge.clients),
         _Activity(activity: bridge.activity),
+      ],
+    );
+  }
+}
+
+/// "Set up" for the agent picked in the pop-up: what to do, the snippet,
+/// and Copy.
+class _AgentSetupRow extends ConsumerStatefulWidget {
+  const _AgentSetupRow({required this.helper});
+
+  final String helper;
+
+  @override
+  ConsumerState<_AgentSetupRow> createState() => _AgentSetupRowState();
+}
+
+class _AgentSetupRowState extends ConsumerState<_AgentSetupRow> {
+  AgentClientKind _kind = AgentClientKind.claudeCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final setup = agentSetupFor(_kind, widget.helper);
+    final mono = AppText.mono(
+      context,
+      fontSize: DesktopMetrics.secondarySize,
+      color: context.desktopColors.text,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DesktopSettingsRow(
+          title: 'Set up an agent',
+          description: setup.instruction,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 8,
+            children: [
+              Semantics(
+                label: 'Agent',
+                child: DesktopPopup<AgentClientKind>(
+                  value: _kind,
+                  choices: [
+                    for (final kind in AgentClientKind.values)
+                      DesktopChoice(kind, kind.label),
+                  ],
+                  onChanged: (kind) => setState(() => _kind = kind),
+                ),
+              ),
+              DesktopButton(
+                label: 'Copy',
+                icon: DesktopSymbol.copy,
+                onPressed: () => ref
+                    .read(clipboardGuardProvider)
+                    .clipboard
+                    .write(setup.snippet),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+          child: Text(setup.snippet, style: mono),
+        ),
       ],
     );
   }

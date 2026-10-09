@@ -33,6 +33,18 @@ void main() {
     );
   });
 
+  testWidgets('setup for each kind of agent', (tester) async {
+    await open(tester);
+    expect(find.text('Set up an agent'), findsOneWidget);
+    expect(find.text('Run this once in a terminal:'), findsOneWidget);
+    await tester.tap(find.text('Claude Code'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Codex CLI').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Add this to ~/.codex/config.toml:'), findsOneWidget);
+    expect(find.textContaining('tool_timeout_sec = 150'), findsOneWidget);
+  });
+
   testWidgets('macOS only for now', (tester) async {
     await open(tester, supported: false);
     expect(find.text('Available on macOS for now.'), findsOneWidget);
