@@ -4,7 +4,9 @@ import 'package:devvault/app/desktop_shell.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/app/theme.dart';
+import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/services/link_opener.dart';
 import 'package:devvault/shared/desktop_ui.dart';
 import 'package:flutter/material.dart'
     show MaterialApp, PlatformProvidedMenuItemType, Scaffold;
@@ -12,6 +14,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_overrides.dart';
+
+class FakeLinkOpener implements LinkOpener {
+  final opened = <Uri>[];
+
+  @override
+  Future<void> open(Uri link) async => opened.add(link);
+}
 
 /// The desktop menu bar (design doc › Menu bar).
 void main() {
@@ -30,6 +39,7 @@ void main() {
     go: (location) => log?.add('go $location'),
     lock: () => log?.add('lock'),
     syncNow: () => log?.add('sync'),
+    open: (link) => log?.add('open $link'),
     about: () => log?.add('about'),
     commands: commands ?? DesktopCommands(),
   );
@@ -59,6 +69,7 @@ void main() {
         'View',
         'Vault',
         'Window',
+        'Help',
       ]);
       final app = m.first.entries;
       expect(
@@ -146,6 +157,35 @@ void main() {
       ]);
     });
 
+    for (final macos in [true, false]) {
+      test('${macos ? 'macOS' : 'Windows and Linux'}: Help opens the '
+          'README, the AI agents guide and a new issue, even while locked', () {
+        final log = <String>[];
+        final m = menus(macos: macos, unlocked: false, log: log);
+        final help = m.last;
+        expect(help.label, 'Help');
+        expect(help.entries.whereType<DesktopMenuItem>().map((i) => i.label), [
+          'DevVault Help',
+          'Using DevVault with AI Agents',
+          'Report an Issue…',
+          // macOS has About in the app menu.
+          if (!macos) 'About DevVault',
+        ]);
+        for (final label in [
+          'DevVault Help',
+          'Using DevVault with AI Agents',
+          'Report an Issue…',
+        ]) {
+          item(m, 'Help', label).onSelected!();
+        }
+        expect(log, [
+          'open https://github.com/kmrifat/devvault#readme',
+          'open https://github.com/kmrifat/devvault/blob/main/docs/agent/USING.md',
+          'open https://github.com/kmrifat/devvault/issues/new',
+        ]);
+      });
+    }
+
     test('Sync Now is off while sync is', () {
       final m = menus(macos: true, syncing: false);
       expect(item(m, 'Vault', 'Sync Now').onSelected, isNull);
@@ -197,6 +237,7 @@ void main() {
       'View',
       'Vault',
       'Window',
+      'Help',
     ]);
     Map<dynamic, dynamic>? find(List<Map> items, String label) {
       for (final i in items) {
@@ -217,6 +258,17 @@ void main() {
       (_) {},
     );
     expect(log, ['import']);
+
+    final help = find(top, 'DevVault Help')!;
+    expect(help['enabled'], isTrue);
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      SystemChannels.menu.name,
+      SystemChannels.menu.codec.encodeMethodCall(
+        MethodCall('Menu.selectedCallback', help['id']),
+      ),
+      (_) {},
+    );
+    expect(log, ['import', 'open ${AppMenus.helpLink}']);
   });
 
   for (final kit in [DesktopKit.fluent, DesktopKit.yaru]) {
@@ -245,8 +297,36 @@ void main() {
       await tester.tap(find.text('Import…'));
       await tester.pumpAndSettle();
       expect(log, ['import']);
+
+      await tester.tap(find.text('Help'));
+      await tester.pumpAndSettle();
+      expect(find.text('About DevVault'), findsOneWidget);
+      await tester.tap(find.text('Report an Issue…'));
+      await tester.pumpAndSettle();
+      expect(log, ['import', 'open ${AppMenus.issueLink}']);
     });
   }
+
+  testWidgets('Help opens its pages with the app\'s link opener', (
+    tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(1440, 900)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final opener = FakeLinkOpener();
+    await pumpUnlockedApp(
+      tester,
+      location: Routes.vault(),
+      layout: AppLayout.desktop,
+      overrides: [linkOpenerProvider.overrideWithValue(opener)],
+    );
+    await tester.tap(find.text('Help'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DevVault Help'));
+    await tester.pumpAndSettle();
+    expect(opener.opened, [AppMenus.helpLink]);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets('the vault window binds its commands while it is open', (
     tester,
