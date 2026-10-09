@@ -67,12 +67,18 @@ class DesktopRecoverView extends StatelessWidget {
           children: [
             DesktopFormRow(
               label: 'Recovery key',
+              multiline: true,
               child: Semantics(
                 label: 'Recovery key',
+                // Wraps, so the whole key (69 characters with its dashes)
+                // can be read back; Return still submits.
                 child: DesktopTextField(
                   controller: recoveryKey,
                   placeholder: 'XXXX-XXXX-XXXX-…',
                   mono: true,
+                  maxLines: 3,
+                  minLines: 3,
+                  autocorrect: false,
                   autofocus: true,
                   enabled: !busy,
                   onChanged: (_) => onChanged(),

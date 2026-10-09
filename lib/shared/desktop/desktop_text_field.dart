@@ -6,14 +6,18 @@ import '../../app/theme.dart' show AppText;
 import 'desktop_metrics.dart';
 import 'desktop_theme.dart';
 
-/// A single-line text field drawn by the desktop kit: `MacosTextField`,
-/// Fluent's `TextBox`, or a Yaru-themed `TextField`.
+/// A text field drawn by the desktop kit: `MacosTextField`, Fluent's
+/// `TextBox`, or a Yaru-themed `TextField`.
 ///
 /// With [obscureText] it is a secure field: masked, with autocorrect and
 /// suggestions off. (Fluent's `PasswordBox` can't turn those off, so
 /// Windows uses a masked `TextBox`.)
 ///
 /// [mono] sets the text in JetBrains Mono, for keys, IDs and file names.
+///
+/// With [maxLines] above one it is a text area, where Return types a new
+/// line, unless it has [onSubmitted]: then the text only wraps, it is still
+/// one value (a recovery key), and Return submits it.
 const _macosRadius = BorderRadius.all(
   Radius.circular(DesktopMetrics.fieldRadius),
 );
@@ -33,6 +37,7 @@ class DesktopTextField extends StatelessWidget {
     this.suffix,
     this.maxLines = 1,
     this.minLines,
+    this.autocorrect = true,
   });
 
   final TextEditingController? controller;
@@ -53,9 +58,20 @@ class DesktopTextField extends StatelessWidget {
   final int maxLines;
   final int? minLines;
 
+  /// False for keys and codes: no autocorrect or suggestions. A secure
+  /// field never has them.
+  final bool autocorrect;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
+    final corrects = autocorrect && !obscureText;
+    // A multi-line field defaults to the multiline input type and the
+    // newline action, so Return types a new line. Plain text with Done
+    // makes Return submit instead; the text still wraps.
+    final wrapsOneValue = maxLines > 1 && onSubmitted != null;
+    final keyboardType = wrapsOneValue ? TextInputType.text : null;
+    final textInputAction = wrapsOneValue ? TextInputAction.done : null;
     final style = mono ? AppText.mono(context, fontSize: 12.5) : null;
     final monoStyle = style?.copyWith(color: colors.text);
     return switch (context.desktopKit) {
@@ -83,8 +99,10 @@ class DesktopTextField extends StatelessWidget {
         obscureText: obscureText,
         enabled: enabled,
         autofocus: autofocus,
-        autocorrect: !obscureText,
-        enableSuggestions: !obscureText,
+        autocorrect: corrects,
+        enableSuggestions: corrects,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
         style:
             monoStyle ??
             TextStyle(fontSize: DesktopMetrics.bodySize, color: colors.text),
@@ -100,8 +118,10 @@ class DesktopTextField extends StatelessWidget {
         onSubmitted: onSubmitted,
         obscureText: obscureText,
         enabled: enabled,
-        autocorrect: !obscureText,
-        enableSuggestions: !obscureText,
+        autocorrect: corrects,
+        enableSuggestions: corrects,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
         autofocus: autofocus,
         style: monoStyle,
         suffix: suffix,
@@ -116,8 +136,10 @@ class DesktopTextField extends StatelessWidget {
         obscureText: obscureText,
         enabled: enabled,
         autofocus: autofocus,
-        autocorrect: !obscureText,
-        enableSuggestions: !obscureText,
+        autocorrect: corrects,
+        enableSuggestions: corrects,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
         style: monoStyle,
         maxLines: maxLines,
         minLines: minLines,

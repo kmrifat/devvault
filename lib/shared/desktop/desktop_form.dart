@@ -53,12 +53,17 @@ class DesktopFormRow extends StatelessWidget {
     required this.child,
     this.note,
     this.error,
+    this.multiline = false,
   });
 
   final String label;
   final Widget child;
   final String? note;
   final String? error;
+
+  /// The control is taller than one line (a text area): the label lines up
+  /// with its first line instead of its middle.
+  final bool multiline;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +74,10 @@ class DesktopFormRow extends StatelessWidget {
     final error = this.error;
     final note = error ?? this.note;
     final row = Row(
+      crossAxisAlignment: multiline
+          ? CrossAxisAlignment.baseline
+          : CrossAxisAlignment.center,
+      textBaseline: TextBaseline.alphabetic,
       children: [
         // macos_ui keeps room for the focus ring around a text field, so a
         // field is taller than a pop-up of the same visible height. Every
