@@ -1,5 +1,7 @@
 import 'package:devvault/shared/desktop_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fl show InfoBar;
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart' show Material;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'pump_desktop.dart';
@@ -123,5 +125,77 @@ void main() {
     await tester.tap(find.byIcon(DesktopSymbol.close.of(DesktopKit.macos)));
     await tester.pumpAndSettle();
     expect(find.textContaining('moved to Kitchenly'), findsNothing);
+  });
+
+  group('position (WALK-05)', () {
+    const window = Size(1280, 800);
+
+    /// The window's bottom edge less the status bar.
+    const statusBarTop = 800 - DesktopMetrics.statusBarHeight;
+
+    /// Shows a toast in a [window]-sized window and returns its rect.
+    Future<Rect> shown(WidgetTester tester, DesktopKit kit) async {
+      tester.view
+        ..physicalSize = window
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpDesktop(tester, kit, trigger(action: () {}));
+      await tester.tap(find.text('Show'));
+      await settle(tester);
+      final toast = kit == DesktopKit.fluent
+          ? find.byType(fl.InfoBar)
+          : find.byWidgetPredicate((w) => w.runtimeType.toString() == '_Toast');
+      return tester.getRect(toast);
+    }
+
+    Future<void> closeAll(WidgetTester tester) async {
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
+    }
+
+    testWidgets('macos: the banner sits at the bottom right, above the '
+        'status bar, clear of the toolbar and the inspector header', (
+      tester,
+    ) async {
+      final rect = await shown(tester, DesktopKit.macos);
+      expect(rect.right, window.width - DesktopMetrics.toastInset);
+      expect(rect.bottom, statusBarTop - DesktopMetrics.toastInset);
+      // The toolbar and the inspector's header row (title, Export, Edit,
+      // ⋯) under it.
+      const header = Rect.fromLTWH(
+        0,
+        0,
+        1280,
+        DesktopMetrics.toolbarHeight + 120,
+      );
+      expect(rect.overlaps(header), isFalse, reason: '$rect');
+      await closeAll(tester);
+    });
+
+    testWidgets('yaru: the snackbar sits at the bottom centre, above the '
+        'status bar', (tester) async {
+      final rect = await shown(tester, DesktopKit.yaru);
+      expect(rect.bottom, statusBarTop - DesktopMetrics.toastInset);
+      final card = tester.getRect(
+        find
+            .ancestor(
+              of: find.textContaining('moved to Kitchenly'),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(card.center.dx, closeTo(window.width / 2, 0.5));
+      expect(card.bottom, lessThanOrEqualTo(statusBarTop));
+      await closeAll(tester);
+    });
+
+    testWidgets("fluent: the InfoBar doesn't cover the status bar", (
+      tester,
+    ) async {
+      final rect = await shown(tester, DesktopKit.fluent);
+      expect(rect.bottom, lessThanOrEqualTo(statusBarTop));
+      expect(rect.center.dx, closeTo(window.width / 2, 0.5));
+      await closeAll(tester);
+    });
   });
 }

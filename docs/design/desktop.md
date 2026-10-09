@@ -208,14 +208,19 @@ through `package:devvault/shared/desktop_ui.dart`:
   window, like Spotlight (quick open, ⌘K). `DesktopRadio` (the conflict
   sheet's choices) and `DesktopProgress` (a spinner).
 - `showDesktopToast`: a short, passing message with an optional action
-  (Undo). On macOS it's a banner like Notification Center's, at the top
-  right under the toolbar: a status symbol, the title in bold, a push
-  button for the action, and, on hover, a round × over its top-left
-  corner. Hovering keeps it open. On
-  Windows it's Fluent's `InfoBar` at the bottom; on Linux, a Yaru
-  snackbar. One shows at a time. Screens call `showAppToast`, which
-  picks this on desktop and bc_ui's toast on phones. Frames:
-  `N03-toast`, `N03-toast-light`.
+  (Undo). On macOS it's a banner like Notification Center's, at the
+  bottom right just above the status bar (`DesktopMetrics.toastInset`,
+  12 pt, from the right edge and above the status bar), so it never
+  covers the toolbar or the inspector's Export / Edit / ⋯ (WALK-05). It
+  slides in from the right and below: a status symbol, the title in
+  bold, a push button for the action, and, on hover, a round × over its
+  top-left corner. Hovering keeps it open. On Windows it's Fluent's
+  `InfoBar`, bottom centre where `displayInfoBar` puts it (its 24 pt
+  margin ends it at the status bar's top edge); on Linux, a Yaru
+  snackbar, bottom centre, the same 12 pt above the status bar. One
+  shows at a time. Screens call `showAppToast`, which picks this on
+  desktop and bc_ui's toast on phones. Frames: `N03-toast`,
+  `N03-toast-light`.
 - `DesktopPullDownButton`: an icon push button (⋯) that drops a menu of
   commands, destructive ones in red (the inspector's Replace file… and
   Delete item…). `DesktopContextMenu` opens the same kind of menu where
