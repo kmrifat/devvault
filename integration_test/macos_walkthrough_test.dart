@@ -914,7 +914,6 @@ class _Walk {
   Future<void> _importAll() async {
     final parsers = CredentialParsers.standard();
     final hiddenExpiry = <String>[];
-    final coveredByToast = <String>[];
     for (final (i, c) in _imports.indexed) {
       final bytes = fixture(c.file);
       final before = index.all.length;
@@ -1024,12 +1023,17 @@ class _Walk {
       if (c.secrets.isNotEmpty) {
         expectNoSecretInToasts(c.secrets.values);
       }
-      // The "File imported" toast sits over the inspector's header.
+      // WALK-05 (fixed): the "File imported" toast sits at the bottom
+      // right, so the inspector's header buttons can be clicked at once.
       final edit = inInspector(find.widgetWithText(DesktopButton, 'Edit'));
-      if (edit.evaluate().isNotEmpty &&
-          edit.hitTestable().evaluate().isEmpty &&
-          toastTexts().isNotEmpty) {
-        coveredByToast.add(c.file);
+      if (edit.evaluate().isNotEmpty) {
+        expect(
+          edit.hitTestable(),
+          findsWidgets,
+          reason:
+              "${c.file}: the inspector's Edit button can be clicked right "
+              'after an import',
+        );
       }
     }
     // KNOWN ISSUE WALK-04 (should fix): at 1280×800 the import sheet's
@@ -1040,14 +1044,6 @@ class _Walk {
       hiddenExpiry.isEmpty,
       'the import sheet shows the expiry line without scrolling '
           '(out of view for: ${hiddenExpiry.join(', ')})',
-    );
-    // KNOWN ISSUE WALK-05 (should fix): the toast after an import covers
-    // the inspector's Export / Edit / ⋯ buttons while it shows.
-    knownIssue(
-      'WALK-05',
-      coveredByToast.isEmpty,
-      'the inspector\'s Edit button can be clicked right after an import '
-          '(covered by the toast after: ${coveredByToast.join(', ')})',
     );
 
     // A file nothing reads is kept as a generic file, with nothing made up.

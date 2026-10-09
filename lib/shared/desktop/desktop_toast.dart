@@ -14,12 +14,15 @@ enum DesktopToastKind { info, success, danger }
 /// Shows a short, passing message ("“Upload keystore” moved to Kitchenly")
 /// the way the OS does, with an optional [actionLabel] such as Undo:
 ///
-/// - macOS: a banner like Notification Center's, at the top right of the
-///   window under the toolbar. It closes after [duration] (zero keeps it),
-///   or with the round × over its corner, which shows on hover; hovering
-///   keeps it open.
-/// - Windows: Fluent's `InfoBar`, at the bottom of the window.
-/// - Linux: a Yaru snackbar, at the bottom of the window.
+/// - macOS: a banner like Notification Center's, at the bottom right of
+///   the window just above the status bar, clear of the toolbar and the
+///   inspector's header buttons. It closes after [duration] (zero keeps
+///   it), or with the round × over its corner, which shows on hover;
+///   hovering keeps it open.
+/// - Windows: Fluent's `InfoBar`, at the bottom centre of the window, where
+///   `displayInfoBar` puts it. Its 24 pt margin, the status bar's height,
+///   ends it at the status bar's top edge, so it doesn't cover it.
+/// - Linux: a Yaru snackbar, at the bottom centre, above the status bar.
 ///
 /// One shows at a time: a new message replaces the one showing (the
 /// `InfoBar`s on Windows stack, as Fluent's do). Never pass a secret: the
@@ -169,17 +172,19 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
         child: macos ? _banner(context) : _snackbar(context),
       ),
     );
+    // Above the status bar: at the bottom right on macOS, where it covers
+    // none of the toolbar's or the inspector header's buttons, and at the
+    // bottom centre on Linux.
     return Positioned(
-      top: macos ? DesktopMetrics.toolbarHeight + 8 - _closeInset : null,
-      right: macos ? 12 : null,
-      bottom: macos ? null : 24,
+      right: macos ? DesktopMetrics.toastInset : null,
+      bottom: DesktopMetrics.statusBarHeight + DesktopMetrics.toastInset,
       left: macos ? null : 0,
       width: macos ? null : MediaQuery.sizeOf(context).width,
       child: FadeTransition(
         opacity: curve,
         child: SlideTransition(
           position: Tween(
-            begin: macos ? const Offset(0.15, 0) : const Offset(0, 0.3),
+            begin: macos ? const Offset(0.15, 0.15) : const Offset(0, 0.3),
             end: Offset.zero,
           ).animate(curve),
           child: macos ? card : Center(child: card),

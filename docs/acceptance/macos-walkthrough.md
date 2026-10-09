@@ -38,14 +38,15 @@ They aren't committed. The names below are from that folder.
 The test checks each one with `knownIssue(...)`, which logs and lists the
 problem instead of failing. It also reports when a problem no longer
 reproduces. No Flutter errors (overflows, exceptions) were reported during
-the walk.
+the walk. Once a problem is fixed, its check becomes a normal expectation
+and the finding is marked **Fixed**.
 
 | # | Flow | Result | Notes |
 |---|---|---|---|
 | 1 | Create a vault (N01): a short password and a mismatched confirmation are refused; the strength meter shows; Argon2id runs | Pass | |
 | 1b | Recovery kit (N02): Open Vault waits for the checkbox; Save as Text… saves the key and the vault id; the toast has no secret | Pass | |
 | 2 | Vault › Lock (⌘L); a wrong password says "That password didn't open this vault" and clears the field; the right one unlocks | Pass | |
-| 3 | Import every type (D04 / N04), alternating the toolbar's Import and File › Import… (⌘I): `.p8` (Team ID asked), `.p12` (password), `.mobileprovision`, `.jks` (store password), `google-services.json`, `GoogleService-Info.plist`, service account, OAuth client, SSH key, an unknown file (generic), and the same file twice (Open existing) | Pass | Every fact the parser reads is on the sheet. The expiry comes from the file, or the sheet says there's none. Each item lands in the table, selected. WALK-04, WALK-05 |
+| 3 | Import every type (D04 / N04), alternating the toolbar's Import and File › Import… (⌘I): `.p8` (Team ID asked), `.p12` (password), `.mobileprovision`, `.jks` (store password), `google-services.json`, `GoogleService-Info.plist`, service account, OAuth client, SSH key, an unknown file (generic), and the same file twice (Open existing) | Pass | Every fact the parser reads is on the sheet. The expiry comes from the file, or the sheet says there's none. Each item lands in the table, selected. WALK-04, WALK-05 (fixed) |
 | 3b | File › New Item (⌘N): two Generic Secrets with your own expiry (in 10 days, 3 days ago) | Pass | Covers Generic Secret: on desktop, Import has no "Paste a secret" (that's the phone's B4b) |
 | 4 | Inspector: fields, "From file", reveal and hide a secret, the status bar's history, Save As… writes the file back byte for byte | Pass | |
 | 4b | Clipboard guard: Settings › Security › Clear copied secrets after 10 seconds; Copy Value puts it on the real clipboard; the toast says 10 seconds and has no secret; cleared after ~9.5–9.7 s; something copied since is left alone | Pass | |
@@ -121,7 +122,7 @@ have**. None is a blocker.
   scrolls. The facts box (12 rows for a `.p12`) takes the room.
 - **Screenshot:** `10-import-legacy-p12.png` (also `11-…`, `13-…`)
 
-### WALK-05 · The toast covers the inspector's buttons after an import (should fix)
+### WALK-05 · The toast covers the inspector's buttons after an import (should fix, **Fixed**)
 
 - **Steps:** Import any file and look at the inspector right away.
 - **Expected:** Export, Edit and ⋯ can be clicked.
@@ -131,6 +132,11 @@ have**. None is a blocker.
   This happened on 8 of 9 imports.
 - **Screenshot:** `10-import-legacy-p12.png` (the toast over the header
   behind the sheet), `14-import-google-services-json.png`
+- **Fixed:** the macOS banner now sits at the bottom right, 12 pt above
+  the status bar and 12 pt from the right edge, clear of the toolbar and
+  the inspector's header. The Linux snackbar sits above the status bar
+  too, and Fluent's `InfoBar` ends at its top edge. The walk now expects
+  Edit to be clickable right after each import.
 
 ### WALK-06 · New Kit and Rotate show the phone's recovery-key card (should fix)
 
