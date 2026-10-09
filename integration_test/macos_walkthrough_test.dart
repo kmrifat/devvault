@@ -40,6 +40,7 @@ import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/sync_controller.dart';
 import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/create_vault/desktop_recovery_kit_view.dart';
 import 'package:devvault/features/create_vault/recovery_kit_card.dart';
 import 'package:devvault/features/expiry/desktop_expiry_table.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
@@ -914,7 +915,6 @@ class _Walk {
   Future<void> _importAll() async {
     final parsers = CredentialParsers.standard();
     final hiddenExpiry = <String>[];
-    final coveredByToast = <String>[];
     for (final (i, c) in _imports.indexed) {
       final bytes = fixture(c.file);
       final before = index.all.length;
@@ -1024,12 +1024,17 @@ class _Walk {
       if (c.secrets.isNotEmpty) {
         expectNoSecretInToasts(c.secrets.values);
       }
-      // The "File imported" toast sits over the inspector's header.
+      // WALK-05 (fixed): the "File imported" toast sits at the bottom
+      // right, so the inspector's header buttons can be clicked at once.
       final edit = inInspector(find.widgetWithText(DesktopButton, 'Edit'));
-      if (edit.evaluate().isNotEmpty &&
-          edit.hitTestable().evaluate().isEmpty &&
-          toastTexts().isNotEmpty) {
-        coveredByToast.add(c.file);
+      if (edit.evaluate().isNotEmpty) {
+        expect(
+          edit.hitTestable(),
+          findsWidgets,
+          reason:
+              "${c.file}: the inspector's Edit button can be clicked right "
+              'after an import',
+        );
       }
     }
     // KNOWN ISSUE WALK-04 (should fix): at 1280×800 the import sheet's
@@ -1040,14 +1045,6 @@ class _Walk {
       hiddenExpiry.isEmpty,
       'the import sheet shows the expiry line without scrolling '
           '(out of view for: ${hiddenExpiry.join(', ')})',
-    );
-    // KNOWN ISSUE WALK-05 (should fix): the toast after an import covers
-    // the inspector's Export / Edit / ⋯ buttons while it shows.
-    knownIssue(
-      'WALK-05',
-      coveredByToast.isEmpty,
-      'the inspector\'s Edit button can be clicked right after an import '
-          '(covered by the toast after: ${coveredByToast.join(', ')})',
     );
 
     // A file nothing reads is kept as a generic file, with nothing made up.
@@ -1517,29 +1514,27 @@ class _Walk {
     );
     await tap(button('Make New Key'));
     await until(
-      () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,
+      () => find.byType(DesktopRecoveryKitPanel).evaluate().isNotEmpty,
       what: 'the new key',
     );
     await settle();
     final key = tester
-        .widget<RecoveryKitCard>(find.byType(RecoveryKitCard))
+        .widget<DesktopRecoveryKitPanel>(find.byType(DesktopRecoveryKitPanel))
         .kit
         .recoveryKey;
     await shot('new-recovery-kit');
-    // KNOWN ISSUE WALK-06 (should fix): the sheet shows the phone's
-    // recovery-kit card (bc_ui pill buttons "Save PDF", "Save as text")
-    // instead of N02's desktop push buttons.
-    knownIssue(
-      'WALK-06',
-      find
-          .descendant(
-            of: find.byType(NewRecoveryKitDialog),
-            matching: find.widgetWithText(DesktopButton, 'Save PDF…'),
-          )
-          .evaluate()
-          .isNotEmpty,
-      'Settings › New Kit… shows the key with the desktop (N02) buttons',
-    );
+    // WALK-06 (fixed): the key with N02's desktop push buttons, not the
+    // phone's recovery-kit card.
+    expect(find.byType(RecoveryKitCard), findsNothing);
+    for (final label in ['Save PDF…', 'Print…', 'Save as Text…', 'Copy']) {
+      expect(
+        find.descendant(
+          of: find.byType(NewRecoveryKitDialog),
+          matching: find.widgetWithText(DesktopButton, label),
+        ),
+        findsOneWidget,
+      );
+    }
 
     // Copy goes through the guard; the toast should say when it clears.
     await tap(
@@ -1556,16 +1551,10 @@ class _Walk {
     expectNoSecretInToasts([key]);
     await shot('new-recovery-kit-copied');
     final after = container.read(settingsProvider).clipboardClearAfter;
-    // KNOWN ISSUE WALK-01 (should fix): the toast says "30 seconds"
-    // whatever the setting (recovery_kit_card.dart), here 10.
-    knownIssue(
-      'WALK-01',
-      find
-          .text('It clears from the clipboard in ${after.inSeconds} seconds.')
-          .evaluate()
-          .isNotEmpty,
-      'the recovery-key copy toast says the clipboard clears in '
-          '${after.inSeconds} seconds (the setting), not a fixed 30',
+    // WALK-01 (fixed): the toast says the setting's time, here 10 s.
+    expect(
+      find.text('It clears from the clipboard in ${after.inSeconds} seconds.'),
+      findsOneWidget,
     );
     await container.read(clipboardGuardProvider).clearNow();
     expect(await clipboard(), anyOf(isNull, isEmpty));
@@ -1596,12 +1585,13 @@ class _Walk {
     );
     await tap(button('Rotate Key'));
     await until(
-      () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,
+      () => find.byType(DesktopRecoveryKitPanel).evaluate().isNotEmpty,
       within: const Duration(seconds: 60),
       what: 'the rotation',
     );
     await settle();
     expect(find.text('Your new recovery key'), findsOneWidget);
+    expect(find.byType(RecoveryKitCard), findsNothing);
     await shot('rotate-key-done');
     await tapText("I've saved the new key");
     await tap(
@@ -1884,35 +1874,21 @@ class _Walk {
     expect(find.text('Move to organization…'), findsOneWidget);
     expect(find.text('Remove from Globex Walk'), findsOneWidget);
     await shot('explorer-shift-f10-menu');
-    // The menu should take the keyboard: ↓ to its first command, Escape
-    // to close it.
+    // The menu takes the keyboard (WALK-02): Escape closes it and the
+    // cursor is back on the row.
     await press(LogicalKeyboardKey.escape);
-    final stillOpen = find.text('Move to organization…').evaluate().isNotEmpty;
-    // KNOWN ISSUE WALK-02 (should fix): focus stays on the tree, so
-    // Escape doesn't close the menu and the arrows move the tree's cursor
-    // behind it.
-    knownIssue(
-      'WALK-02',
-      !stillOpen,
-      'Escape closes the menu Shift-F10 opened',
-    );
-    if (stillOpen) {
-      final before = location;
-      await press(LogicalKeyboardKey.arrowDown);
-      await press(LogicalKeyboardKey.enter);
-      note(
-        'with the menu open, ↓ then Return went to the tree: '
-        '$before → $location; menu still open: '
-        '${find.text('Move to organization…').evaluate().isNotEmpty}',
-      );
-      await shot('explorer-menu-after-escape');
-      // Close it with a click elsewhere.
-      await tester.tapAt(
-        tester.getCenter(find.byType(ShellStatusBar)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await settle();
-    }
+    expect(find.text('Move to organization…'), findsNothing);
+    await shot('explorer-menu-after-escape');
+    // ↓ then Return runs the menu's Edit app…, not the tree's row below.
+    final before = location;
+    await press(LogicalKeyboardKey.f10, shift: true);
+    await press(LogicalKeyboardKey.arrowDown);
+    await press(LogicalKeyboardKey.enter);
+    expect(find.text('Move to organization…'), findsNothing);
+    expect(find.text('Edit app'), findsWidgets);
+    expect(location, before);
+    await shot('explorer-menu-edit-app');
+    await tap(button('Cancel'));
     // Typing jumps to a row by name.
     await tap(sidebarRow('Walkthrough App'));
     await press(LogicalKeyboardKey.home);
@@ -1928,15 +1904,8 @@ class _Walk {
     expect(find.text('Move to app…'), findsOneWidget);
     expect(find.text('Delete item…'), findsOneWidget);
     await shot('explorer-item-menu');
+    // Escape closes the right-click menu too.
     await press(LogicalKeyboardKey.escape);
-    if (find.text('Move to app…').evaluate().isNotEmpty) {
-      note('Escape left the right-click menu open too');
-      await tester.tapAt(
-        tester.getCenter(find.byType(ShellStatusBar)),
-        kind: PointerDeviceKind.mouse,
-      );
-      await settle();
-    }
     expect(find.text('Move to app…'), findsNothing);
   }
 

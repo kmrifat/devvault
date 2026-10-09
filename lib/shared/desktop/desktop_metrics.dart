@@ -113,6 +113,10 @@ abstract final class DesktopMetrics {
   static const double toastWidth = 340;
   static const double toastMinWidth = 280;
   static const double toastMaxWidth = 520;
+
+  /// How far a toast sits from the window's right edge (the macOS banner)
+  /// and above the status bar (the banner and the Linux snackbar).
+  static const double toastInset = 12;
   static const double panelWidth = 600;
   static const double panelTop = 120;
 

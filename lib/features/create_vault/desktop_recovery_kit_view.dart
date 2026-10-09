@@ -9,8 +9,8 @@ import 'recovery_kit_card.dart' show RecoveryKitActions;
 /// guard), and the confirmation that opens the vault.
 ///
 /// [RecoveryKitScreen] holds the key and the confirmation; this view only
-/// renders them and runs the save, print and copy actions.
-class DesktopRecoveryKitView extends ConsumerStatefulWidget {
+/// renders them.
+class DesktopRecoveryKitView extends StatelessWidget {
   const DesktopRecoveryKitView({
     super.key,
     required this.kit,
@@ -25,24 +25,7 @@ class DesktopRecoveryKitView extends ConsumerStatefulWidget {
   final VoidCallback onContinue;
 
   @override
-  ConsumerState<DesktopRecoveryKitView> createState() =>
-      _DesktopRecoveryKitViewState();
-}
-
-class _DesktopRecoveryKitViewState extends ConsumerState<DesktopRecoveryKitView>
-    with RecoveryKitActions {
-  @override
-  RecoveryKitDocument get kit => widget.kit;
-
-  @override
   Widget build(BuildContext context) {
-    final colors = context.desktopColors;
-    final groups = kit.groups;
-    final mono = AppText.mono(context, fontSize: 15).copyWith(
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.5,
-      color: colors.text,
-    );
     return DesktopLockWindow(
       step: 'Step 2 of 3',
       mark: DesktopLockMark.recoveryKey,
@@ -58,10 +41,65 @@ class _DesktopRecoveryKitViewState extends ConsumerState<DesktopRecoveryKitView>
             label: 'Open Vault',
             kind: DesktopButtonKind.primary,
             size: DesktopButtonSize.large,
-            onPressed: widget.saved ? widget.onContinue : null,
+            onPressed: saved ? onContinue : null,
           ),
         ],
       ),
+      children: [
+        DesktopRecoveryKitPanel(kit: kit),
+        const SizedBox(height: 18),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: DesktopCheckbox(
+            value: saved,
+            onChanged: onSavedChanged,
+            label: "I've saved my recovery key somewhere safe",
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// N02's key box and its push buttons: Save PDF…, Print…, Save as Text…
+/// and Copy. Used by the first run and by Settings' New Kit… and Rotate…
+/// sheets.
+class DesktopRecoveryKitPanel extends ConsumerStatefulWidget {
+  const DesktopRecoveryKitPanel({
+    super.key,
+    required this.kit,
+    this.buttonSize = DesktopButtonSize.large,
+  });
+
+  final RecoveryKitDocument kit;
+
+  /// Large on the lock screen, regular in a sheet.
+  final DesktopButtonSize buttonSize;
+
+  @override
+  ConsumerState<DesktopRecoveryKitPanel> createState() =>
+      _DesktopRecoveryKitPanelState();
+}
+
+class _DesktopRecoveryKitPanelState
+    extends ConsumerState<DesktopRecoveryKitPanel>
+    with RecoveryKitActions {
+  @override
+  RecoveryKitDocument get kit => widget.kit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final groups = kit.groups;
+    final size = widget.buttonSize;
+    final mono = AppText.mono(context, fontSize: 15).copyWith(
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5,
+      color: colors.text,
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
           label: 'Recovery key',
@@ -98,37 +136,28 @@ class _DesktopRecoveryKitViewState extends ConsumerState<DesktopRecoveryKitView>
             DesktopButton(
               label: 'Save PDF…',
               icon: DesktopSymbol.savePdf,
-              size: DesktopButtonSize.large,
+              size: size,
               onPressed: kitBusy ? null : saveKitPdf,
             ),
             DesktopButton(
               label: 'Print…',
               icon: DesktopSymbol.printer,
-              size: DesktopButtonSize.large,
+              size: size,
               onPressed: kitBusy ? null : printKit,
             ),
             DesktopButton(
               label: 'Save as Text…',
               icon: DesktopSymbol.saveText,
-              size: DesktopButtonSize.large,
+              size: size,
               onPressed: saveKitText,
             ),
             DesktopButton(
               label: 'Copy',
               icon: DesktopSymbol.copy,
-              size: DesktopButtonSize.large,
+              size: size,
               onPressed: copyKit,
             ),
           ],
-        ),
-        const SizedBox(height: 18),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: DesktopCheckbox(
-            value: widget.saved,
-            onChanged: widget.onSavedChanged,
-            label: "I've saved my recovery key somewhere safe",
-          ),
         ),
       ],
     );

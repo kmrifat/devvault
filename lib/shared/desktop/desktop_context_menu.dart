@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 
 import 'desktop_macos_menu.dart';
+import 'desktop_menu_focus.dart';
 import 'desktop_pull_down_button.dart';
 import 'desktop_theme.dart';
 
@@ -17,7 +18,9 @@ import 'desktop_theme.dart';
 /// Each action is also a custom semantics action on [child], so assistive
 /// tech reaches the commands without a pointer. With a
 /// `GlobalKey<DesktopContextMenuState>`, [DesktopContextMenuState.open]
-/// opens it from the keyboard (Shift-F10, the menu key).
+/// opens it from the keyboard (Shift-F10, the menu key). The open menu
+/// takes the keyboard ([DesktopMenuFocus]) and gives it back when it
+/// closes.
 class DesktopContextMenu extends StatefulWidget {
   const DesktopContextMenu({
     super.key,
@@ -36,45 +39,56 @@ class DesktopContextMenu extends StatefulWidget {
 class DesktopContextMenuState extends State<DesktopContextMenu> {
   final _menu = MenuController();
   final _flyout = fl.FlyoutController();
+  final _focus = DesktopMenuFocus('Context');
 
   @override
   void dispose() {
     _flyout.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   /// Opens the menu under [child]'s leading edge, as a keyboard shortcut
-  /// does.
+  /// does, with its first command highlighted.
   void open() {
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
-    _open(box.localToGlobal(Offset(box.size.height / 2, box.size.height)));
+    _open(
+      box.localToGlobal(Offset(box.size.height / 2, box.size.height)),
+      fromKeyboard: true,
+    );
   }
 
-  void _open(Offset global) {
+  void _open(Offset global, {bool fromKeyboard = false}) {
     final actions = widget.actions;
     if (actions.isEmpty) return;
+    _focus.opened(count: actions.length, fromKeyboard: fromKeyboard);
     switch (context.desktopKit) {
       case DesktopKit.fluent:
         final colors = context.desktopColors;
-        _flyout.showFlyout<void>(
-          position: global,
-          barrierColor: Colors.transparent,
-          builder: (context) => fl.MenuFlyout(
-            items: [
-              for (final a in actions)
-                fl.MenuFlyoutItem(
-                  text: Text(
-                    a.label,
-                    style: a.destructive
-                        ? TextStyle(color: colors.danger)
-                        : null,
-                  ),
-                  onPressed: a.onSelected,
+        _flyout
+            .showFlyout<void>(
+              position: global,
+              barrierColor: Colors.transparent,
+              builder: (context) => _focus.holder(
+                child: fl.MenuFlyout(
+                  items: [
+                    for (final (i, a) in actions.indexed)
+                      fl.MenuFlyoutItem(
+                        focusNode: _focus.item(i),
+                        text: Text(
+                          a.label,
+                          style: a.destructive
+                              ? TextStyle(color: colors.danger)
+                              : null,
+                        ),
+                        onPressed: a.onSelected,
+                      ),
+                  ],
                 ),
-            ],
-          ),
-        );
+              ),
+            )
+            .whenComplete(_focus.closed);
       case DesktopKit.macos || DesktopKit.yaru:
         final box = context.findRenderObject()! as RenderBox;
         _menu.open(position: box.globalToLocal(global));
@@ -114,8 +128,10 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
       controller: _menu,
       style: macos ? MacosMenuStyle.panel(colors) : null,
       consumeOutsideTap: true,
+      onClose: _focus.closed,
       menuChildren: [
-        for (final a in actions)
+        _focus.holder(),
+        for (final (i, a) in actions.indexed)
           if (macos)
             MacosMenuStyle.item(
               context,
@@ -123,10 +139,12 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
               width: 200,
               onPressed: a.onSelected,
               destructive: a.destructive,
+              focusNode: _focus.item(i),
             )
           else
             MenuItemButton(
               onPressed: a.onSelected,
+              focusNode: _focus.item(i),
               child: Text(
                 a.label,
                 style: a.destructive ? TextStyle(color: colors.danger) : null,
