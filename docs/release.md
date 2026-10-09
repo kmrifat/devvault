@@ -19,7 +19,9 @@ attached to the GitHub Release.
    git push origin v1.0.0
    ```
 3. Wait for **Release** to finish, open the draft release, check that no
-   file ends in `-unsigned`, run through `docs/acceptance/v1.md`, publish.
+   file ends in `-unsigned`, run through `docs/acceptance/v1.md`, paste the
+   version's section of `CHANGELOG.md` into the notes, publish.
+4. Set the release date in `CHANGELOG.md` in a follow-up PR.
 
 The workflow can also be run by hand (**Actions › Release › Run
 workflow**); without a tag it uploads the files as run artifacts only.
