@@ -6,6 +6,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart';
+import '../vault/desktop_item_type.dart' show DesktopTypeTile;
 
 /// Opens quick-open (⌘K): type to find an item across the whole vault,
 /// arrows to move, Enter to open. Resolves to the chosen item's id.
@@ -302,9 +303,10 @@ class _DesktopResultRow extends StatelessWidget {
                 child: Row(
                   spacing: 10,
                   children: [
-                    TypeIconTile(
-                      type: item.type ?? ItemType.genericFile,
+                    DesktopTypeTile(
+                      type: item.type,
                       size: DesktopMetrics.toolbarSearchHeight,
+                      selected: highlighted,
                     ),
                     Expanded(
                       child: Column(

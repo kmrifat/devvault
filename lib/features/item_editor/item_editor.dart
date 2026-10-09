@@ -37,6 +37,7 @@ import '../import/place_fields.dart'
         placeSuggestions,
         typedPlace;
 import '../notes/notes.dart' show DesktopNotesEditor, PhoneNotesField;
+import '../vault/desktop_item_type.dart' show DesktopTypeTile;
 import 'item_draft.dart';
 
 /// Opens the item form: [item] to edit it, or null for a new item placed
@@ -365,7 +366,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                       : Row(
                           spacing: 6,
                           children: [
-                            TypeIconTile(type: draft.type, size: 20),
+                            DesktopTypeTile(type: draft.type, size: 20),
                             Text(draft.type.label),
                           ],
                         ),

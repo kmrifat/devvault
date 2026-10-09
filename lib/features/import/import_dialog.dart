@@ -31,6 +31,7 @@ import '../../shared/desktop_ui.dart'
         DesktopTokenField,
         showDesktopSheet;
 import '../../shared/ui.dart';
+import '../vault/desktop_item_type.dart' show DesktopTypeTile;
 import 'import_draft.dart';
 import 'place_fields.dart';
 
@@ -576,7 +577,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       title: replacing == null
           ? 'Import $name'
           : 'Replace the file of “${replacing.title}”',
-      icon: TypeIconTile(type: draft?.type ?? ItemType.genericFile, size: 36),
+      icon: DesktopTypeTile(type: draft?.type, size: 36),
       subtitle: _SheetFileLine(
         type: _tooLarge ? null : draft?.type,
         reading: !_tooLarge && draft == null,
