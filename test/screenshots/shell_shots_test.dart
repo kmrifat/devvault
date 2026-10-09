@@ -17,17 +17,24 @@ import 'harness.dart';
 void main() {
   setUpAll(loadAppFonts);
 
-  /// Selects Kitchenly › Android › Production › Upload keystore, like the
+  /// Selects Kitchenly, Android, Production, then Upload keystore, like the
   /// N03 frame.
   Future<void> selectProduction(WidgetTester tester) async {
     Finder inSidebar(String text) => find.descendant(
       of: find.byType(VaultSidebar),
       matching: find.text(text),
     );
-    await tester.tap(inSidebar('Android'));
+    await tester.tap(inSidebar('Kitchenly'));
     await tester.pumpAndSettle();
-    await tester.tap(inSidebar('Production'));
-    await tester.pumpAndSettle();
+    for (final (filter, choice) in [
+      ('platform-filter', 'Android'),
+      ('environment-filter', 'Production'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey(filter)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(choice).last);
+      await tester.pumpAndSettle();
+    }
     await tester.tap(
       find.descendant(
         of: find.byType(VaultListPane),

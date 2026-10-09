@@ -10,6 +10,9 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/widgets/app_badge.dart';
+import 'desktop_item_type.dart';
+import 'explorer_tree.dart';
+import 'tree_actions.dart';
 import 'tree_drag.dart';
 import 'vault_actions.dart';
 
@@ -17,20 +20,17 @@ import 'vault_actions.dart';
 enum ShellSection { vault, expiry, settings }
 
 /// The window's source list (design frame N03): the vault, the smart lists
-/// with counts (all items, expiring in 30 days, expired, conflicts), the
-/// App › Platform › Environment tree, tags, and a footer with Settings and
-/// the auto-lock time.
+/// with counts (all items, expiring in 30 days, expired, conflicts), an
+/// explorer of the vault's organizations, apps and items, tags, and a
+/// footer with Settings and the auto-lock time.
 ///
-/// Once any app has an organization, the tree's apps are grouped under
-/// their organization, then "Personal" for the apps without one; "No app"
-/// stays last, outside the groups. Clicking an organization lists its
-/// apps' items.
-///
-/// Tree rows have a context menu ("New item…" there, "Edit app…",
-/// "Rename organization…" …), and the tree can be rearranged by dragging:
-/// an item from the list onto an app, platform or environment moves it
-/// there, and an app onto an organization (or "Personal") moves it into
-/// that organization.
+/// The explorer works like a file explorer ([ExplorerTree]): Organization
+/// › App › Item, every row with a context menu (New item…, Edit app…,
+/// Move to…, Rename organization…, Delete …), and everything can be
+/// rearranged by dragging: an item (here or from the list) onto an app,
+/// "No app" or another item moves it to that app, and an app onto an
+/// organization (or "Personal") moves it there. Clicking an organization
+/// or app lists its items; clicking an item selects it.
 ///
 /// It has no selection state of its own: what is selected is read from
 /// [uri], and every row is a link, so back and forward and a reload all
@@ -54,13 +54,12 @@ class VaultSidebar extends ConsumerStatefulWidget {
 }
 
 class _VaultSidebarState extends ConsumerState<VaultSidebar> {
-  /// Organizations and apps start open; these were closed by the user.
+  /// Organizations start open; these were closed by the user.
   final _collapsedOrgs = <String>{};
-  final _collapsedApps = <String>{};
 
-  /// Platforms start closed unless they hold the selection; these were
-  /// opened (true) or closed (false) by the user.
-  final _platformOpen = <String, bool>{};
+  /// Apps start closed unless they hold the selection; these were opened
+  /// (true) or closed (false) by the user.
+  final _appOpen = <String, bool>{};
 
   VaultFilter get _filter => widget.section == ShellSection.vault
       ? VaultFilter.fromUri(widget.uri)
@@ -142,6 +141,13 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                   ),
                 _SectionLabel(
                   'Apps',
+                  menu: [
+                    DesktopMenuAction('New app…', () => createApp(context)),
+                    DesktopMenuAction(
+                      'New item…',
+                      () => createItem(context, const VaultFilter()),
+                    ),
+                  ],
                   action: DesktopIconButton(
                     symbol: DesktopSymbol.add,
                     tooltip: 'New app',
@@ -149,16 +155,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                     onPressed: () => createApp(context),
                   ),
                 ),
-                if (index == null || index.tree.isEmpty)
-                  const _Hint('Items you add are grouped here by app')
-                else if (index.orgGroups.isEmpty)
-                  for (final node in index.tree) ..._appRows(node, filter)
-                else ...[
-                  for (final group in index.orgGroups)
-                    ..._orgRows(group, filter),
-                  for (final node in index.tree)
-                    if (node.app == null) ..._appRows(node, filter),
-                ],
+                ..._explorer(index, filter, now),
                 if (index != null && index.tagCounts.isNotEmpty) ...[
                   const _SectionLabel('Tags'),
                   for (final MapEntry(key: tag, value: count)
@@ -189,27 +186,56 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
   static int _conflicts(VaultIndex index) =>
       index.items.values.where((i) => i.conflict != null).length;
 
-  /// Whether the tree node at [org] or [app] / [platform] / [env] is the
-  /// selection.
-  bool _isSelected(
-    VaultFilter filter, {
-    String? org,
-    String? app,
-    String? platform,
-    String? env,
-  }) =>
+  /// The item selected in the list, if any.
+  String? get _selectedItem => widget.section == ShellSection.vault
+      ? widget.uri.queryParameters['item']
+      : null;
+
+  /// Whether the organization [org] or app [app] is what the list shows,
+  /// with no item selected (a selected item is the selection instead).
+  bool _isSelected(VaultFilter filter, {String? org, String? app}) =>
       widget.section == ShellSection.vault &&
+      _selectedItem == null &&
       filter.tag == null &&
       filter.view == null &&
+      filter.platform == null &&
+      filter.env == null &&
       filter.org == org &&
-      filter.app == app &&
-      filter.platform == platform &&
-      filter.env == env;
+      filter.app == app;
+
+  List<Widget> _explorer(VaultIndex? index, VaultFilter filter, DateTime now) {
+    if (index == null) return const [];
+    final tree = ExplorerTree.of(index);
+    if (tree.isEmpty) {
+      return const [_Hint('Items you add are grouped here by app')];
+    }
+    final selectedApp = index.items[_selectedItem]?.appId;
+    final openApp = selectedApp != null && index.apps.containsKey(selectedApp)
+        ? selectedApp
+        : _selectedItem != null && index.items.containsKey(_selectedItem)
+        ? VaultFilter.none
+        : filter.app;
+    final shown = filter.apply(index).map((i) => i.id).toSet();
+    final rows = _TreeContext(
+      index: index,
+      filter: filter,
+      now: now,
+      openApp: openApp,
+      shown: shown,
+    );
+    return [
+      if (tree.orgs.isEmpty)
+        for (final node in tree.apps) ..._appRows(node, rows)
+      else
+        for (final org in tree.orgs) ..._orgRows(org, rows),
+      if (tree.noApp.isNotEmpty) ..._noAppRows(tree.noApp, rows),
+    ];
+  }
 
   /// An organization ("Personal" for apps without one) and, while open,
-  /// its apps one level in.
-  List<Widget> _orgRows(OrgGroup group, VaultFilter filter) {
-    final org = group.organization;
+  /// its apps one level in. Dropping an app on it moves the app there.
+  List<Widget> _orgRows(ExplorerOrg group, _TreeContext tree) {
+    final org = group.name;
     final orgKey = org ?? VaultFilter.none;
     final open = !_collapsedOrgs.contains(orgKey);
     // An organization with one app: a new item goes in that app.
@@ -221,14 +247,15 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         builder: (context, candidates, _) => _SourceRow(
           dropHover: candidates.isNotEmpty,
           menu: [
-            DesktopMenuAction(
-              'New item…',
-              () => createItem(
-                context,
-                VaultFilter(org: orgKey),
-                app: onlyApp?.id,
+            if (group.apps.isNotEmpty)
+              DesktopMenuAction(
+                'New item…',
+                () => createItem(
+                  context,
+                  VaultFilter(org: orgKey),
+                  app: onlyApp?.id,
+                ),
               ),
-            ),
             DesktopMenuAction(
               'New app…',
               () => createApp(context, organization: org),
@@ -249,7 +276,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           icon: org == null ? DesktopSymbol.person : DesktopSymbol.organization,
           label: org ?? 'Personal',
           count: group.count,
-          selected: _isSelected(filter, org: orgKey),
+          selected: _isSelected(tree.filter, org: orgKey),
           onTap: () {
             setState(() => _collapsedOrgs.remove(orgKey));
             _show(VaultFilter(org: orgKey));
@@ -257,151 +284,158 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         ),
       ),
       if (open)
-        for (final node in group.apps) ..._appRows(node, filter, depth: 1),
+        for (final node in group.apps) ..._appRows(node, tree, depth: 1),
     ];
   }
 
-  /// An app and, while open, its platforms; [depth] is 1 under an
-  /// organization.
-  List<Widget> _appRows(AppNode node, VaultFilter filter, {int depth = 0}) {
+  /// An app and, while open, its items. It drags onto an organization, and
+  /// takes items dropped on it.
+  List<Widget> _appRows(ExplorerApp node, _TreeContext tree, {int depth = 0}) {
     final app = node.app;
-    final appKey = app?.id ?? VaultFilter.none;
-    final open = !_collapsedApps.contains(appKey);
-    final organization = app?.organization;
+    final open = _appOpen[app.id] ?? tree.openApp == app.id;
+    final organization = app.organization;
     final row = _itemTarget(
-      TreePlace(app: appKey),
+      TreePlace(app: app.id),
       (hover) => _SourceRow(
         dropHover: hover,
         menu: [
           DesktopMenuAction(
             'New item…',
-            () => createItem(context, VaultFilter(app: appKey)),
+            () => createItem(context, VaultFilter(app: app.id)),
           ),
-          if (app != null) ...[
-            DesktopMenuAction('Edit app…', () => editApp(context, app)),
-            if (organization != null)
-              DesktopMenuAction(
-                'Remove from $organization',
-                () => moveApp(context, ref, app, null),
-              ),
+          DesktopMenuAction('Edit app…', () => editApp(context, app)),
+          DesktopMenuAction(
+            'Move to organization…',
+            () => moveAppTo(context, ref, app),
+          ),
+          if (organization != null)
             DesktopMenuAction(
-              'Delete app…',
-              () => deleteApp(context, ref, app, itemCount: node.count),
-              destructive: true,
+              'Remove from $organization',
+              () => moveApp(context, ref, app, null),
             ),
-          ],
+          DesktopMenuAction(
+            'Delete app…',
+            () => deleteApp(context, ref, app, itemCount: node.items.length),
+            destructive: true,
+          ),
         ],
         tree: true,
         depth: depth,
         expanded: open,
-        onToggle: () => setState(
-          () =>
-              open ? _collapsedApps.add(appKey) : _collapsedApps.remove(appKey),
-        ),
+        onToggle: node.items.isEmpty
+            ? null
+            : () => setState(() => _appOpen[app.id] = !open),
         leading: AppBadge(app: app, size: 14),
-        label: app?.name ?? 'No app',
-        count: node.count,
-        selected: _isSelected(filter, app: appKey),
+        label: app.name,
+        count: node.items.length,
+        selected: _isSelected(tree.filter, app: app.id),
         onTap: () {
-          setState(() => _collapsedApps.remove(appKey));
-          _show(VaultFilter(app: appKey));
+          setState(() => _appOpen[app.id] = true);
+          _show(VaultFilter(app: app.id));
         },
       ),
     );
     return [
-      if (app == null)
-        row
-      else
-        TreeDraggable<AppRecord>(
-          data: app,
-          feedback: DragChip(
-            label: app.name,
-            leading: AppBadge(app: app, size: 14),
-          ),
-          child: row,
+      TreeDraggable<AppRecord>(
+        data: app,
+        feedback: DragChip(
+          label: app.name,
+          leading: AppBadge(app: app, size: 14),
         ),
+        child: row,
+      ),
       if (open)
-        for (final platform in node.platforms)
-          ..._platformRows(appKey, platform, filter, depth: depth + 1),
+        for (final item in node.items)
+          _itemRow(item, app.id, tree, depth: depth + 1),
     ];
   }
 
-  List<Widget> _platformRows(
-    String appKey,
-    PlatformNode node,
-    VaultFilter filter, {
-    required int depth,
-  }) {
-    final platformKey = node.platform ?? VaultFilter.none;
-    final key = '$appKey/$platformKey';
-    final holdsSelection =
-        filter.app == appKey && filter.platform == platformKey;
-    final open = _platformOpen[key] ?? holdsSelection;
-    final here = VaultFilter(app: appKey, platform: platformKey);
+  /// "No app" and, while open, the items without one.
+  List<Widget> _noAppRows(List<Item> items, _TreeContext tree) {
+    const key = VaultFilter.none;
+    final open = _appOpen[key] ?? tree.openApp == key;
     return [
       _itemTarget(
-        TreePlace(app: appKey, platform: platformKey),
+        const TreePlace(app: key),
         (hover) => _SourceRow(
           dropHover: hover,
           menu: [
-            DesktopMenuAction('New item…', () => createItem(context, here)),
+            DesktopMenuAction(
+              'New item…',
+              () => createItem(context, const VaultFilter(app: key)),
+            ),
           ],
           tree: true,
-          depth: depth,
           expanded: open,
-          onToggle: () => setState(() => _platformOpen[key] = !open),
-          icon: _platformSymbol(node.platform),
-          label: VaultLabels.platform(node.platform),
-          count: node.count,
-          selected: _isSelected(filter, app: appKey, platform: platformKey),
+          onToggle: () => setState(() => _appOpen[key] = !open),
+          leading: const AppBadge(app: null, size: 14),
+          label: 'No app',
+          count: items.length,
+          selected: _isSelected(tree.filter, app: key),
           onTap: () {
-            setState(() => _platformOpen[key] = true);
-            _show(here);
+            setState(() => _appOpen[key] = true);
+            _show(const VaultFilter(app: key));
           },
         ),
       ),
       if (open)
-        for (final MapEntry(key: env, value: count)
-            in node.environments.entries)
-          _envRow(
-            VaultFilter(
-              app: appKey,
-              platform: platformKey,
-              env: env ?? VaultFilter.none,
-            ),
-            env,
-            count,
-            filter,
-            depth: depth + 1,
-          ),
+        for (final item in items) _itemRow(item, key, tree, depth: 1),
     ];
   }
 
-  Widget _envRow(
-    VaultFilter here,
-    String? env,
-    int count,
-    VaultFilter filter, {
+  /// An item, by its type's icon, with its platform and environment at the
+  /// trailing edge. Clicking selects it, in the list as it is when the list
+  /// shows it, else in its app's. It drags like a list row, and an item
+  /// dropped on it moves to its app.
+  Widget _itemRow(
+    Item item,
+    String appKey,
+    _TreeContext tree, {
     required int depth,
-  }) => _itemTarget(
-    TreePlace(app: here.app!, platform: here.platform, env: here.env),
-    (hover) => _SourceRow(
-      dropHover: hover,
-      menu: [DesktopMenuAction('New item…', () => createItem(context, here))],
-      tree: true,
-      depth: depth,
-      leading: _EnvDot(env),
-      label: VaultLabels.environment(env),
-      count: count,
-      selected: _isSelected(
-        filter,
-        app: here.app,
-        platform: here.platform,
-        env: here.env,
+  }) {
+    final row = _itemTarget(
+      TreePlace(app: appKey),
+      (hover) => _SourceRow(
+        dropHover: hover,
+        menu: itemMenu(context, ref, item),
+        tree: true,
+        depth: depth,
+        icon: item.typeSymbol,
+        label: item.title,
+        description: [
+          if (item.platform case final p?) VaultLabels.platform(p),
+          if (item.environment case final e?) VaultLabels.environment(e),
+        ].join(', '),
+        trailing: _ItemPlace(item),
+        selected: _selectedItem == item.id,
+        onTap: () {
+          final filter = tree.filter;
+          final listed =
+              tree.shown.contains(item.id) &&
+              filter.kind.includes(item, tree.now);
+          context.go(
+            (listed ? filter : VaultFilter(app: appKey)).location(
+              item: item.id,
+            ),
+          );
+        },
       ),
-      onTap: () => _show(here),
-    ),
-  );
+    );
+    return item.isReadOnly
+        ? row
+        : TreeDraggable<Item>(
+            data: item,
+            feedback: DragChip(
+              label: item.title,
+              leading: DesktopIcon(
+                item.typeSymbol,
+                size: 14,
+                color: context.desktopColors.secondaryText,
+              ),
+            ),
+            child: row,
+          );
+  }
 
   /// [row], built with whether an item is being dragged over it; dropping
   /// the item moves it to [place]. An item already there, or one this
@@ -417,8 +451,36 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         onAcceptWithDetails: (d) => moveItem(context, ref, d.data, place),
         builder: (context, candidates, _) => row(candidates.isNotEmpty),
       );
+}
 
-  static DesktopSymbol _platformSymbol(String? platform) => switch (platform) {
+/// What the explorer's rows need from one build.
+class _TreeContext {
+  const _TreeContext({
+    required this.index,
+    required this.filter,
+    required this.now,
+    required this.openApp,
+    required this.shown,
+  });
+
+  final VaultIndex index;
+  final VaultFilter filter;
+  final DateTime now;
+
+  /// The app (or "No app") that holds the selection, open unless closed.
+  final String? openApp;
+
+  /// The ids the list shows before its tab narrows them.
+  final Set<String> shown;
+}
+
+/// An item's platform symbol and environment dot, when it has them.
+class _ItemPlace extends StatelessWidget {
+  const _ItemPlace(this.item);
+
+  final Item item;
+
+  static DesktopSymbol _platformSymbol(String platform) => switch (platform) {
     'ios' || 'macos' => DesktopSymbol.platformApple,
     'android' => DesktopSymbol.platformAndroid,
     'web' => DesktopSymbol.platformWeb,
@@ -426,6 +488,25 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     'windows' || 'linux' => DesktopSymbol.platformDesktop,
     _ => DesktopSymbol.platformOther,
   };
+
+  @override
+  Widget build(BuildContext context) {
+    final platform = item.platform;
+    final env = item.environment;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 4,
+      children: [
+        if (platform != null)
+          DesktopIcon(
+            _platformSymbol(platform),
+            size: 11,
+            color: context.desktopColors.tertiaryText,
+          ),
+        if (env != null) _EnvDot(env),
+      ],
+    );
+  }
 }
 
 /// The vault this window shows, with its size. One vault per device in
@@ -505,6 +586,8 @@ class _SourceRow extends StatefulWidget {
     this.onToggle,
     this.menu = const [],
     this.dropHover = false,
+    this.description,
+    this.trailing,
   });
 
   final DesktopSymbol? icon;
@@ -517,8 +600,7 @@ class _SourceRow extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// A row of the (Organization ›) App › Platform › Environment tree,
-  /// [depth] levels deep.
+  /// A row of the (Organization ›) App › Item tree, [depth] levels deep.
   final bool tree;
   final int depth;
   final bool expanded;
@@ -532,6 +614,13 @@ class _SourceRow extends StatefulWidget {
   /// Something dragged over the row would be taken if dropped: the row is
   /// outlined in the accent colour.
   final bool dropHover;
+
+  /// Said after the label to screen readers (an item's platform and
+  /// environment, which [trailing] shows as symbols).
+  final String? description;
+
+  /// Shown at the trailing edge instead of a count.
+  final Widget? trailing;
 
   @override
   State<_SourceRow> createState() => _SourceRowState();
@@ -555,7 +644,10 @@ class _SourceRowState extends State<_SourceRow> {
       button: true,
       selected: selected,
       expanded: onToggle == null ? null : widget.expanded,
-      label: tree ? '${widget.label}$countLabel' : widget.label,
+      label: [
+        tree ? '${widget.label}$countLabel' : widget.label,
+        if (widget.description case final d? when d.isNotEmpty) d,
+      ].join(', '),
       onTap: widget.onTap,
       excludeSemantics: true,
       child: DesktopContextMenu(
@@ -640,7 +732,9 @@ class _SourceRowState extends State<_SourceRow> {
                       ),
                     ),
                   ),
-                  if (count != null)
+                  if (widget.trailing case final trailing?)
+                    trailing
+                  else if (count != null)
                     Text(
                       '$count',
                       style: TextStyle(
@@ -685,10 +779,13 @@ class _EnvDot extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text, {this.action});
+  const _SectionLabel(this.text, {this.action, this.menu = const []});
 
   final String text;
   final Widget? action;
+
+  /// The section's context menu; empty for none.
+  final List<DesktopMenuAction> menu;
 
   @override
   Widget build(BuildContext context) {
@@ -701,12 +798,15 @@ class _SectionLabel extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: DesktopMetrics.secondarySize,
-                  fontWeight: FontWeight.w600,
-                  color: colors.secondaryText,
+              child: DesktopContextMenu(
+                actions: menu,
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: DesktopMetrics.secondarySize,
+                    fontWeight: FontWeight.w600,
+                    color: colors.secondaryText,
+                  ),
                 ),
               ),
             ),

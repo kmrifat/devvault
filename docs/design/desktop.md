@@ -42,20 +42,32 @@ and exported here under `desktop/`.
     - the vault switcher;
     - the smart lists, with counts: All items, Expiring in 30 days,
       Expired, Conflicts;
-    - the Apps tree (app › platform › environment). Once any app has an
-      organization, apps are grouped under it (then "Personal" for apps
-      without one, and "No app" last); an organization row lists its
-      apps' items. Every tree row has a context menu (New item… there;
-      New app… and Rename organization… on an organization; Edit app…,
-      Remove from *organization* and Delete app… on an app). Dragging an
-      item from the table onto an app, platform or environment row moves
-      it there, and dragging an app onto an organization (or Personal)
-      moves it in; both toasts offer Undo. Drags start from a mouse only,
-      so touch still scrolls;
+    - the Apps explorer, like a file explorer: Organization › App ›
+      Item. Without any organization it is App › Item. Organizations are
+      listed A–Z, then "Personal" for apps without one, and "No app"
+      last. Every app shows, with or without items; apps start closed
+      unless they hold the selection. An item row shows the item's type
+      icon and title, with its platform symbol and environment dot at
+      the trailing edge. Clicking an organization or app lists its items;
+      clicking an item selects it.
+    - Every explorer row has a context menu:
+      - organization: New item…, New app…, Rename organization…;
+      - app: New item…, Edit app…, Move to organization…, Remove from
+        *organization*, Delete app…;
+      - item (also on table rows): Edit item…, Move to app…, Delete
+        item…;
+      - the Apps label: New app…, New item….
+    - Drag to rearrange. An item (from the explorer or the table) dropped
+      on an app, "No app" or another item moves to that app. An app
+      dropped on an organization (or Personal) moves into it. Both toasts
+      offer Undo. Drags start from a mouse only, so touch still scrolls.
     - Tags;
     - a footer with the auto-lock time.
   - The **toolbar** has the title and path, Import, New, the search field
     (⌘F), sync status and Lock.
+  - Above the **item table**, the All / Expiring / Files / Secrets scope
+    bar, then Platform and Environment pop-ups when the listed items
+    have more than one of either.
   - The **item table** has columns Name / Type / Expires and is sortable.
     - Rows are 40 pt and two lines: the name, then the file name in mono.
     - Rows alternate shades (zebra).

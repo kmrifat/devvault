@@ -13,6 +13,7 @@ import '../../shared/widgets/markdown_note.dart' show MarkdownNote;
 import '../../shared/widgets/mono_text.dart';
 import '../notes/notes.dart' show NoteView;
 import 'desktop_item_type.dart';
+import 'tree_actions.dart';
 import 'tree_drag.dart';
 import 'vault_actions.dart';
 
@@ -123,6 +124,13 @@ class _VaultListPaneState extends ConsumerState<VaultListPane> {
               ),
             ),
           ),
+        if (!quarantine)
+          _PlaceFilters(
+            filter: filter,
+            items: _placed(filter).apply(index),
+            onChanged: (narrowed) =>
+                context.go(narrowed.location(item: selected)),
+          ),
         Expanded(
           child: quarantine
               ? _QuarantineList(slots: index.quarantined)
@@ -137,10 +145,117 @@ class _VaultListPaneState extends ConsumerState<VaultListPane> {
                   now: now,
                   onSelect: (item) =>
                       context.go(filter.location(item: item.id)),
+                  menuFor: (item) => itemMenu(context, ref, item),
                 ),
         ),
       ],
     );
+  }
+}
+
+/// [filter] without its platform and environment: what the place filters
+/// choose from.
+VaultFilter _placed(VaultFilter filter) => VaultFilter(
+  org: filter.org,
+  app: filter.app,
+  tag: filter.tag,
+  view: filter.view,
+  kind: filter.kind,
+  q: filter.q,
+);
+
+/// Pop-ups that narrow the list to a platform and an environment, from
+/// those the listed [items] have ("Other" and "No environment" for items
+/// without one). Shown only when there is something to choose, or a
+/// choice to undo.
+class _PlaceFilters extends StatelessWidget {
+  const _PlaceFilters({
+    required this.filter,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final VaultFilter filter;
+  final List<Item> items;
+  final ValueChanged<VaultFilter> onChanged;
+
+  /// The pop-ups' "everything" choice.
+  static const _all = '';
+
+  static String _key(String? value) => value ?? VaultFilter.none;
+
+  @override
+  Widget build(BuildContext context) {
+    final platforms = {for (final i in items) _key(i.platform)}.toList()
+      ..sort(_noneLast);
+    final envs = {for (final i in items) _key(i.environment)}.toList()
+      ..sort(_noneLast);
+    final platform = filter.platform;
+    final env = filter.env;
+    if (platforms.length < 2 &&
+        envs.length < 2 &&
+        platform == null &&
+        env == null) {
+      return const SizedBox.shrink();
+    }
+    VaultFilter narrowed({required String? platform, required String? env}) =>
+        VaultFilter(
+          org: filter.org,
+          app: filter.app,
+          platform: platform,
+          env: env,
+          tag: filter.tag,
+          view: filter.view,
+          kind: filter.kind,
+          q: filter.q,
+        );
+    String? value(String v) => v == _all ? null : v;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Row(
+        spacing: 8,
+        children: [
+          Expanded(
+            child: DesktopPopup<String>(
+              key: const ValueKey('platform-filter'),
+              value: platform ?? _all,
+              choices: [
+                const DesktopChoice(_all, 'All platforms'),
+                for (final p in {...platforms, ?platform})
+                  DesktopChoice(
+                    p,
+                    VaultLabels.platform(p == VaultFilter.none ? null : p),
+                  ),
+              ],
+              onChanged: (v) =>
+                  onChanged(narrowed(platform: value(v), env: env)),
+            ),
+          ),
+          Expanded(
+            child: DesktopPopup<String>(
+              key: const ValueKey('environment-filter'),
+              value: env ?? _all,
+              choices: [
+                const DesktopChoice(_all, 'All environments'),
+                for (final e in {...envs, ?env})
+                  DesktopChoice(
+                    e,
+                    VaultLabels.environment(e == VaultFilter.none ? null : e),
+                  ),
+              ],
+              onChanged: (v) =>
+                  onChanged(narrowed(platform: platform, env: value(v))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static int _noneLast(String a, String b) {
+    if (a == VaultFilter.none) return b == VaultFilter.none ? 0 : 1;
+    if (b == VaultFilter.none) return -1;
+    return a.compareTo(b);
   }
 }
 
@@ -326,6 +441,7 @@ class _ItemTable extends StatefulWidget {
     required this.selected,
     required this.now,
     required this.onSelect,
+    required this.menuFor,
   });
 
   final List<Item> items;
@@ -335,6 +451,9 @@ class _ItemTable extends StatefulWidget {
   final String? selected;
   final DateTime now;
   final ValueChanged<Item> onSelect;
+
+  /// A row's context menu.
+  final List<DesktopMenuAction> Function(Item item) menuFor;
 
   @override
   State<_ItemTable> createState() => _ItemTableState();
@@ -389,22 +508,28 @@ class _ItemTableState extends State<_ItemTable> {
     widget.onSelect(items[next]);
   }
 
-  /// [row], which drags [item] to a sidebar row to move it there. An item
-  /// this version can't write stays put.
-  Widget _draggable(Item item, Widget row) => item.isReadOnly
-      ? row
-      : TreeDraggable<Item>(
-          data: item,
-          feedback: DragChip(
-            label: item.title,
-            leading: DesktopIcon(
-              item.typeSymbol,
-              size: 14,
-              color: context.desktopColors.secondaryText,
+  /// [row], with [item]'s context menu, which drags [item] to a sidebar
+  /// row to move it there. An item this version can't write stays put.
+  Widget _draggable(Item item, Widget menuless) {
+    final row = DesktopContextMenu(
+      actions: widget.menuFor(item),
+      child: menuless,
+    );
+    return item.isReadOnly
+        ? row
+        : TreeDraggable<Item>(
+            data: item,
+            feedback: DragChip(
+              label: item.title,
+              leading: DesktopIcon(
+                item.typeSymbol,
+                size: 14,
+                color: context.desktopColors.secondaryText,
+              ),
             ),
-          ),
-          child: row,
-        );
+            child: row,
+          );
+  }
 
   @override
   Widget build(BuildContext context) {
