@@ -14,34 +14,19 @@ import '../conflict/conflict_dialog.dart';
 import '../notes/notes.dart' show NoteView;
 import 'vault_actions.dart';
 
-/// Design frame D03's detail pane: one item's type, place in the tree,
-/// expiry with where it came from, its fields (secrets masked until
+/// Design frame B3's item detail on a phone: one item's type, place in the
+/// tree, expiry with where it came from, its fields (secrets masked until
 /// revealed), its files, and when it was created and changed.
 class ItemDetailPane extends ConsumerWidget {
-  const ItemDetailPane({super.key, required this.itemId, this.compact = false});
+  const ItemDetailPane({super.key, required this.itemId});
 
-  /// The selected item, or null when nothing is selected.
-  final String? itemId;
-
-  /// Phone layout (B3): the header stacks, field names sit above their
-  /// values, and the margins are narrower.
-  final bool compact;
+  final String itemId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(vaultSessionProvider);
     if (session is! Unlocked) return const SizedBox.shrink();
-    final id = itemId;
-    if (id == null) {
-      return const Center(
-        child: BCEmptyState(
-          icon: Icon(LucideIcons.fileKey2),
-          title: 'No item selected',
-          description: 'Pick an item to see its fields and files.',
-        ),
-      );
-    }
-    final item = session.index.items[id];
+    final item = session.index.items[itemId];
     if (item == null) {
       return const Center(
         child: BCEmptyState(
@@ -57,18 +42,12 @@ class ItemDetailPane extends ConsumerWidget {
     return SingleChildScrollView(
       // Keyed by item, so revealed secrets are hidden again on the next one.
       key: ValueKey(item.id),
-      padding: compact
-          ? const EdgeInsets.fromLTRB(16, 8, 16, 32)
-          : const EdgeInsets.fromLTRB(32, 24, 32, 20),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 18,
         children: [
-          _Header(
-            item: item,
-            app: session.index.apps[item.appId],
-            compact: compact,
-          ),
+          _Header(item: item, app: session.index.apps[item.appId]),
           if (item.isReadOnly)
             const _Notice(
               icon: LucideIcons.lock,
@@ -91,8 +70,7 @@ class ItemDetailPane extends ConsumerWidget {
               ),
             ),
           _ExpiryCard(item: item, now: now),
-          if (item.fields.isNotEmpty)
-            _Fields(fields: item.fields, compact: compact),
+          if (item.fields.isNotEmpty) _Fields(fields: item.fields),
           if (item.attachments.isNotEmpty)
             _Files(item: item, attachments: item.attachments),
           if (item.notes case final notes? when notes.trim().isNotEmpty)
@@ -105,11 +83,10 @@ class ItemDetailPane extends ConsumerWidget {
 }
 
 class _Header extends ConsumerWidget {
-  const _Header({required this.item, required this.app, required this.compact});
+  const _Header({required this.item, required this.app});
 
   final Item item;
   final AppRecord? app;
-  final bool compact;
 
   static BCChipColor _typeColor(ItemType? type) => switch (type) {
     ItemType.androidKeystore => BCChipColor.success,
@@ -233,39 +210,26 @@ class _Header extends ConsumerWidget {
       ),
     ];
 
-    final tile = TypeIconTile(
-      type: type ?? ItemType.genericFile,
-      size: compact ? 48 : 56,
-    );
-    if (compact) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 14,
-        children: [
-          Row(
-            spacing: 14,
-            children: [
-              tile,
-              Expanded(child: details),
-            ],
-          ),
-          Row(
-            spacing: 8,
-            children: [
-              if (actions.length > 2) Expanded(child: actions.first),
-              if (actions.length <= 2) const Spacer(),
-              ...actions.skip(actions.length > 2 ? 1 : 0),
-            ],
-          ),
-        ],
-      );
-    }
-    return Row(
-      spacing: 16,
+    final tile = TypeIconTile(type: type ?? ItemType.genericFile, size: 48);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 14,
       children: [
-        tile,
-        Expanded(child: details),
-        ...actions,
+        Row(
+          spacing: 14,
+          children: [
+            tile,
+            Expanded(child: details),
+          ],
+        ),
+        Row(
+          spacing: 8,
+          children: [
+            if (actions.length > 2) Expanded(child: actions.first),
+            if (actions.length <= 2) const Spacer(),
+            ...actions.skip(actions.length > 2 ? 1 : 0),
+          ],
+        ),
       ],
     );
   }
@@ -383,10 +347,9 @@ class _ExpiryCard extends StatelessWidget {
 /// The item's fields: a dot for where each came from (accent: the file,
 /// plain: typed in), the value in mono, secrets masked.
 class _Fields extends StatelessWidget {
-  const _Fields({required this.fields, required this.compact});
+  const _Fields({required this.fields});
 
   final Map<String, ItemField> fields;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -401,11 +364,7 @@ class _Fields extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 16),
                 child: Divider(height: 1, thickness: 1, color: bc.separator),
               ),
-            _FieldRow(
-              label: Format.fieldLabel(key),
-              field: value,
-              compact: compact,
-            ),
+            _FieldRow(label: Format.fieldLabel(key), field: value),
           ],
         ],
       ),
@@ -414,17 +373,10 @@ class _Fields extends StatelessWidget {
 }
 
 class _FieldRow extends ConsumerStatefulWidget {
-  const _FieldRow({
-    required this.label,
-    required this.field,
-    required this.compact,
-  });
+  const _FieldRow({required this.label, required this.field});
 
   final String label;
   final ItemField field;
-
-  /// The name above the value rather than beside it (phones).
-  final bool compact;
 
   @override
   ConsumerState<_FieldRow> createState() => _FieldRowState();
@@ -478,7 +430,7 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
     final masked = field.secret && !_revealed;
 
     final name = Row(
-      mainAxisSize: widget.compact ? MainAxisSize.min : MainAxisSize.max,
+      mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
         Tooltip(
@@ -540,23 +492,15 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
       constraints: const BoxConstraints(minHeight: 52),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: widget.compact
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  name,
-                  Row(spacing: 8, children: [value, ...buttons]),
-                ],
-              )
-            : Row(
-                spacing: 16,
-                children: [
-                  SizedBox(width: 140, child: name),
-                  value,
-                  ...buttons,
-                ],
-              ),
+        // The name sits above the value.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 2,
+          children: [
+            name,
+            Row(spacing: 8, children: [value, ...buttons]),
+          ],
+        ),
       ),
     );
   }
