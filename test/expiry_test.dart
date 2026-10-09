@@ -1,12 +1,17 @@
 import 'dart:math';
 
 import 'package:devvault/core/expiry.dart';
+import 'package:devvault/features/expiry/desktop_expiry_table.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
 
 void main() {
+  setUpAll(tzdata.initializeTimeZones);
+
   Item item(DateTime? expiresAt, [ExpirySource? source]) => Item(
     id: '00000000-0000-4000-8000-000000000001',
     typeName: ItemType.appleCertificate.wireName,
@@ -147,6 +152,137 @@ void main() {
           expect(daysLeft(expiry, shifted), daysLeft(expiry, now));
         }
       }
+    });
+  });
+
+  group('days left', () {
+    final now = DateTime.utc(2026, 10, 9, 15, 20);
+    String left(Duration d) => daysLeft(now.add(d), now);
+
+    test('round 24-hour spans up', () {
+      expect(left(const Duration(seconds: 30)), '1 day');
+      expect(left(const Duration(hours: 1)), '1 day');
+      expect(left(const Duration(hours: 12)), '1 day');
+      expect(left(const Duration(days: 1)), '1 day');
+      expect(left(const Duration(days: 1, microseconds: 1)), '2 days');
+      expect(left(const Duration(days: 29, hours: 23)), '30 days');
+      expect(left(const Duration(days: 30)), '30 days');
+    });
+
+    test('in coarser units from 60 days on', () {
+      String time(Duration d) => timeLeft(now.add(d), now);
+      expect(time(const Duration(days: 1)), '1 day');
+      expect(time(const Duration(days: 30, hours: 1)), '31 days');
+      expect(time(const Duration(days: 59)), '59 days');
+      expect(time(const Duration(days: 60)), '2 months');
+      expect(time(const Duration(days: 729)), '24 months');
+      expect(time(const Duration(days: 730)), '2 years');
+    });
+  });
+
+  group('days ago (WALK-03)', () {
+    // Local wall-clock times, so these hold in whatever zone runs them.
+    final oct6 = [
+      DateTime(2026, 10, 6),
+      DateTime(2026, 10, 6, 9, 30),
+      DateTime(2026, 10, 6, 23, 59, 59),
+    ];
+    final oct9 = [
+      DateTime(2026, 10, 9),
+      DateTime(2026, 10, 9, 0, 1),
+      DateTime(2026, 10, 9, 12),
+      DateTime(2026, 10, 9, 23, 59, 59),
+    ];
+
+    test('expired on Oct 6 is 3 days ago all through Oct 9', () {
+      for (final expired in oct6) {
+        for (final now in oct9) {
+          expect(daysSince(expired, now), 3, reason: '$expired → $now');
+          expect(timeAgo(expired, now), '3 days ago');
+          expect(DesktopExpiryTable.left(expired, now), '3 days ago');
+          // The same instants written in UTC.
+          expect(timeAgo(expired.toUtc(), now.toUtc()), '3 days ago');
+        }
+      }
+    });
+
+    test('today, then yesterday from local midnight', () {
+      final expired = DateTime(2026, 10, 9, 8);
+      expect(timeAgo(expired, expired), 'today');
+      expect(timeAgo(expired, DateTime(2026, 10, 9, 8, 1)), 'today');
+      expect(timeAgo(expired, DateTime(2026, 10, 9, 23, 59, 59)), 'today');
+      expect(DesktopExpiryTable.left(expired, expired), 'today');
+      expect(timeAgo(expired, DateTime(2026, 10, 10)), '1 day ago');
+      expect(timeAgo(expired, DateTime(2026, 10, 10, 23, 59)), '1 day ago');
+      // Two minutes apart, either side of midnight: yesterday.
+      expect(
+        timeAgo(DateTime(2026, 10, 8, 23, 59), DateTime(2026, 10, 9, 0, 1)),
+        '1 day ago',
+      );
+      expect(timeAgo(expired, DateTime(2026, 10, 11)), '2 days ago');
+    });
+
+    test('across months and years, in coarser units from 60 days', () {
+      expect(
+        timeAgo(DateTime(2026, 9, 30, 23), DateTime(2026, 10, 1)),
+        '1 day ago',
+      );
+      expect(
+        timeAgo(DateTime(2025, 12, 31, 23), DateTime(2026, 1, 1, 1)),
+        '1 day ago',
+      );
+      expect(daysSince(DateTime(2028, 2, 28), DateTime(2028, 3, 1)), 2);
+      expect(
+        timeAgo(DateTime(2026, 8, 10), DateTime(2026, 10, 9)),
+        '2 months ago',
+      );
+      expect(
+        timeAgo(DateTime(2024, 10, 9), DateTime(2026, 10, 9)),
+        '2 years ago',
+      );
+    });
+
+    test('counts the dates in the zone, not 24-hour spans', () {
+      final dhaka = tz.getLocation('Asia/Dhaka'); // +06:00
+      final honolulu = tz.getLocation('Pacific/Honolulu'); // -10:00
+      final kiritimati = tz.getLocation('Pacific/Kiritimati'); // +14:00
+      // A date the user picked, kept as midnight UTC.
+      final picked = DateTime.utc(2026, 10, 6);
+      int since(DateTime expired, tz.Location zone, int hour, [int min = 0]) =>
+          calendarDaysBetween(
+            tz.TZDateTime.from(expired, zone),
+            tz.TZDateTime(zone, 2026, 10, 9, hour, min),
+          );
+      for (final (hour, min) in const [
+        (0, 0),
+        (5, 59),
+        (6, 0),
+        (12, 0),
+        (23, 59),
+      ]) {
+        // Oct 6, 06:00 in Dhaka: 3 days on Oct 9, whatever the time.
+        expect(since(picked, dhaka, hour, min), 3, reason: '$hour:$min');
+        // Oct 6, 14:00 there.
+        expect(since(picked, kiritimati, hour, min), 3, reason: '$hour:$min');
+        // Oct 5, 14:00 in Honolulu, the date shown there: 4 days.
+        expect(since(picked, honolulu, hour, min), 4, reason: '$hour:$min');
+      }
+      // Late on Oct 6 in Honolulu is already Oct 7 in UTC: still 3 there.
+      final late = tz.TZDateTime(honolulu, 2026, 10, 6, 23).toUtc();
+      expect(since(late, honolulu, 0), 3);
+      expect(since(late, dhaka, 0), 2);
+    });
+
+    test('a daylight-saving change between makes no difference', () {
+      final berlin = tz.getLocation('Europe/Berlin');
+      tz.TZDateTime at(int m, int d, int h, [int min = 0]) =>
+          tz.TZDateTime(berlin, 2026, m, d, h, min);
+      // EU fall back, 25 Oct: a 25-hour day.
+      expect(calendarDaysBetween(at(10, 24, 23, 30), at(10, 26, 0, 30)), 2);
+      expect(calendarDaysBetween(at(10, 25, 0, 30), at(10, 25, 23, 30)), 0);
+      // EU spring forward, 29 Mar: a 23-hour day.
+      expect(calendarDaysBetween(at(3, 28, 23, 30), at(3, 29, 23, 30)), 1);
+      expect(calendarDaysBetween(at(3, 28, 0), at(3, 30, 23, 59)), 2);
     });
   });
 }

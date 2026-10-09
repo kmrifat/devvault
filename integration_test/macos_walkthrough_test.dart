@@ -1347,20 +1347,16 @@ class _Walk {
     expect(find.text('Walkthrough token (expired)'), findsWidgets);
     expect(find.text('Walkthrough token (soon)'), findsNothing);
     expect(inStatusBar('1 expired'), findsOneWidget);
-    // KNOWN ISSUE WALK-03 (nice to have): an item that expired on a date
-    // three days back says "4 days ago": the Left column rounds the time
-    // since up, as it does the time left.
-    final expiredLeft = DesktopExpiryTable.left(
-      item('Walkthrough token (expired)').expiresAt!,
-      now(),
+    // WALK-03: an expiry three calendar days back reads "3 days ago" at
+    // any time of day: the time since counts whole days.
+    expect(
+      DesktopExpiryTable.left(
+        item('Walkthrough token (expired)').expiresAt!,
+        now(),
+      ),
+      '3 days ago',
     );
-    expect(find.text(expiredLeft), findsWidgets);
-    knownIssue(
-      'WALK-03',
-      expiredLeft == '3 days ago',
-      'an expiry 3 calendar days ago reads "3 days ago" (reads '
-          '"$expiredLeft")',
-    );
+    expect(find.text('3 days ago'), findsWidgets);
 
     // "Expiring in 30 days" counts one item.
     await tap(sidebarRow('Expiring in 30 days'));
