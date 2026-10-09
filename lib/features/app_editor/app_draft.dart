@@ -36,8 +36,14 @@ class AppDraft {
     this.base,
   });
 
-  factory AppDraft.create() =>
-      AppDraft._(name: '', organization: '', kindName: null, identifiers: []);
+  /// A new app; [organization] is set when the user started it from an
+  /// organization in the sidebar.
+  factory AppDraft.create({String? organization}) => AppDraft._(
+    name: '',
+    organization: organization ?? '',
+    kindName: null,
+    identifiers: [],
+  );
 
   factory AppDraft.edit(AppRecord app) => AppDraft._(
     base: app,

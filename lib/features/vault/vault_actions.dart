@@ -10,6 +10,7 @@ import '../app_editor/app_editor.dart';
 import '../export/export_attachment.dart';
 import '../import/import_dialog.dart';
 import '../item_editor/item_editor.dart';
+import 'rename_organization_sheet.dart';
 
 /// Opens the import dialog (design frame D04) for files the user chooses.
 Future<void> openImport(BuildContext context) => showImportDialog(context);
@@ -27,13 +28,17 @@ Future<void> exportFile(
   Attachment attachment,
 ) => exportAttachment(context, ref, item, attachment);
 
-/// Opens the form for a new item, placed where [filter] is looking, and
-/// selects it once saved.
-Future<void> createItem(BuildContext context, VaultFilter filter) async {
+/// Opens the form for a new item, placed where [filter] is looking (or in
+/// [app], when given), and selects it once saved.
+Future<void> createItem(
+  BuildContext context,
+  VaultFilter filter, {
+  String? app,
+}) async {
   String? place(String? value) => value == VaultFilter.none ? null : value;
   final id = await showItemEditor(
     context,
-    app: place(filter.app),
+    app: app ?? place(filter.app),
     platform: place(filter.platform),
     env: place(filter.env),
   );
@@ -71,9 +76,10 @@ Future<void> deleteItem(BuildContext context, WidgetRef ref, Item item) async {
   );
 }
 
-/// Opens the form for a new app and shows it once saved.
-Future<void> createApp(BuildContext context) async {
-  final id = await showAppEditor(context);
+/// Opens the form for a new app, in [organization] when started from one,
+/// and shows it once saved.
+Future<void> createApp(BuildContext context, {String? organization}) async {
+  final id = await showAppEditor(context, organization: organization);
   if (id != null && context.mounted) context.go(Routes.vault(app: id));
 }
 
@@ -107,6 +113,109 @@ Future<void> deleteApp(
     context,
     BCToastData(
       title: '“${app.name}” deleted',
+      variant: BCToastVariant.success,
+    ),
+  );
+}
+
+/// Moves [item] to [place] in the tree (dropped on a sidebar row), with
+/// Undo in the toast. Nothing else about the item changes.
+Future<void> moveItem(
+  BuildContext context,
+  WidgetRef ref,
+  Item item,
+  TreePlace place,
+) async {
+  final session = ref.read(vaultSessionProvider);
+  if (session is! Unlocked) return;
+  // As stored now: a sync may have changed it since the drag began.
+  final current = session.index.items[item.id];
+  if (current == null || current.isReadOnly) return;
+  if (place.holds(current, session.index)) return;
+  final notifier = ref.read(vaultSessionProvider.notifier);
+  final from = TreePlace.of(current);
+  final to = place.label(session.index);
+  final saved = await notifier.saveItem(place.applyTo(current));
+  if (!context.mounted) return;
+  BCToast.show(
+    context,
+    BCToastData(
+      title: '“${current.title}” moved to $to',
+      variant: BCToastVariant.success,
+      actionLabel: 'Undo',
+      onAction: () async {
+        final current = ref.read(vaultSessionProvider);
+        final now = current is Unlocked ? current.index.items[saved.id] : null;
+        if (now != null) await notifier.saveItem(from.applyTo(now));
+      },
+    ),
+  );
+}
+
+/// Moves [app] into [organization], or out of its own when null
+/// ("Personal"), with Undo in the toast.
+Future<void> moveApp(
+  BuildContext context,
+  WidgetRef ref,
+  AppRecord app,
+  String? organization,
+) async {
+  final session = ref.read(vaultSessionProvider);
+  if (session is! Unlocked) return;
+  // As stored now: a sync may have changed it since the drag began.
+  final current = session.index.apps[app.id];
+  if (current == null || current.organization == organization) return;
+  final notifier = ref.read(vaultSessionProvider.notifier);
+  final from = current.organization;
+  // An empty string clears it.
+  final saved = await notifier.saveApp(
+    current.copyWith(organization: organization ?? ''),
+  );
+  if (!context.mounted) return;
+  BCToast.show(
+    context,
+    BCToastData(
+      title: organization == null
+          ? '“${current.name}” moved out of $from'
+          : '“${current.name}” moved to $organization',
+      variant: BCToastVariant.success,
+      actionLabel: 'Undo',
+      onAction: () async {
+        final current = ref.read(vaultSessionProvider);
+        final now = current is Unlocked ? current.index.apps[saved.id] : null;
+        if (now != null) {
+          await notifier.saveApp(now.copyWith(organization: from ?? ''));
+        }
+      },
+    ),
+  );
+}
+
+/// Asks for a new name for [organization], then renames it on every app
+/// that names it. A name another organization already has merges the two.
+Future<void> renameOrganization(
+  BuildContext context,
+  WidgetRef ref,
+  String organization,
+) async {
+  final name = await showRenameOrganizationSheet(context, organization);
+  if (name == null || name == organization || !context.mounted) return;
+  final session = ref.read(vaultSessionProvider);
+  if (session is! Unlocked) return;
+  final apps = [
+    for (final app in session.index.apps.values)
+      if (app.organization == organization) app.copyWith(organization: name),
+  ];
+  await ref.read(vaultSessionProvider.notifier).saveApps(apps);
+  if (!context.mounted) return;
+  final location = VaultFilter.fromUri(GoRouterState.of(context).uri);
+  if (location.org == organization) {
+    context.go(VaultFilter(org: name).withQuery(location.q).location());
+  }
+  BCToast.show(
+    context,
+    BCToastData(
+      title: '“$organization” renamed to “$name”',
       variant: BCToastVariant.success,
     ),
   );

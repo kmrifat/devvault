@@ -11,6 +11,7 @@ import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/widgets/mono_text.dart';
 import 'desktop_item_type.dart';
+import 'tree_drag.dart';
 import 'vault_actions.dart';
 
 /// Design frame N03's item table: what the sidebar selected, narrowed by
@@ -307,6 +308,23 @@ class _ItemTableState extends State<_ItemTable> {
     widget.onSelect(items[next]);
   }
 
+  /// [row], which drags [item] to a sidebar row to move it there. An item
+  /// this version can't write stays put.
+  Widget _draggable(Item item, Widget row) => item.isReadOnly
+      ? row
+      : TreeDraggable<Item>(
+          data: item,
+          feedback: DragChip(
+            label: item.title,
+            leading: DesktopIcon(
+              item.typeSymbol,
+              size: 14,
+              color: context.desktopColors.secondaryText,
+            ),
+          ),
+          child: row,
+        );
+
   @override
   Widget build(BuildContext context) {
     final items = widget.items;
@@ -333,15 +351,18 @@ class _ItemTableState extends State<_ItemTable> {
                 padding: EdgeInsets.zero,
                 itemExtent: DesktopMetrics.tableRowHeight,
                 itemCount: items.length,
-                itemBuilder: (_, i) => VaultTableRow(
-                  item: items[i],
-                  zebra: i.isOdd,
-                  selected: items[i].id == widget.selected,
-                  now: widget.now,
-                  onTap: () {
-                    _focus.requestFocus();
-                    widget.onSelect(items[i]);
-                  },
+                itemBuilder: (_, i) => _draggable(
+                  items[i],
+                  VaultTableRow(
+                    item: items[i],
+                    zebra: i.isOdd,
+                    selected: items[i].id == widget.selected,
+                    now: widget.now,
+                    onTap: () {
+                      _focus.requestFocus();
+                      widget.onSelect(items[i]);
+                    },
+                  ),
                 ),
               ),
             ),

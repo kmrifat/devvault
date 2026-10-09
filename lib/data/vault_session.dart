@@ -326,6 +326,15 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     return saved;
   });
 
+  /// Saves every app in [apps] (an organization renamed across its apps)
+  /// and refreshes the index once.
+  Future<void> saveApps(Iterable<AppRecord> apps) => exclusive(() async {
+    for (final app in apps) {
+      await _vault.putApp(app);
+    }
+    await reload();
+  });
+
   /// Deletes the app [id]. Its items stay, grouped under "No app".
   Future<void> deleteApp(String id) => exclusive(() async {
     await _vault.delete(id, TombstoneKind.app);

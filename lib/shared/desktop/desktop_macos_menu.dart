@@ -27,12 +27,14 @@ abstract final class MacosMenuStyle {
   );
 
   /// One row, at least [width] wide so the menu is as wide as its field.
+  /// A [destructive] row's label is in the danger colour until lit.
   static Widget item(
     BuildContext context, {
     required String label,
     required double width,
     required VoidCallback onPressed,
     bool? checked,
+    bool destructive = false,
   }) {
     final colors = context.desktopColors;
     bool lit(Set<WidgetState> s) =>
@@ -66,7 +68,11 @@ abstract final class MacosMenuStyle {
           (s) => lit(s) ? colors.accent : Colors.transparent,
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
-          (s) => lit(s) ? colors.onAccent : colors.text,
+          (s) => lit(s)
+              ? colors.onAccent
+              : destructive
+              ? colors.danger
+              : colors.text,
         ),
         iconColor: WidgetStateProperty.resolveWith(
           (s) => lit(s) ? colors.onAccent : colors.text,

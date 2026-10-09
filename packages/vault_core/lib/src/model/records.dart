@@ -326,12 +326,16 @@ class Item implements SyncedRecord {
   };
 
   /// A copy with changes. Expiry is set and cleared as a pair; to clear it,
-  /// pass `clearExpiry: true`.
+  /// pass `clearExpiry: true`. `clearApp`, `clearPlatform` and
+  /// `clearEnvironment` clear the item's place in the tree the same way.
   Item copyWith({
     String? title,
     String? appId,
+    bool clearApp = false,
     String? platform,
+    bool clearPlatform = false,
     String? environment,
+    bool clearEnvironment = false,
     List<String>? tags,
     Map<String, ItemField>? fields,
     List<Attachment>? attachments,
@@ -346,9 +350,9 @@ class Item implements SyncedRecord {
     id: id,
     typeName: typeName,
     title: title ?? this.title,
-    appId: appId ?? this.appId,
-    platform: platform ?? this.platform,
-    environment: environment ?? this.environment,
+    appId: clearApp ? null : appId ?? this.appId,
+    platform: clearPlatform ? null : platform ?? this.platform,
+    environment: clearEnvironment ? null : environment ?? this.environment,
     tags: tags ?? this.tags,
     fields: fields ?? this.fields,
     attachments: attachments ?? this.attachments,

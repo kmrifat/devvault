@@ -138,6 +138,26 @@ void main() {
         expect(cleared.expiresAt, isNull);
         expect(cleared.expiresSource, isNull);
       });
+
+      test('copyWith moves an item and clears its place', () {
+        final item = Item.fromJson(keystoreJson());
+        final moved = item.copyWith(
+          appId: '0190a3d2-7c1e-7b3a-9f00-000000000999',
+          platform: 'ios',
+        );
+        expect(moved.appId, '0190a3d2-7c1e-7b3a-9f00-000000000999');
+        expect(moved.platform, 'ios');
+        expect(moved.environment, item.environment);
+        final cleared = moved.copyWith(
+          clearApp: true,
+          clearPlatform: true,
+          clearEnvironment: true,
+        );
+        expect(cleared.appId, isNull);
+        expect(cleared.platform, isNull);
+        expect(cleared.environment, isNull);
+        expect(cleared.title, item.title);
+      });
     });
 
     test('rejects malformed values without echoing them', () {
