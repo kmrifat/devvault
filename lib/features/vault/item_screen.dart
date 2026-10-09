@@ -1,9 +1,8 @@
 import '../../shared/ui.dart';
 import 'item_detail_pane.dart';
 
-/// Design frame B3: one item on a phone, pushed from the list. The same
-/// detail as the desktop pane in its compact layout; Export opens the
-/// share sheet there (ShareSheetSaver).
+/// Design frame B3: one item on a phone, pushed from the list. Export
+/// opens the share sheet there (ShareSheetSaver).
 class ItemScreen extends StatelessWidget {
   const ItemScreen({super.key, required this.itemId});
 
@@ -15,7 +14,7 @@ class ItemScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.bcTheme.background,
       appBar: const BCAppHeader(variant: BCAppHeaderVariant.solid),
-      body: ItemDetailPane(itemId: itemId, compact: true),
+      body: ItemDetailPane(itemId: itemId),
     );
   }
 }
