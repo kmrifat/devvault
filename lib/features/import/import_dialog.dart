@@ -28,9 +28,11 @@ import '../../shared/desktop_ui.dart'
         DesktopTextField,
         DesktopTheme,
         DesktopThemeContext,
+        DesktopTokenController,
         DesktopTokenField,
         showDesktopSheet;
 import '../../shared/ui.dart';
+import '../vault/desktop_item_type.dart' show DesktopTypeTile;
 import 'import_draft.dart';
 import 'place_fields.dart';
 
@@ -135,6 +137,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
   ImportDraft? _draft;
   late final String _sha256 = _hex(VaultCrypto.sha256(widget.file.bytes));
   late final _title = TextEditingController();
+  final _tagInput = DesktopTokenController();
   final _secretControllers = <String, TextEditingController>{};
   final _fieldControllers = <String, TextEditingController>{};
   Map<String, String> _errors = const {};
@@ -161,6 +164,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
   @override
   void dispose() {
     _title.dispose();
+    _tagInput.dispose();
     for (final c in [
       ..._secretControllers.values,
       ..._fieldControllers.values,
@@ -238,6 +242,8 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
     final draft = _draft!;
     final replacing = _replacing;
     draft.title = replacing?.title ?? _title.text;
+    // A tag still being typed counts.
+    draft.tags = _tagInput.commit(draft.tags);
     for (final field in draft.requiredFields) {
       draft.userFields[field.key] = _field(field.key).text;
     }
@@ -576,7 +582,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
       title: replacing == null
           ? 'Import $name'
           : 'Replace the file of “${replacing.title}”',
-      icon: TypeIconTile(type: draft?.type ?? ItemType.genericFile, size: 36),
+      icon: DesktopTypeTile(type: draft?.type, size: 36),
       subtitle: _SheetFileLine(
         type: _tooLarge ? null : draft?.type,
         reading: !_tooLarge && draft == null,
@@ -937,6 +943,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
             DesktopFormRow(
               label: 'Tags',
               child: DesktopTokenField(
+                controller: _tagInput,
                 tokens: draft.tags,
                 placeholder: 'Press Return after each tag',
                 onChanged: (tags) => setState(() => draft.tags = tags),

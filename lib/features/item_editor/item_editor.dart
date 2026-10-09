@@ -25,6 +25,7 @@ import '../../shared/desktop_ui.dart'
         DesktopTextField,
         DesktopTheme,
         DesktopThemeContext,
+        DesktopTokenController,
         DesktopTokenField,
         showDesktopSheet;
 import '../../shared/ui.dart';
@@ -37,6 +38,7 @@ import '../import/place_fields.dart'
         placeSuggestions,
         typedPlace;
 import '../notes/notes.dart' show DesktopNotesEditor, PhoneNotesField;
+import '../vault/desktop_item_type.dart' show DesktopTypeTile;
 import 'item_draft.dart';
 
 /// Opens the item form: [item] to edit it, or null for a new item placed
@@ -88,6 +90,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
   late final ItemDraft _draft = widget.draft;
   late final _title = TextEditingController(text: _draft.title);
   late final _tags = TextEditingController(text: _draft.tags);
+  final _tagInput = DesktopTokenController();
   late final _notes = TextEditingController(text: _draft.notes);
   Map<String, String> _errors = const {};
   bool _saving = false;
@@ -97,6 +100,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
   void dispose() {
     _title.dispose();
     _tags.dispose();
+    _tagInput.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -111,8 +115,11 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     _draft
       ..title = _title.text
       ..notes = _notes.text;
-    // On a desktop the token field keeps the draft's tags as it goes.
-    if (!_desktop) _draft.tags = _tags.text;
+    // On a desktop the token field keeps the draft's tags as it goes; a
+    // tag still being typed is added here.
+    _draft.tags = _desktop
+        ? _tagInput.commit(_draft.tagList).join(', ')
+        : _tags.text;
     final expiryError = _desktop && !_draft.expiryFromFile
         ? switch (_expiryProblem) {
             DesktopDateProblem.unreadable =>
@@ -365,7 +372,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                       : Row(
                           spacing: 6,
                           children: [
-                            TypeIconTile(type: draft.type, size: 20),
+                            DesktopTypeTile(type: draft.type, size: 20),
                             Text(draft.type.label),
                           ],
                         ),
@@ -443,6 +450,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                 DesktopFormRow(
                   label: 'Tags',
                   child: DesktopTokenField(
+                    controller: _tagInput,
                     tokens: draft.tagList,
                     placeholder: 'Press Return after each tag',
                     onChanged: (tags) =>

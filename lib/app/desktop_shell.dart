@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart' show VaultIndex;
 
 import '../core/shortcuts.dart';
-import '../data/providers.dart' show deviceIdProvider;
+import '../data/providers.dart'
+    show clockProvider, deviceIdProvider, settingsProvider;
 import '../data/sync_controller.dart';
 import '../data/vault_filter.dart';
 import '../data/vault_session.dart';
+import '../features/expiry/desktop_expiry_table.dart';
+import '../features/expiry/expiry_screen.dart' show ExpiryGroups;
 import '../features/import/drop_import.dart';
 import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
@@ -356,7 +359,8 @@ class _ToolbarState extends ConsumerState<ShellToolbar> {
 
 /// The window's status bar: how many items the list holds, when the
 /// selected item was created and changed (and on which device), and that
-/// the vault is end-to-end encrypted.
+/// the vault is end-to-end encrypted. On Expiry (N06) it counts dated and
+/// undated items instead, and says whether reminders are on.
 class ShellStatusBar extends ConsumerWidget {
   const ShellStatusBar({super.key, required this.section, required this.uri});
 
@@ -368,7 +372,19 @@ class ShellStatusBar extends ConsumerWidget {
     final colors = context.desktopColors;
     final session = ref.watch(vaultSessionProvider);
     final index = session is Unlocked ? session.index : null;
-    final count = _describe(section, uri, index).count;
+    final expiry = section == ShellSection.expiry;
+    final String? summary;
+    if (expiry) {
+      summary = index == null
+          ? null
+          : DesktopExpiryTable.status(
+              ExpiryGroups(index.all, ref.watch(clockProvider)()),
+              onlyExpired: uri.queryParameters['show'] == 'expired',
+            );
+    } else {
+      final count = _describe(section, uri, index).count;
+      summary = count == null ? null : _items(count);
+    }
     final itemId = section == ShellSection.vault
         ? uri.queryParameters['item']
         : null;
@@ -389,7 +405,7 @@ class ShellStatusBar extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              if (count != null) Text(_items(count), style: style),
+              if (summary != null) Text(summary, style: style),
               // The selected item's history, right-aligned beside the
               // encryption note (as in N03).
               Expanded(
@@ -409,9 +425,22 @@ class ShellStatusBar extends ConsumerWidget {
                         ),
                       ),
               ),
-              Text('End-to-end encrypted', style: style),
-              const SizedBox(width: 5),
-              DesktopIcon(DesktopSymbol.lock, size: 10),
+              if (expiry) ...[
+                DesktopIcon(DesktopSymbol.reminders, size: 10),
+                const SizedBox(width: 5),
+                Text(
+                  DesktopExpiryTable.reminders(
+                    on: ref.watch(
+                      settingsProvider.select((s) => s.expiryReminders),
+                    ),
+                  ),
+                  style: style,
+                ),
+              ] else ...[
+                Text('End-to-end encrypted', style: style),
+                const SizedBox(width: 5),
+                DesktopIcon(DesktopSymbol.lock, size: 10),
+              ],
             ],
           ),
         ),

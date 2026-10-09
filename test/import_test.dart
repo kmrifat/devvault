@@ -12,10 +12,13 @@ import 'package:devvault/features/import/import_dialog.dart';
 import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/import/place_fields.dart'
     show placeSuggestions, typedPlace;
+import 'package:devvault/features/vault/desktop_item_type.dart'
+    show DesktopTypeTile;
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/services/file_import.dart';
 import 'package:devvault/shared/desktop_ui.dart'
     show DesktopButton, DesktopPopup, DesktopProgress, DesktopTokenField;
+import 'package:devvault/shared/widgets/type_icon_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -441,6 +444,19 @@ void main() {
       await startImport(tester, fixture('AuthKey_TESTKEY123.p8'));
 
       expect(find.text('Import AuthKey_TESTKEY123.p8'), findsOneWidget);
+      // The type tile is the desktop layer's, not bc_ui's.
+      expect(
+        tester
+            .widget<DesktopTypeTile>(
+              find.descendant(
+                of: find.byType(ImportDialog),
+                matching: find.byType(DesktopTypeTile),
+              ),
+            )
+            .type,
+        ItemType.appleAuthKey,
+      );
+      expect(find.byType(TypeIconTile), findsNothing);
       expect(find.text('Details'), findsOneWidget);
       expect(find.text('TESTKEY123'), findsOneWidget);
       expect(find.text('EC P-256'), findsOneWidget);
@@ -548,12 +564,14 @@ void main() {
       await tester.enterText(tags, 'ci');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
+      // One typed without Return is kept on import.
+      await tester.enterText(tags, ' crashlytics ');
 
       await tapImport(tester, () => index(tester).all.isNotEmpty);
       final item = index(tester).all.single;
       expect(item.platform, 'watchos');
       expect(item.environment, 'staging');
-      expect(item.tags, ['firebase', 'ci']);
+      expect(item.tags, ['firebase', 'ci', 'crashlytics']);
       expect(item.appId, isNull);
     });
 

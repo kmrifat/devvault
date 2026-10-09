@@ -1,8 +1,12 @@
+import 'package:devvault/app/desktop_shell.dart' show ShellStatusBar;
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/data/app_settings.dart';
+import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -57,6 +61,7 @@ void main() {
       String? location,
       TestVault vault = TestVault.sample,
       AppLayout layout = AppLayout.desktop,
+      List<Override> overrides = const [],
     }) async {
       tester.view
         ..physicalSize = layout == AppLayout.desktop
@@ -69,6 +74,7 @@ void main() {
         location: location ?? Routes.expiry,
         vault: vault,
         layout: layout,
+        overrides: overrides,
       );
     }
 
@@ -81,6 +87,11 @@ void main() {
 
     Finder inScreen(Finder f) =>
         find.descendant(of: find.byType(ExpiryScreen), matching: f);
+
+    Finder inStatusBar(String text) => find.descendant(
+      of: find.byType(ShellStatusBar),
+      matching: find.text(text),
+    );
 
     Finder row(String title) => inScreen(
       find.byWidgetPredicate(
@@ -156,6 +167,44 @@ void main() {
       await tester.pumpAndSettle();
       expect(location(tester), Routes.expiry);
       expect(row('Play publisher'), findsOneWidget);
+    });
+
+    testWidgets('the status bar counts dated and undated items', (
+      tester,
+    ) async {
+      await open(tester);
+      final all = index(tester).all;
+      final dated = all.where((i) => i.expiresAt != null).length;
+      expect(dated, 4);
+      expect(
+        inStatusBar('4 dated · ${all.length - dated} without a date'),
+        findsOneWidget,
+      );
+      expect(
+        inStatusBar('Reminders on · at most two per item'),
+        findsOneWidget,
+      );
+      expect(inStatusBar('End-to-end encrypted'), findsNothing);
+    });
+
+    testWidgets('with ?show=expired the status bar counts the expired', (
+      tester,
+    ) async {
+      await open(tester, location: Routes.expiryShowing(expired: true));
+      expect(inStatusBar('1 expired'), findsOneWidget);
+    });
+
+    testWidgets('the status bar says when reminders are off', (tester) async {
+      await open(
+        tester,
+        overrides: [
+          initialSettingsProvider.overrideWithValue(
+            const AppSettings(expiryReminders: false),
+          ),
+        ],
+      );
+      expect(inStatusBar('Reminders off'), findsOneWidget);
+      expect(inStatusBar('Reminders on · at most two per item'), findsNothing);
     });
 
     testWidgets('a date the user typed says so', (tester) async {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/providers.dart';
 import '../data/sync_controller.dart';
 import '../data/vault_session.dart';
 import '../shared/desktop_ui.dart';
@@ -12,9 +13,9 @@ import 'desktop_commands.dart';
 import 'routes.dart';
 
 /// The app's menus on desktop (design doc › Menu bar): DevVault, File,
-/// Edit, View, Vault and Window on macOS; File, Edit, View, Vault and Help
-/// in the window on Windows and Linux. Everything that needs the vault is
-/// disabled while it's locked.
+/// Edit, View, Vault, Window and Help on macOS; File, Edit, View, Vault and
+/// Help in the window on Windows and Linux. Everything that needs the vault
+/// is disabled while it's locked.
 class AppMenus extends ConsumerWidget {
   const AppMenus({
     super.key,
@@ -42,6 +43,7 @@ class AppMenus extends ConsumerWidget {
           go: router.go,
           lock: () => ref.read(vaultSessionProvider.notifier).lock(),
           syncNow: () => ref.read(syncControllerProvider.notifier).syncNow(),
+          open: (link) => ref.read(linkOpenerProvider).open(link),
           about: () {
             final context = router.routerDelegate.navigatorKey.currentContext;
             if (context != null) {
@@ -55,9 +57,22 @@ class AppMenus extends ConsumerWidget {
     );
   }
 
+  /// The pages Help opens: the project's README, the AI agents guide
+  /// (docs/agent/USING.md) and a new GitHub issue.
+  static final helpLink = Uri.parse(
+    'https://github.com/kmrifat/devvault#readme',
+  );
+  static final agentsGuideLink = Uri.parse(
+    'https://github.com/kmrifat/devvault/blob/main/docs/agent/USING.md',
+  );
+  static final issueLink = Uri.parse(
+    'https://github.com/kmrifat/devvault/issues/new',
+  );
+
   /// The menus for one state of the app. [macos] adds the items macOS
   /// provides (About, Hide, Quit, the Window menu) and the Edit commands,
-  /// which its menu bar takes over from text fields.
+  /// which its menu bar takes over from text fields. Help's items work
+  /// while the vault is locked: they only open web pages.
   @visibleForTesting
   static List<DesktopMenu> menus({
     required bool macos,
@@ -66,6 +81,7 @@ class AppMenus extends ConsumerWidget {
     required void Function(String location) go,
     required VoidCallback lock,
     required VoidCallback syncNow,
+    required void Function(Uri link) open,
     required VoidCallback about,
     required DesktopCommands commands,
   }) {
@@ -203,11 +219,21 @@ class AppMenus extends ConsumerWidget {
           DesktopMenuProvided(
             PlatformProvidedMenuItemType.arrangeWindowsInFront,
           ),
-        ])
-      else
-        DesktopMenu('Help', [
-          DesktopMenuItem('About DevVault', onSelected: about),
         ]),
+      DesktopMenu('Help', [
+        DesktopMenuItem('DevVault Help', onSelected: () => open(helpLink)),
+        DesktopMenuItem(
+          'Using DevVault with AI Agents',
+          onSelected: () => open(agentsGuideLink),
+        ),
+        const DesktopMenuDivider(),
+        DesktopMenuItem('Report an Issue…', onSelected: () => open(issueLink)),
+        // macOS has About in the app menu.
+        if (!macos) ...[
+          const DesktopMenuDivider(),
+          DesktopMenuItem('About DevVault', onSelected: about),
+        ],
+      ]),
     ];
   }
 
