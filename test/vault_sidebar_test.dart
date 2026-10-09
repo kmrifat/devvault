@@ -146,45 +146,65 @@ void main() {
     expect(find.text(ids[1]), findsOneWidget);
   });
 
-  testWidgets('shows apps open and platforms closed', (tester) async {
+  testWidgets('shows every app closed, with its count', (tester) async {
     await open(tester);
     expect(row('Kitchenly, 10 items'), findsOneWidget);
     expect(row('Ledgerly, 1 item'), findsOneWidget);
     expect(row('No app, 1 item'), findsOneWidget);
-    expect(row('Android, 6 items'), findsOneWidget);
-    expect(row('iOS, 3 items'), findsOneWidget);
-    expect(row('Web, 1 item'), findsOneWidget);
-    expect(row('Server, 1 item'), findsOneWidget);
-    expect(inSidebar('Production'), findsNothing);
+    expect(inSidebar('Upload keystore'), findsNothing);
+    // No platform or environment levels: they filter the list instead.
+    expect(inSidebar('Android'), findsNothing);
   });
 
-  testWidgets('tree rows link to app, platform and environment filters', (
+  testWidgets('an app with no items still shows', (tester) async {
+    await open(tester);
+    final notifier = appContainer(tester).read(vaultSessionProvider.notifier);
+    await tester.runAsync(() => notifier.saveApp(notifier.newApp('Pantry')));
+    await tester.pumpAndSettle();
+    expect(row('Pantry, 0 items'), findsOneWidget);
+  });
+
+  testWidgets('apps link to their items; an item row selects the item', (
     tester,
   ) async {
     await open(tester);
     final kitchenly = appId(tester, 'Kitchenly');
+    final keystore = index(tester).items.values
+        .firstWhere((i) => i.title == 'Upload keystore');
 
-    await tap(tester, inSidebar('Android'));
-    expect(location(tester), Routes.vault(app: kitchenly, platform: 'android'));
-    expect(isSelected(tester, 'Android'), isTrue);
-    expect(isSelected(tester, 'All items'), isFalse);
-    // Selecting a platform opens it.
-    expect(row('Production, 5 items'), findsOneWidget);
-    expect(row('Staging, 1 item'), findsOneWidget);
+    await tap(tester, inSidebar('Kitchenly'));
+    expect(location(tester), Routes.vault(app: kitchenly));
+    expect(isSelected(tester, 'Kitchenly'), isTrue);
+    // Selecting an app opens it; its items show with platform and
+    // environment.
+    expect(row('Upload keystore, Android, Production'), findsOneWidget);
 
-    await tap(tester, inSidebar('Production'));
-    expect(
-      location(tester),
-      Routes.vault(app: kitchenly, platform: 'android', env: 'production'),
-    );
-    expect(isSelected(tester, 'Production'), isTrue);
-    expect(isSelected(tester, 'Android'), isFalse);
+    await tap(tester, row('Upload keystore'));
+    expect(location(tester), Routes.vault(item: keystore.id, app: kitchenly));
+    expect(isSelected(tester, 'Upload keystore'), isTrue);
+    expect(isSelected(tester, 'Kitchenly'), isFalse);
 
     await tap(tester, inSidebar('No app'));
     expect(location(tester), Routes.vault(app: VaultFilter.none));
+    expect(row('GitHub deploy key'), findsOneWidget);
 
     await tap(tester, inSidebar('All items'));
     expect(location(tester), Routes.vault());
+  });
+
+  testWidgets('an item row keeps the list when the list shows it', (
+    tester,
+  ) async {
+    await open(tester);
+    await tap(
+      tester,
+      chevron('Ledgerly', DesktopSymbol.chevronRight.of(DesktopKit.current)),
+    );
+    final stripe = index(tester).items.values
+        .firstWhere((i) => i.title == 'Stripe secret key');
+    await tap(tester, row('Stripe secret key'));
+    // "All items" lists it, so the list stays as it was.
+    expect(location(tester), Routes.vault(item: stripe.id));
   });
 
   testWidgets('chevrons open and close without changing the list', (
@@ -193,27 +213,54 @@ void main() {
     await open(tester);
     await tap(
       tester,
-      chevron('iOS', DesktopSymbol.chevronRight.of(DesktopKit.current)),
+      chevron('Kitchenly', DesktopSymbol.chevronRight.of(DesktopKit.current)),
     );
-    expect(row('Production, 3 items'), findsOneWidget);
+    expect(row('Upload keystore'), findsOneWidget);
     expect(location(tester), Routes.vault());
 
     await tap(
       tester,
       chevron('Kitchenly', DesktopSymbol.chevronDown.of(DesktopKit.current)),
     );
-    expect(inSidebar('iOS'), findsNothing);
-    expect(inSidebar('Production'), findsNothing);
+    expect(inSidebar('Upload keystore'), findsNothing);
     expect(location(tester), Routes.vault());
   });
 
   testWidgets('a link opens the tree down to its selection', (tester) async {
     await open(tester);
-    final kitchenly = appId(tester, 'Kitchenly');
+    final stripe = index(tester).items.values
+        .firstWhere((i) => i.title == 'Stripe secret key');
     GoRouter.of(tester.element(find.byType(VaultSidebar)))
-        .go(Routes.vault(app: kitchenly, platform: 'ios', env: 'production'));
+        .go(Routes.vault(item: stripe.id));
     await tester.pumpAndSettle();
-    expect(isSelected(tester, 'Production'), isTrue);
+    expect(isSelected(tester, 'Stripe secret key'), isTrue);
+  });
+
+  testWidgets('platform and environment pop-ups narrow the list', (
+    tester,
+  ) async {
+    await open(tester);
+    final kitchenly = appId(tester, 'Kitchenly');
+    await tap(tester, inSidebar('Kitchenly'));
+
+    await tap(tester, find.byKey(const ValueKey('platform-filter')));
+    await tap(tester, find.text('Android').last);
+    expect(location(tester), Routes.vault(app: kitchenly, platform: 'android'));
+
+    await tap(tester, find.byKey(const ValueKey('environment-filter')));
+    await tap(tester, find.text('Staging').last);
+    expect(
+      location(tester),
+      Routes.vault(app: kitchenly, platform: 'android', env: 'staging'),
+    );
+    expect(
+      VaultFilter.fromUri(Uri.parse(location(tester))).apply(index(tester)),
+      hasLength(1),
+    );
+
+    await tap(tester, find.byKey(const ValueKey('platform-filter')));
+    await tap(tester, find.text('All platforms').last);
+    expect(location(tester), Routes.vault(app: kitchenly, env: 'staging'));
   });
 
   testWidgets('tags filter the list and toggle off', (tester) async {
@@ -604,26 +651,37 @@ void main() {
       expect(row('Ledgerly, 1 item'), findsOneWidget);
     });
 
-    testWidgets('an item dragged onto a platform takes the app and platform '
-        'and keeps its environment', (tester) async {
+    testWidgets('an item dropped on another item moves to that item’s app', (
+      tester,
+    ) async {
       await open(tester);
-      final kitchenly = app(tester, 'Kitchenly').id;
+      final ledgerly = app(tester, 'Ledgerly').id;
+      // Opened with its chevron, so the list still shows everything.
+      await tap(
+        tester,
+        chevron('Ledgerly', DesktopSymbol.chevronRight.of(DesktopKit.current)),
+      );
+      expect(row('Stripe secret key'), findsOneWidget);
 
-      await drag(tester, listed('Stripe secret key'), row('iOS'));
+      await drag(tester, listed('GitHub deploy key'), row('Stripe secret key'));
       await settle(
         tester,
-        () => item(tester, 'Stripe secret key').appId == kitchenly,
+        () => item(tester, 'GitHub deploy key').appId == ledgerly,
       );
-      final moved = item(tester, 'Stripe secret key');
-      expect(moved.platform, 'ios');
-      expect(moved.environment, 'production');
-      expect(row('iOS, 4 items'), findsOneWidget);
-      expect(
-        find.text('“Stripe secret key” moved to Kitchenly › iOS'),
-        findsOneWidget,
-      );
+      expect(row('Ledgerly, 2 items'), findsOneWidget);
     });
 
+    testWidgets('an item dragged from the tree moves too', (tester) async {
+      await open(tester);
+      final kitchenly = app(tester, 'Kitchenly').id;
+      await tap(tester, row('No app'));
+      await drag(tester, row('GitHub deploy key'), row('Kitchenly'));
+      await settle(
+        tester,
+        () => item(tester, 'GitHub deploy key').appId == kitchenly,
+      );
+      expect(inSidebar('No app'), findsNothing);
+    });
     testWidgets('the row an item is already in doesn’t take it', (
       tester,
     ) async {
@@ -687,17 +745,92 @@ void main() {
       );
     });
 
-    testWidgets('a platform’s menu adds an item there', (tester) async {
+    testWidgets('an item’s menu moves it to another app', (tester) async {
       await open(tester);
-      await rightClick(tester, row('iOS'));
-      await tester.tap(find.text('New item…'));
+      final kitchenly = app(tester, 'Kitchenly').id;
+      await rightClick(tester, listed('GitHub deploy key'));
+      expect(find.text('Edit item…'), findsOneWidget);
+      expect(find.text('Delete item…'), findsOneWidget);
+      await tester.tap(find.text('Move to app…'));
       await tester.pumpAndSettle();
-      final editor = find.byType(ItemEditor);
-      expect(editor, findsOneWidget);
-      expect(
-        find.descendant(of: editor, matching: find.textContaining('Kitchenly')),
-        findsWidgets,
+      await tester.tap(find.text('No app').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kitchenly').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Move'));
+      await settle(
+        tester,
+        () => item(tester, 'GitHub deploy key').appId == kitchenly,
       );
+      expect(row('Kitchenly, 11 items'), findsOneWidget);
+    });
+
+    testWidgets('an app’s menu moves it to an organization', (tester) async {
+      await open(tester);
+      await saveApp(
+        tester,
+        app(tester, 'Ledgerly').copyWith(organization: 'Acme Corp'),
+      );
+      await rightClick(tester, row('Kitchenly'));
+      await tester.tap(find.text('Move to organization…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Personal (no organization)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Acme Corp').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Move'));
+      await settle(
+        tester,
+        () => app(tester, 'Kitchenly').organization == 'Acme Corp',
+      );
+      expect(row('Acme Corp, 11 items'), findsOneWidget);
+    });
+    testWidgets('New organization… makes an empty one to drag apps into', (
+      tester,
+    ) async {
+      await open(tester);
+      await rightClick(tester, inSidebar('Apps'));
+      await tester.tap(find.text('New organization…'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('organization-name')),
+        'Globex',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Create'));
+      await settle(
+        tester,
+        () =>
+            index(tester).organizationRecords.values
+                .any((o) => o.name == 'Globex'),
+      );
+      expect(row('Globex, 0 items'), findsOneWidget);
+      expect(row('Personal, 11 items'), findsOneWidget);
+      expect(location(tester), Routes.vault(org: 'Globex'));
+
+      await drag(tester, row('Kitchenly'), row('Globex'));
+      await settle(
+        tester,
+        () => app(tester, 'Kitchenly').organization == 'Globex',
+      );
+      expect(row('Globex, 10 items'), findsOneWidget);
+    });
+
+    testWidgets('Delete organization… keeps its apps, under Personal', (
+      tester,
+    ) async {
+      await open(tester);
+      await saveApp(
+        tester,
+        app(tester, 'Ledgerly').copyWith(organization: 'Acme Corp'),
+      );
+      await rightClick(tester, row('Acme Corp'));
+      await tester.tap(find.text('Delete organization…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete organization'));
+      await settle(tester, () => app(tester, 'Ledgerly').organization == null);
+      expect(inSidebar('Acme Corp'), findsNothing);
+      expect(index(tester).items.values, hasLength(12));
     });
 
     testWidgets('renaming an organization renames it on each of its apps', (
