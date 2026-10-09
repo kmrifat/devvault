@@ -335,6 +335,13 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      find.descendant(
+        of: find.byType(ShellStatusBar),
+        matching: find.text('End-to-end encrypted'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Lock locks the vault and shows the unlock screen', (

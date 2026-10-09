@@ -33,6 +33,9 @@ enum DesktopSymbol {
   error,
   calendar,
   noExpiry,
+
+  /// Expiry reminders (the Expiry status bar).
+  reminders,
   pairDevice,
   chevronRight,
   chevronDown,
@@ -118,6 +121,7 @@ enum DesktopSymbol {
     error => CupertinoIcons.exclamationmark_circle,
     calendar => CupertinoIcons.calendar,
     noExpiry => CupertinoIcons.infinite,
+    reminders => CupertinoIcons.bell,
     pairDevice => CupertinoIcons.qrcode_viewfinder,
     chevronRight => CupertinoIcons.chevron_right,
     chevronDown => CupertinoIcons.chevron_down,
@@ -190,6 +194,7 @@ enum DesktopSymbol {
     error => fl.FluentIcons.error_badge,
     calendar => fl.FluentIcons.calendar,
     noExpiry => fl.FluentIcons.repeat_all,
+    reminders => fl.FluentIcons.ringer,
     pairDevice => fl.FluentIcons.q_r_code,
     chevronRight => fl.FluentIcons.chevron_right,
     chevronDown => fl.FluentIcons.chevron_down,
@@ -260,6 +265,7 @@ enum DesktopSymbol {
     error => yaru.YaruIcons.error,
     calendar => yaru.YaruIcons.calendar,
     noExpiry => yaru.YaruIcons.repeat,
+    reminders => yaru.YaruIcons.bell,
     // Yaru has no QR code icon.
     pairDevice => yaru.YaruIcons.smartphone,
     chevronRight => yaru.YaruIcons.pan_end,

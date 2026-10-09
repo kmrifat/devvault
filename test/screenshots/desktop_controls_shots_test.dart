@@ -38,6 +38,30 @@ void main() {
     }
   });
 
+  testWidgets('desktop-popup-long-label-macos-light', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1440, 640)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    debugDisableShadows = false;
+    try {
+      await pumpDesktop(tester, DesktopKit.macos, const _LongLabels());
+      // Open the App pop-up's menu.
+      await tester.tap(find.byType(DesktopPopup<String>).last);
+      await tester.pumpAndSettle();
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile(
+          '../../screenshots/desktop-popup-long-label-macos-light.png',
+        ),
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      debugDisableShadows = true;
+    }
+  });
+
   testWidgets('desktop-sheet-macos-light', (tester) async {
     tester.view
       ..physicalSize = const Size(1440, 1000)
@@ -270,6 +294,61 @@ class _Gallery extends StatelessWidget {
                     onPressed: () {},
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Pop-ups whose choices are long "Organization › App" labels, as in the
+/// explorer's Move to app… sheet: one sized to its choice, one filling its
+/// form row.
+class _LongLabels extends StatelessWidget {
+  const _LongLabels();
+
+  static const _choices = [
+    DesktopChoice('', 'No app'),
+    DesktopChoice('billing', 'Acme Corporation › Billing and Subscriptions'),
+    DesktopChoice(
+      'gateway',
+      'Acme Corporation International Holdings › Payments Gateway '
+          'Reconciliation Service (Production, EU West)',
+    ),
+    DesktopChoice('notes', 'Personal › Notes'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    return SizedBox(
+      width: 440,
+      child: ColoredBox(
+        color: colors.window,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: DesktopForm(
+            children: [
+              DesktopFormRow(
+                label: 'Moved from',
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: DesktopPopup<String>(
+                    value: 'billing',
+                    onChanged: (_) {},
+                    choices: _choices,
+                  ),
+                ),
+              ),
+              DesktopFormRow(
+                label: 'App',
+                child: DesktopPopup<String>(
+                  value: 'gateway',
+                  onChanged: (_) {},
+                  choices: _choices,
+                ),
               ),
             ],
           ),

@@ -20,7 +20,8 @@ class DesktopChoice<T> {
 ///
 /// On macOS a DevVault-drawn pop-up as tall as a text field, Fluent
 /// `ComboBox` on Windows, or Material's `DropdownButton`
-/// in the Yaru theme. [value] null shows [placeholder].
+/// in the Yaru theme. [value] null shows [placeholder]. A choice too long
+/// for the button ends in an ellipsis.
 class DesktopPopup<T> extends StatelessWidget {
   const DesktopPopup({
     super.key,
@@ -40,7 +41,7 @@ class DesktopPopup<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onChanged = this.onChanged;
-    final hint = placeholder == null ? null : Text(placeholder!);
+    final hint = placeholder == null ? null : _label(placeholder!);
     return switch (context.desktopKit) {
       DesktopKit.macos => _MacosPopup<T>(
         value: value,
@@ -48,35 +49,46 @@ class DesktopPopup<T> extends StatelessWidget {
         onChanged: onChanged,
         placeholder: placeholder,
       ),
-      DesktopKit.fluent => fl.ComboBox<T>(
-        value: value,
-        placeholder: hint,
-        onChanged: onChanged == null
-            ? null
-            : (v) {
-                if (v != null) onChanged(v);
-              },
-        items: [
-          for (final c in choices)
-            fl.ComboBoxItem(value: c.value, child: Text(c.label)),
-        ],
+      // As wide as the widest choice but no wider than the space given, so
+      // a long label ends in an ellipsis instead of overflowing.
+      DesktopKit.fluent => IntrinsicWidth(
+        child: fl.ComboBox<T>(
+          value: value,
+          isExpanded: true,
+          placeholder: hint,
+          onChanged: onChanged == null
+              ? null
+              : (v) {
+                  if (v != null) onChanged(v);
+                },
+          items: [
+            for (final c in choices)
+              fl.ComboBoxItem(value: c.value, child: _label(c.label)),
+          ],
+        ),
       ),
-      DesktopKit.yaru => DropdownButton<T>(
-        value: value,
-        hint: hint,
-        isDense: true,
-        onChanged: onChanged == null
-            ? null
-            : (v) {
-                if (v != null) onChanged(v);
-              },
-        items: [
-          for (final c in choices)
-            DropdownMenuItem(value: c.value, child: Text(c.label)),
-        ],
+      DesktopKit.yaru => IntrinsicWidth(
+        child: DropdownButton<T>(
+          value: value,
+          hint: hint,
+          isDense: true,
+          isExpanded: true,
+          onChanged: onChanged == null
+              ? null
+              : (v) {
+                  if (v != null) onChanged(v);
+                },
+          items: [
+            for (final c in choices)
+              DropdownMenuItem(value: c.value, child: _label(c.label)),
+          ],
+        ),
       ),
     };
   }
+
+  static Widget _label(String label) =>
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis);
 }
 
 /// A macOS pop-up button as tall as the text fields beside it
@@ -121,7 +133,13 @@ class _MacosPopupState<T> extends State<_MacosPopup<T>> {
             constraints.minWidth == constraints.maxWidth;
         final box = Container(
           height: DesktopMetrics.fieldHeight,
-          constraints: const BoxConstraints(minWidth: 120),
+          // With no width given, as wide as its choice, up to a menu's.
+          constraints: BoxConstraints(
+            minWidth: 120,
+            maxWidth: constraints.hasBoundedWidth
+                ? double.infinity
+                : DesktopMetrics.menuMaxWidth,
+          ),
           padding: const EdgeInsets.only(left: 9, right: 6),
           decoration: BoxDecoration(
             color: _hovered && enabled ? colors.groupBox : colors.field,
