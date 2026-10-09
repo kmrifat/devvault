@@ -10,7 +10,7 @@ import '../app_editor/app_editor.dart';
 import '../export/export_attachment.dart';
 import '../import/import_dialog.dart';
 import '../item_editor/item_editor.dart';
-import 'rename_organization_sheet.dart';
+import 'organization_sheet.dart';
 
 /// Opens the import dialog (design frame D04) for files the user chooses.
 Future<void> openImport(BuildContext context) => showImportDialog(context);
@@ -198,7 +198,7 @@ Future<void> renameOrganization(
   WidgetRef ref,
   String organization,
 ) async {
-  final name = await showRenameOrganizationSheet(context, organization);
+  final name = await showOrganizationSheet(context, organization: organization);
   if (name == null || name == organization || !context.mounted) return;
   final session = ref.read(vaultSessionProvider);
   if (session is! Unlocked) return;
