@@ -13,6 +13,7 @@ class AppSettings {
     this.expiryReminders = true,
     this.agentsEnabled = false,
     this.agentMetadataWithoutAsking = true,
+    this.keepRunningWhenClosed = true,
   });
 
   static const defaultAutoLock = Duration(minutes: 5);
@@ -54,6 +55,10 @@ class AppSettings {
   /// asking each time. Secret values always ask.
   final bool agentMetadataWithoutAsking;
 
+  /// While AI agents are on (macOS): closing the window locks the vault and
+  /// hides DevVault instead of quitting, so agents can still reach it.
+  final bool keepRunningWhenClosed;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     Duration? Function()? autoLockAfter,
@@ -61,6 +66,7 @@ class AppSettings {
     bool? expiryReminders,
     bool? agentsEnabled,
     bool? agentMetadataWithoutAsking,
+    bool? keepRunningWhenClosed,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     autoLockAfter: autoLockAfter == null ? this.autoLockAfter : autoLockAfter(),
@@ -69,6 +75,7 @@ class AppSettings {
     agentsEnabled: agentsEnabled ?? this.agentsEnabled,
     agentMetadataWithoutAsking:
         agentMetadataWithoutAsking ?? this.agentMetadataWithoutAsking,
+    keepRunningWhenClosed: keepRunningWhenClosed ?? this.keepRunningWhenClosed,
   );
 
   Map<String, Object?> toJson() => {
@@ -78,6 +85,7 @@ class AppSettings {
     'expiry_reminders': expiryReminders,
     'agents_enabled': agentsEnabled,
     'agent_metadata_without_asking': agentMetadataWithoutAsking,
+    'keep_running_when_closed': keepRunningWhenClosed,
   };
 
   /// Reads what it recognises and keeps the default for the rest, so a
@@ -105,6 +113,7 @@ class AppSettings {
       agentsEnabled: json['agents_enabled'] == true,
       agentMetadataWithoutAsking:
           json['agent_metadata_without_asking'] != false,
+      keepRunningWhenClosed: json['keep_running_when_closed'] != false,
     );
   }
 
@@ -142,7 +151,8 @@ class AppSettings {
       other.clipboardClearAfter == clipboardClearAfter &&
       other.expiryReminders == expiryReminders &&
       other.agentsEnabled == agentsEnabled &&
-      other.agentMetadataWithoutAsking == agentMetadataWithoutAsking;
+      other.agentMetadataWithoutAsking == agentMetadataWithoutAsking &&
+      other.keepRunningWhenClosed == keepRunningWhenClosed;
 
   @override
   int get hashCode => Object.hash(
@@ -152,5 +162,6 @@ class AppSettings {
     expiryReminders,
     agentsEnabled,
     agentMetadataWithoutAsking,
+    keepRunningWhenClosed,
   );
 }

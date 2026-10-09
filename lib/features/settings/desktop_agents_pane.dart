@@ -50,6 +50,28 @@ class DesktopAgentsPane extends ConsumerWidget {
               ),
             ),
             DesktopSettingsRow(
+              title: 'Keep running when the window is closed',
+              onTap: supported && settings.agentsEnabled
+                  ? () => notifier.setKeepRunningWhenClosed(
+                      !settings.keepRunningWhenClosed,
+                    )
+                  : null,
+              description:
+                  'Closing the window locks the vault and hides DevVault, so '
+                  'agents can still reach it. Click the Dock icon to bring it '
+                  'back; ⌘Q quits.',
+              trailing: DesktopSwitch(
+                value:
+                    supported &&
+                    settings.agentsEnabled &&
+                    settings.keepRunningWhenClosed,
+                onChanged: supported && settings.agentsEnabled
+                    ? notifier.setKeepRunningWhenClosed
+                    : null,
+                semanticLabel: 'Keep running when the window is closed',
+              ),
+            ),
+            DesktopSettingsRow(
               title: 'Read metadata without asking',
               onTap: () => notifier.setAgentMetadataWithoutAsking(
                 !settings.agentMetadataWithoutAsking,
