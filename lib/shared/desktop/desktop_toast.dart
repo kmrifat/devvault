@@ -4,7 +4,6 @@ import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/material.dart';
 
 import 'desktop_button.dart';
-import 'desktop_icon_button.dart';
 import 'desktop_metrics.dart';
 import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
@@ -17,7 +16,8 @@ enum DesktopToastKind { info, success, danger }
 ///
 /// - macOS: a banner like Notification Center's, at the top right of the
 ///   window under the toolbar. It closes after [duration] (zero keeps it),
-///   or with its ×, which shows on hover; hovering keeps it open.
+///   or with the round × over its corner, which shows on hover; hovering
+///   keeps it open.
 /// - Windows: Fluent's `InfoBar`, at the bottom of the window.
 /// - Linux: a Yaru snackbar, at the bottom of the window.
 ///
@@ -170,7 +170,7 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
       ),
     );
     return Positioned(
-      top: macos ? DesktopMetrics.toolbarHeight + 8 : null,
+      top: macos ? DesktopMetrics.toolbarHeight + 8 - _closeInset : null,
       right: macos ? 12 : null,
       bottom: macos ? null : 24,
       left: macos ? null : 0,
@@ -203,7 +203,7 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
       DesktopToastKind.success => (DesktopSymbol.success, colors.success),
       DesktopToastKind.danger => (DesktopSymbol.error, colors.danger),
     };
-    return Material(
+    final banner = Material(
       type: MaterialType.transparency,
       child: Container(
         width: DesktopMetrics.toastWidth,
@@ -254,20 +254,22 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
             ),
             if (actionLabel != null)
               DesktopButton(label: actionLabel, onPressed: _act),
-            SizedBox.square(
-              dimension: 20,
-              child: _hovered
-                  ? DesktopIconButton(
-                      symbol: DesktopSymbol.remove,
-                      tooltip: 'Close',
-                      size: 10,
-                      onPressed: _close,
-                    )
-                  : null,
-            ),
           ],
         ),
       ),
+    );
+    // Like Notification Center's: a round × over the top-left corner,
+    // shown while the pointer is on the banner. The banner is inset by
+    // [_closeInset] so the × is inside the hover and hit area.
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: _closeInset, left: _closeInset),
+          child: banner,
+        ),
+        if (_hovered)
+          Positioned(top: 0, left: 0, child: _CloseButton(onPressed: _close)),
+      ],
     );
   }
 
@@ -332,6 +334,49 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
                   child: Text(actionLabel),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const double _closeSize = 20;
+
+/// How far the × overhangs the banner's corner.
+const double _closeInset = 7;
+
+/// The banner's round × (macOS).
+class _CloseButton extends StatelessWidget {
+  const _CloseButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    return Semantics(
+      button: true,
+      label: 'Close',
+      excludeSemantics: true,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTap: onPressed,
+          child: Container(
+            width: _closeSize,
+            height: _closeSize,
+            decoration: BoxDecoration(
+              color: colors.menu,
+              shape: BoxShape.circle,
+              border: Border.all(color: colors.groupBoxStroke),
+              boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 4)],
+            ),
+            child: DesktopIcon(
+              DesktopSymbol.close,
+              size: 10,
+              color: colors.text,
+            ),
           ),
         ),
       ),

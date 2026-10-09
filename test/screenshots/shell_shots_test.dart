@@ -6,6 +6,7 @@ import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:devvault/shared/desktop/desktop_toast.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -63,6 +64,13 @@ void main() {
           // Stays up for the shot, with no timer left running.
           duration: Duration.zero,
         );
+        await tester.pumpAndSettle();
+        // Hovered, so the shot shows its ×.
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        await mouse.addPointer(
+          location: tester.getCenter(find.textContaining('moved to')),
+        );
+        addTearDown(mouse.removePointer);
         await tester.pumpAndSettle();
       },
     );

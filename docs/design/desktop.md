@@ -168,7 +168,8 @@ through `package:devvault/shared/desktop_ui.dart`:
 - `showDesktopToast`: a short, passing message with an optional action
   (Undo). On macOS it's a banner like Notification Center's, at the top
   right under the toolbar: a status symbol, the title in bold, a push
-  button for the action, and a × on hover. Hovering keeps it open. On
+  button for the action, and, on hover, a round × over its top-left
+  corner. Hovering keeps it open. On
   Windows it's Fluent's `InfoBar` at the bottom; on Linux, a Yaru
   snackbar. One shows at a time. Screens call `showAppToast`, which
   picks this on desktop and bc_ui's toast on phones. Frames:

@@ -108,10 +108,7 @@ void main() {
     await pumpDesktop(tester, DesktopKit.macos, trigger());
     await tester.tap(find.text('Show'));
     await tester.pumpAndSettle();
-    expect(
-      find.byIcon(DesktopSymbol.remove.of(DesktopKit.macos)),
-      findsNothing,
-    );
+    expect(find.byIcon(DesktopSymbol.close.of(DesktopKit.macos)), findsNothing);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
@@ -123,7 +120,7 @@ void main() {
     await tester.pump(const Duration(seconds: 10));
     expect(find.textContaining('moved to Kitchenly'), findsOneWidget);
 
-    await tester.tap(find.byIcon(DesktopSymbol.remove.of(DesktopKit.macos)));
+    await tester.tap(find.byIcon(DesktopSymbol.close.of(DesktopKit.macos)));
     await tester.pumpAndSettle();
     expect(find.textContaining('moved to Kitchenly'), findsNothing);
   });
