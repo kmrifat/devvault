@@ -23,6 +23,7 @@ import '../../shared/desktop_ui.dart'
         DesktopMetrics,
         DesktopPopup,
         DesktopProgress,
+        DesktopScrollView,
         DesktopSheet,
         DesktopSymbol,
         DesktopTextField,
@@ -597,7 +598,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
           ? const _SheetPrivacyNote()
           : null,
       actions: actions,
-      child: SingleChildScrollView(child: content),
+      child: content,
     );
   }
 
@@ -1319,6 +1320,8 @@ class _SheetPrivacyNote extends StatelessWidget {
 }
 
 /// What the file says, read-only, in a box marked as coming from the file.
+/// A long list (a certificate's, a profile's) scrolls inside the box, so
+/// the fields to fill in and the expiry stay in view below it (WALK-04).
 class _SheetFacts extends StatelessWidget {
   const _SheetFacts({required this.facts});
 
@@ -1327,6 +1330,10 @@ class _SheetFacts extends StatelessWidget {
   /// Lines the values up with the form's controls below the box.
   static const double _labelWidth = 99;
 
+  /// About seven and a half rows: a short list fits, a longer one shows
+  /// half a row, the scroll bar and a fade at the bottom.
+  static const double _maxHeight = 180;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
@@ -1334,6 +1341,9 @@ class _SheetFacts extends StatelessWidget {
       context,
       fontSize: 12,
     ).copyWith(color: colors.text);
+    const radius = BorderRadius.all(
+      Radius.circular(DesktopMetrics.menuRadius + 2),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 6,
@@ -1353,46 +1363,59 @@ class _SheetFacts extends StatelessWidget {
             const SourceTag('From the file'),
           ],
         ),
+        // The stroke over the content, so the fade at a cut edge stays
+        // inside it.
         DecoratedBox(
+          position: DecorationPosition.foreground,
           decoration: BoxDecoration(
-            color: colors.groupBoxInner,
             border: Border.all(color: colors.groupBoxStroke, width: 0.5),
-            borderRadius: const BorderRadius.all(
-              Radius.circular(DesktopMetrics.menuRadius + 2),
-            ),
+            borderRadius: radius,
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final MapEntry(:key, :value) in facts.entries)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: DesktopMetrics.formLabelGap,
-                      children: [
-                        SizedBox(
-                          width: _labelWidth,
-                          child: Text(
-                            Format.fieldLabel(key),
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: DesktopMetrics.bodySize - 1,
-                              color: colors.secondaryText,
-                            ),
+          child: ClipRRect(
+            borderRadius: radius,
+            child: ColoredBox(
+              color: colors.groupBoxInner,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: _maxHeight),
+                child: DesktopScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  fadeInto: colors.groupBoxInner,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final MapEntry(:key, :value) in facts.entries)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: DesktopMetrics.formLabelGap,
+                            children: [
+                              SizedBox(
+                                width: _labelWidth,
+                                child: Text(
+                                  Format.fieldLabel(key),
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: DesktopMetrics.bodySize - 1,
+                                    color: colors.secondaryText,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: value.secret
+                                    ? Text(SecretRow.mask, style: mono)
+                                    : SelectableText(value.value, style: mono),
+                              ),
+                            ],
                           ),
                         ),
-                        Expanded(
-                          child: value.secret
-                              ? Text(SecretRow.mask, style: mono)
-                              : SelectableText(value.value, style: mono),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-              ],
+                ),
+              ),
             ),
           ),
         ),

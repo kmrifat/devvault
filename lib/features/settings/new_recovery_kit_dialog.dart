@@ -305,7 +305,7 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
         onPressed: _saved ? () => Navigator.of(context).pop() : null,
       ),
     ],
-    child: SingleChildScrollView(child: RecoveryKitCard(kit: _kit(keyText))),
+    child: RecoveryKitCard(kit: _kit(keyText)),
   );
 
   Widget _ask(BuildContext context) {

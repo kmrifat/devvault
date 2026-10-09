@@ -25,6 +25,7 @@ export 'desktop/desktop_progress.dart';
 export 'desktop/desktop_pull_down_button.dart';
 export 'desktop/desktop_radio.dart';
 export 'desktop/desktop_scope_bar.dart';
+export 'desktop/desktop_scroll_view.dart';
 export 'desktop/desktop_search_field.dart';
 export 'desktop/desktop_sheet.dart';
 export 'desktop/desktop_symbols.dart';

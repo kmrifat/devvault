@@ -102,6 +102,9 @@ TargetPlatform _platformFor(DesktopKit kit) => switch (kit) {
 ///
 /// [kit] draws a desktop shot with another OS's kit by rendering as that
 /// OS (see [otherKits]).
+///
+/// [window] sizes a desktop shot's window other than the frames' (the
+/// app's default window is 1280 × 800).
 void shot(
   String name,
   String route, {
@@ -113,10 +116,15 @@ void shot(
   bool sample = false,
   bool realKdf = false,
   DesktopKit kit = DesktopKit.macos,
+  Size? window,
 }) {
   assert(
     kit == DesktopKit.macos || device == ShotDevice.desktop,
     'Only desktop shots have a kit.',
+  );
+  assert(
+    window == null || device == ShotDevice.desktop,
+    'Only desktop shots have a window size.',
   );
   final platform = device == ShotDevice.desktop
       ? _platformFor(kit)
@@ -128,7 +136,7 @@ void shot(
       bottom: device.insets.bottom * ratio,
     );
     tester.view
-      ..physicalSize = device.size * ratio
+      ..physicalSize = (window ?? device.size) * ratio
       ..devicePixelRatio = ratio
       ..padding = padding
       ..viewPadding = padding;

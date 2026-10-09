@@ -17,8 +17,15 @@ import 'package:devvault/features/vault/desktop_item_type.dart'
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/services/file_import.dart';
 import 'package:devvault/shared/desktop_ui.dart'
-    show DesktopButton, DesktopPopup, DesktopProgress, DesktopTokenField;
+    show
+        DesktopButton,
+        DesktopCheckbox,
+        DesktopPopup,
+        DesktopProgress,
+        DesktopScrollView,
+        DesktopTokenField;
 import 'package:devvault/shared/widgets/type_icon_tile.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -283,9 +290,12 @@ void main() {
   group('dialog', () {
     late FakeFileOpener opener;
 
-    Future<void> open(WidgetTester tester) async {
+    Future<void> open(
+      WidgetTester tester, {
+      Size window = const Size(1440, 1400),
+    }) async {
       tester.view
-        ..physicalSize = const Size(1440, 1400)
+        ..physicalSize = window
         ..devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       opener = FakeFileOpener();
@@ -613,6 +623,98 @@ void main() {
       expect(item.fields['password']!.secret, isTrue);
       expect(item.fields['password']!.source, FieldSource.user);
     });
+
+    // WALK-04: a .p12's long details box pushed the expiry and the
+    // Keep-password checkbox under the buttons, with nothing showing that
+    // the sheet scrolls.
+    for (final (window, fits) in [
+      // The default window: the details box scrolls on its own, so the
+      // rest of the sheet fits.
+      (const Size(1280, 800), true),
+      // A shorter one: the content between the title and the buttons
+      // scrolls.
+      (const Size(1280, 600), false),
+    ]) {
+      final size = '${window.width.round()}×${window.height.round()}';
+      testWidgets('at $size a .p12 sheet keeps its buttons and shows every '
+          'row', (tester) async {
+        await open(tester, window: window);
+        await startImport(tester, fixture('legacy.p12'));
+        await tester.enterText(input(secret('password')), 'test-password');
+        await tester.pump();
+        await tester.tap(find.text('Unlock file'));
+        await settle(tester, () => find.text('Details').evaluate().isNotEmpty);
+
+        Finder inSheet(Finder finder) =>
+            find.descendant(of: find.byType(ImportDialog), matching: finder);
+        ScrollPosition position(Finder view) => tester
+            .state<ScrollableState>(
+              // The view's own, not a text field's inside it.
+              find
+                  .descendant(of: view, matching: find.byType(Scrollable))
+                  .first,
+            )
+            .position;
+        void fullyIn(Finder finder, Rect area) {
+          final rect = tester.getRect(finder);
+          expect(
+            rect.top >= area.top - 0.5 &&
+                rect.bottom <= area.bottom + 0.5 &&
+                rect.left >= area.left - 0.5 &&
+                rect.right <= area.right + 0.5,
+            isTrue,
+            reason:
+                '${finder.describeMatch(Plurality.one)} at $rect is cut '
+                'by $area',
+          );
+          expect(finder.hitTestable(), findsOneWidget);
+        }
+
+        Future<void> wheel(Finder over, double dy) async {
+          final mouse = TestPointer(1, PointerDeviceKind.mouse);
+          await tester.sendEventToBinding(mouse.hover(tester.getCenter(over)));
+          await tester.sendEventToBinding(mouse.scroll(Offset(0, dy)));
+          await tester.pumpAndSettle();
+        }
+
+        // The sheet's content, then the details box inside it.
+        final views = inSheet(find.byType(DesktopScrollView));
+        expect(views, findsNWidgets(2));
+        final content = views.first;
+        final details = views.last;
+        final area = tester.getRect(content);
+
+        // The buttons sit below the content, whole, in the window.
+        for (final label in ['Cancel', 'Add to Vault']) {
+          final button = inSheet(find.widgetWithText(DesktopButton, label));
+          fullyIn(button, Offset.zero & window);
+          expect(tester.getRect(button).top, greaterThanOrEqualTo(area.bottom));
+        }
+
+        // The details box holds a few rows and scrolls to the rest.
+        final facts = parse(fixture('legacy.p12'), {
+          'password': 'test-password',
+        }).facts;
+        expect(position(details).maxScrollExtent, greaterThan(0));
+        final last = inSheet(find.text(facts.values.last.value));
+        expect(last.hitTestable(), findsNothing);
+        await wheel(details, 1000);
+        fullyIn(last, tester.getRect(details));
+
+        final expiry = inSheet(find.textContaining('Expires '));
+        final keep = inSheet(find.byType(DesktopCheckbox));
+        if (fits) {
+          expect(position(content).maxScrollExtent, 0);
+        } else {
+          // The rest is a scroll away: over the form, not the box.
+          expect(position(content).maxScrollExtent, greaterThan(0));
+          expect(expiry.hitTestable(), findsNothing);
+          await wheel(inSheet(find.text('Name:')), 1000);
+        }
+        fullyIn(expiry, area);
+        fullyIn(keep, area);
+      });
+    }
 
     testWidgets('an unknown file imports as a generic file', (tester) async {
       await open(tester);
