@@ -12,6 +12,8 @@ import '../../shared/desktop_ui.dart'
         DesktopCheckbox,
         DesktopChoice,
         DesktopComboBox,
+        DesktopDateField,
+        DesktopDateProblem,
         DesktopForm,
         DesktopFormRow,
         DesktopIconButton,
@@ -95,38 +97,12 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     _title.dispose();
     _tags.dispose();
     _notes.dispose();
-    _expiry.dispose();
     super.dispose();
   }
 
-  /// Sets the draft's expiry from the typed date (midnight UTC, the user's
-  /// own), or none when the field is empty. Returns what's wrong with it.
-  String? _typedExpiry() {
-    final text = _expiry.text.trim();
-    if (text.isEmpty) {
-      _draft.expiresAt = null;
-      return null;
-    }
-    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text);
-    if (match == null) return 'Type the date as YYYY-MM-DD';
-    final [year, month, day] = [
-      for (final i in [1, 2, 3]) int.parse(match.group(i)!),
-    ];
-    final date = DateTime.utc(year, month, day);
-    if (date.month != month || date.day != day) return 'No such date';
-    _draft.expiresAt = date;
-    return null;
-  }
-
-  /// Desktop: the expiry as typed (YYYY-MM-DD), checked on save.
-  late final _expiry = TextEditingController(
-    text: switch (_draft.expiresAt) {
-      final date? when !_draft.expiryFromFile => DateFormat(
-        'yyyy-MM-dd',
-      ).format(date.toUtc()),
-      _ => '',
-    },
-  );
+  /// Desktop: why the expiry typed into the date field isn't a date yet,
+  /// if it isn't. Checked on save.
+  DesktopDateProblem? _expiryProblem;
 
   bool get _desktop => DesktopTheme.maybeOf(context) != null;
 
@@ -137,7 +113,12 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     // On a desktop the token field keeps the draft's tags as it goes.
     if (!_desktop) _draft.tags = _tags.text;
     final expiryError = _desktop && !_draft.expiryFromFile
-        ? _typedExpiry()
+        ? switch (_expiryProblem) {
+            DesktopDateProblem.unreadable =>
+              'Type the date as YYYY-MM-DD, or pick it',
+            DesktopDateProblem.noSuchDate => 'No such date',
+            null => null,
+          }
         : null;
     final errors = {..._draft.validate(), 'expiry': ?expiryError};
     setState(() {
@@ -493,18 +474,29 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                       ],
                     ),
                     _ => SheetNote(
-                      width: 140,
+                      width: 160,
                       tone: _errors.containsKey('expiry')
                           ? NoteTone.problem
                           : NoteTone.hint,
                       note:
                           _errors['expiry'] ??
                           'Set by you · leave empty for no expiry',
-                      control: DesktopTextField(
+                      // Picked or typed by the user: a date, kept as
+                      // midnight UTC with the user as its source.
+                      control: DesktopDateField(
                         key: const ValueKey('item-expiry'),
-                        controller: _expiry,
-                        placeholder: 'YYYY-MM-DD',
-                        mono: true,
+                        value: switch (draft.expiresAt?.toUtc()) {
+                          final utc? => DateTime(utc.year, utc.month, utc.day),
+                          null => null,
+                        },
+                        placeholder: 'No expiry date',
+                        calendarLabel: 'Choose expiry date',
+                        onProblem: (problem) => _expiryProblem = problem,
+                        onChanged: (date) => setState(
+                          () => draft.expiresAt = date == null
+                              ? null
+                              : DateTime.utc(date.year, date.month, date.day),
+                        ),
                       ),
                     ),
                   },

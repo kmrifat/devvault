@@ -131,6 +131,11 @@ through `package:devvault/shared/desktop_ui.dart`:
   `DesktopSearchField`, and `DesktopForm` / `DesktopFormRow` for sheet
   forms (on macOS, rows sit at a fixed 31 pt pitch, since a text field
   keeps room for its focus ring).
+- `DesktopDateField`: a date field (medium format, "Mar 1, 2027") with a
+  calendar to pick from and a Clear action; typing `YYYY-MM-DD` still
+  works. macOS drops macos_ui's graphical `MacosDatePicker` in the menu
+  style, Windows opens Fluent's `CalendarView` in a flyout, Linux drops
+  Material's `CalendarDatePicker` in a popover.
 - `showDesktopSheet` + `DesktopSheet` (title, optional icon tile and
   message or subtitle, content, buttons bottom right, Escape closes; on
   macOS it hangs from the toolbar) and `DesktopGroupBox` for the sheets

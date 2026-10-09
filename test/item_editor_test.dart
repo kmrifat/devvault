@@ -8,6 +8,7 @@ import 'package:devvault/shared/desktop_ui.dart' show DesktopTokenField;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:vault_core/vault_core.dart';
 
 import 'test_overrides.dart';
@@ -226,12 +227,27 @@ void main() {
       await tester.enterText(expiry, 'next year');
       await tester.tap(find.text('Add item'));
       await tester.pumpAndSettle();
-      expect(find.text('Type the date as YYYY-MM-DD'), findsOneWidget);
+      expect(
+        find.text('Type the date as YYYY-MM-DD, or pick it'),
+        findsOneWidget,
+      );
       await tester.enterText(expiry, '2027-02-30');
       await tester.tap(find.text('Add item'));
       await tester.pumpAndSettle();
       expect(find.text('No such date'), findsOneWidget);
       expect(index(tester).all.any((i) => i.title.contains('Apple')), isFalse);
+      // Or picked from the calendar: the 15th of the month it opens on
+      // (this one, with no date yet), then typed over.
+      await tester.enterText(expiry, '');
+      await tester.tap(find.bySemanticsLabel('Choose expiry date'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('15').hitTestable().last);
+      await tester.pumpAndSettle();
+      final now = DateTime.now();
+      expect(
+        tester.widget<EditableText>(expiry).controller.text,
+        DateFormat.yMMMd().format(DateTime(now.year, now.month, 15)),
+      );
       await tester.enterText(expiry, '2027-03-01');
       await settleWrite(
         tester,
@@ -298,6 +314,49 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('a date the user set shows in the date field and clears', (
+      tester,
+    ) async {
+      await open(tester);
+      final maps = index(tester).all
+          .firstWhere((i) => i.title == 'Maps API key');
+      await tester.runAsync(
+        () => appContainer(tester)
+            .read(vaultSessionProvider.notifier)
+            .saveItem(
+              maps.copyWith(
+                expiresAt: DateTime.utc(2027, 3, 1),
+                expiresSource: ExpirySource.user,
+              ),
+            ),
+      );
+      router(tester).go(Routes.vault(tag: null, item: maps.id));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.bySemanticsLabel('Edit'));
+      await tester.pumpAndSettle();
+      final expiry = input(find.byKey(const ValueKey('item-expiry')));
+      expect(
+        tester.widget<EditableText>(expiry).controller.text,
+        'Mar 1, 2027',
+      );
+
+      // The calendar's Clear takes the expiry away.
+      await tester.tap(find.bySemanticsLabel('Choose expiry date'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Clear'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<EditableText>(expiry).controller.text, isEmpty);
+      await settleWrite(
+        tester,
+        find.text('Save'),
+        () => index(tester).items[maps.id]!.expiresAt == null,
+      );
+      final edited = index(tester).items[maps.id]!;
+      expect(edited.expiresAt, isNull);
+      expect(edited.expiresSource, isNull);
     });
 
     testWidgets('Delete asks first, then removes the item', (tester) async {
