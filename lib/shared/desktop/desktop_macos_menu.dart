@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
@@ -27,7 +29,9 @@ abstract final class MacosMenuStyle {
   );
 
   /// One row, at least [width] wide so the menu is as wide as its field.
-  /// A [destructive] row's label is in the danger colour until lit.
+  /// A long label shows in full up to [DesktopMetrics.menuMaxWidth], then
+  /// ends in an ellipsis. A [destructive] row's label is in the danger
+  /// colour until lit.
   static Widget item(
     BuildContext context, {
     required String label,
@@ -52,6 +56,12 @@ abstract final class MacosMenuStyle {
       style: ButtonStyle(
         minimumSize: WidgetStatePropertyAll(
           Size(width - 2 * padding, DesktopMetrics.controlHeight + 2),
+        ),
+        maximumSize: WidgetStatePropertyAll(
+          Size(
+            math.max(width, DesktopMetrics.menuMaxWidth) - 2 * padding,
+            double.infinity,
+          ),
         ),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 8),
@@ -82,7 +92,7 @@ abstract final class MacosMenuStyle {
               .copyWith(fontSize: DesktopMetrics.bodySize),
         ),
       ),
-      child: Text(label),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

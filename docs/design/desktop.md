@@ -213,9 +213,12 @@ in that frame. The vault branch is the item table
 created / updated line.
 
 Each control is drawn by the running OS's kit and behaves the same on all
-three (`test/desktop_controls_test.dart`). The macOS kit's goldens are
-`screenshots/desktop-controls-macos-{light,dark}.png` and
-`desktop-combo-menu-macos-light.png`.
+three (`test/desktop_controls_test.dart`). A pop-up's long choice ends in
+an ellipsis within the button; on macOS its menu shows it in full up to
+`DesktopMetrics.menuMaxWidth` (400 pt), as a macOS menu does. The macOS
+kit's goldens are `screenshots/desktop-controls-macos-{light,dark}.png`,
+`desktop-combo-menu-macos-light.png` and
+`desktop-popup-long-label-macos-light.png`.
 
 ## Menu bar (macOS)
 
