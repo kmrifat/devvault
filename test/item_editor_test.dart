@@ -249,6 +249,8 @@ void main() {
         DateFormat.yMMMd().format(DateTime(now.year, now.month, 15)),
       );
       await tester.enterText(expiry, '2027-03-01');
+      // A tag typed without Return is kept on save.
+      await tester.enterText(input(find.byType(DesktopTokenField)), ' apple ');
       await settleWrite(
         tester,
         find.text('Add item'),
@@ -260,7 +262,7 @@ void main() {
       expect(created.appId, kitchenly.id);
       expect(created.platform, 'ios');
       expect(created.environment, 'qa-eu');
-      expect(created.tags, ['siwa']);
+      expect(created.tags, ['siwa', 'apple']);
       expect(created.expiresAt, DateTime.utc(2027, 3, 1));
       expect(created.expiresSource, ExpirySource.user);
       expect(created.typeName, ItemType.genericSecret.wireName);

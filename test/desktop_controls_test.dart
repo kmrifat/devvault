@@ -148,6 +148,57 @@ void main() {
         expect(log.last, ['prod']);
       });
 
+      testWidgets('token field keeps a tag typed without Return', (
+        tester,
+      ) async {
+        final log = <List<String>>[];
+        final controller = DesktopTokenController();
+        addTearDown(controller.dispose);
+        await pumpDesktop(
+          tester,
+          kit,
+          Held<List<String>>(
+            initial: const ['ios'],
+            log: log,
+            builder: (value, onChanged) => SizedBox(
+              width: 300,
+              child: DesktopTokenField(
+                tokens: value,
+                onChanged: onChanged,
+                controller: controller,
+              ),
+            ),
+          ),
+        );
+        final input = find.byType(EditableText);
+
+        // A form's save takes the typed tag, trimmed, and clears the input.
+        await tester.enterText(input, ' staging ');
+        expect(controller.commit(const ['ios']), ['ios', 'staging']);
+        expect(controller.text, isEmpty);
+        // Blank, or already a token: nothing to add.
+        await tester.enterText(input, '   ');
+        expect(controller.commit(const ['ios']), ['ios']);
+        await tester.enterText(input, 'ios');
+        expect(controller.commit(const ['ios']), ['ios']);
+        expect(log, isEmpty);
+
+        // Leaving the field adds it too, the same way.
+        await tester.enterText(input, ' prod ');
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump();
+        expect(log, [
+          ['ios', 'prod'],
+        ]);
+        expect(controller.text, isEmpty);
+        for (final typed in ['  ', 'prod']) {
+          await tester.enterText(input, typed);
+          FocusManager.instance.primaryFocus?.unfocus();
+          await tester.pump();
+        }
+        expect(log, hasLength(1));
+      });
+
       testWidgets('segmented control picks a segment', (tester) async {
         final log = <String>[];
         await pumpDesktop(
