@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' show Material, MaterialType;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vault_core/vault_core.dart';
@@ -32,6 +35,14 @@ enum ShellSection { vault, expiry, settings }
 /// organization (or "Personal") moves it there. Clicking an organization
 /// or app lists its items; clicking an item selects it.
 ///
+/// The explorer works from the keyboard like a file explorer's: ↑/↓, Home
+/// and End move a cursor; → opens a row or steps into it, ← closes it or
+/// steps out; Enter or Space opens what the row lists; F2 renames or
+/// edits; Delete (⌘⌫ on macOS) deletes; Shift-F10 or the menu key opens
+/// the row's menu; typing jumps to a row by name. While something is
+/// dragged, a closed organization or app opens when held over for a
+/// moment.
+///
 /// It has no selection state of its own: what is selected is read from
 /// [uri], and every row is a link, so back and forward and a reload all
 /// keep the sidebar in step with the list.
@@ -60,6 +71,50 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
   /// Apps start closed unless they hold the selection; these were opened
   /// (true) or closed (false) by the user.
   final _appOpen = <String, bool>{};
+
+  /// The explorer's rows as last built, top to bottom, for the keyboard.
+  var _rows = <_NavRow>[];
+
+  /// The row the keyboard cursor is on ([_NavRow.key]).
+  String? _cursor;
+
+  final _treeFocus = FocusNode(debugLabel: 'Explorer');
+
+  /// Each row's context menu, to open it and scroll to it from the
+  /// keyboard.
+  final _menuKeys = <String, GlobalKey<DesktopContextMenuState>>{};
+
+  /// The row a drag is held over, and the timer that opens it.
+  String? _hoverKey;
+  Timer? _hoverTimer;
+
+  /// What was typed to jump to a row, and when it's forgotten.
+  var _typed = '';
+  Timer? _typedTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _treeFocus.addListener(_focusChanged);
+  }
+
+  @override
+  void dispose() {
+    _treeFocus.dispose();
+    _hoverTimer?.cancel();
+    _typedTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Focus arriving from the keyboard puts the cursor on the selected row,
+  /// or the first.
+  void _focusChanged() {
+    if (_treeFocus.hasFocus && !_rows.any((r) => r.key == _cursor)) {
+      final selected = _rows.where((r) => r.selected).firstOrNull;
+      _cursor = (selected ?? _rows.firstOrNull)?.key;
+    }
+    setState(() {});
+  }
 
   VaultFilter get _filter => widget.section == ShellSection.vault
       ? VaultFilter.fromUri(widget.uri)
@@ -91,94 +146,100 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         children: [
           _VaultHeader(count: index?.items.length ?? 0),
           Expanded(
-            child: ListView(
-              controller: widget.scrollController,
-              padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-              children: [
-                _SourceRow(
-                  icon: DesktopSymbol.allItems,
-                  iconColor: colors.accentIcon,
-                  label: 'All items',
-                  count: index?.items.length ?? 0,
-                  selected: section == ShellSection.vault && filter.isAll,
-                  onTap: () => _show(const VaultFilter()),
-                ),
-                _SourceRow(
-                  icon: DesktopSymbol.expiring,
-                  iconColor: colors.warning,
-                  label: 'Expiring in 30 days',
-                  count: index?.countExpiring(ExpiryState.soon, now) ?? 0,
-                  selected: section == ShellSection.expiry && !expiredSelected,
-                  onTap: () => context.go(Routes.expiryShowing()),
-                ),
-                _SourceRow(
-                  icon: DesktopSymbol.expired,
-                  iconColor: colors.danger,
-                  label: 'Expired',
-                  count: index?.countExpiring(ExpiryState.expired, now) ?? 0,
-                  selected: expiredSelected,
-                  onTap: () => context.go(Routes.expiryShowing(expired: true)),
-                ),
-                if (conflicts > 0)
+            child: Focus(
+              focusNode: _treeFocus,
+              onKeyEvent: _onKey,
+              child: ListView(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                children: [
                   _SourceRow(
-                    icon: DesktopSymbol.conflicts,
-                    iconColor: colors.conflict,
-                    label: 'Conflicts',
-                    count: conflicts,
-                    selected: filter.view == VaultView.conflicts,
-                    onTap: () =>
-                        _show(const VaultFilter(view: VaultView.conflicts)),
+                    icon: DesktopSymbol.allItems,
+                    iconColor: colors.accentIcon,
+                    label: 'All items',
+                    count: index?.items.length ?? 0,
+                    selected: section == ShellSection.vault && filter.isAll,
+                    onTap: () => _show(const VaultFilter()),
                   ),
-                if (index != null && index.quarantined.isNotEmpty)
                   _SourceRow(
-                    icon: DesktopSymbol.unreadable,
+                    icon: DesktopSymbol.expiring,
+                    iconColor: colors.warning,
+                    label: 'Expiring in 30 days',
+                    count: index?.countExpiring(ExpiryState.soon, now) ?? 0,
+                    selected:
+                        section == ShellSection.expiry && !expiredSelected,
+                    onTap: () => context.go(Routes.expiryShowing()),
+                  ),
+                  _SourceRow(
+                    icon: DesktopSymbol.expired,
                     iconColor: colors.danger,
-                    label: 'Unreadable',
-                    count: index.quarantined.length,
-                    selected: filter.view == VaultView.quarantine,
+                    label: 'Expired',
+                    count: index?.countExpiring(ExpiryState.expired, now) ?? 0,
+                    selected: expiredSelected,
                     onTap: () =>
-                        _show(const VaultFilter(view: VaultView.quarantine)),
+                        context.go(Routes.expiryShowing(expired: true)),
                   ),
-                _SectionLabel(
-                  'Apps',
-                  menu: [
-                    DesktopMenuAction(
-                      'New organization…',
-                      () => createOrganization(context, ref),
-                    ),
-                    DesktopMenuAction('New app…', () => createApp(context)),
-                    DesktopMenuAction(
-                      'New item…',
-                      () => createItem(context, const VaultFilter()),
-                    ),
-                  ],
-                  action: DesktopIconButton(
-                    symbol: DesktopSymbol.add,
-                    tooltip: 'New app',
-                    size: 12,
-                    onPressed: () => createApp(context),
-                  ),
-                ),
-                ..._explorer(index, filter, now),
-                if (index != null && index.tagCounts.isNotEmpty) ...[
-                  const _SectionLabel('Tags'),
-                  for (final MapEntry(key: tag, value: count)
-                      in index.tagCounts.entries)
+                  if (conflicts > 0)
                     _SourceRow(
-                      icon: DesktopSymbol.tag,
-                      label: tag,
-                      count: count,
-                      selected:
-                          section == ShellSection.vault && filter.tag == tag,
-                      // Clicking the selected tag again shows everything.
-                      onTap: () => _show(
-                        section == ShellSection.vault && filter.tag == tag
-                            ? const VaultFilter()
-                            : VaultFilter(tag: tag),
-                      ),
+                      icon: DesktopSymbol.conflicts,
+                      iconColor: colors.conflict,
+                      label: 'Conflicts',
+                      count: conflicts,
+                      selected: filter.view == VaultView.conflicts,
+                      onTap: () =>
+                          _show(const VaultFilter(view: VaultView.conflicts)),
                     ),
+                  if (index != null && index.quarantined.isNotEmpty)
+                    _SourceRow(
+                      icon: DesktopSymbol.unreadable,
+                      iconColor: colors.danger,
+                      label: 'Unreadable',
+                      count: index.quarantined.length,
+                      selected: filter.view == VaultView.quarantine,
+                      onTap: () =>
+                          _show(const VaultFilter(view: VaultView.quarantine)),
+                    ),
+                  _SectionLabel(
+                    'Apps',
+                    menu: [
+                      DesktopMenuAction(
+                        'New organization…',
+                        () => createOrganization(context, ref),
+                      ),
+                      DesktopMenuAction('New app…', () => createApp(context)),
+                      DesktopMenuAction(
+                        'New item…',
+                        () => createItem(context, const VaultFilter()),
+                      ),
+                    ],
+                    action: DesktopIconButton(
+                      symbol: DesktopSymbol.add,
+                      tooltip: 'New app',
+                      size: 12,
+                      onPressed: () => createApp(context),
+                    ),
+                  ),
+                  ..._explorer(index, filter, now),
+                  if (index != null && index.tagCounts.isNotEmpty) ...[
+                    const _SectionLabel('Tags'),
+                    for (final MapEntry(key: tag, value: count)
+                        in index.tagCounts.entries)
+                      _SourceRow(
+                        icon: DesktopSymbol.tag,
+                        label: tag,
+                        count: count,
+                        selected:
+                            section == ShellSection.vault && filter.tag == tag,
+                        // Clicking the selected tag again shows everything.
+                        onTap: () => _show(
+                          section == ShellSection.vault && filter.tag == tag
+                              ? const VaultFilter()
+                              : VaultFilter(tag: tag),
+                        ),
+                      ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           _Footer(selected: section == ShellSection.settings),
@@ -208,6 +269,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
       filter.app == app;
 
   List<Widget> _explorer(VaultIndex? index, VaultFilter filter, DateTime now) {
+    _rows = [];
     if (index == null) return const [];
     final tree = ExplorerTree.of(index);
     if (tree.isEmpty) {
@@ -229,7 +291,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     );
     return [
       if (tree.orgs.isEmpty)
-        for (final node in tree.apps) ..._appRows(node, rows)
+        for (final node in tree.apps) ..._appRows(node, rows, parent: null)
       else
         for (final org in tree.orgs) ..._orgRows(org, rows),
       if (tree.noApp.isNotEmpty) ..._noAppRows(tree.noApp, rows),
@@ -244,112 +306,174 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     final open = !_collapsedOrgs.contains(orgKey);
     // An organization with one app: a new item goes in that app.
     final onlyApp = group.apps.length == 1 ? group.apps.single.app : null;
+    final key = 'org:$orgKey';
+    void setOpen(bool on) => setState(
+      () => on ? _collapsedOrgs.remove(orgKey) : _collapsedOrgs.add(orgKey),
+    );
+    void show() {
+      setState(() => _collapsedOrgs.remove(orgKey));
+      _show(VaultFilter(org: orgKey));
+    }
+
+    final selected = _isSelected(tree.filter, org: orgKey);
+    _rows.add(
+      _NavRow(
+        key: key,
+        label: org ?? 'Personal',
+        selected: selected,
+        open: group.apps.isEmpty ? null : open,
+        setOpen: setOpen,
+        activate: show,
+        rename: org == null
+            ? null
+            : () => renameOrganization(context, ref, org),
+        delete: org == null
+            ? null
+            : () => deleteOrganization(
+                context,
+                ref,
+                org,
+                appCount: group.apps.length,
+              ),
+      ),
+    );
     return [
       DragTarget<AppRecord>(
         onWillAcceptWithDetails: (d) => d.data.organization != org,
         onAcceptWithDetails: (d) => moveApp(context, ref, d.data, org),
-        builder: (context, candidates, _) => _SourceRow(
-          dropHover: candidates.isNotEmpty,
-          menu: [
-            if (group.apps.isNotEmpty)
-              DesktopMenuAction(
-                'New item…',
-                () => createItem(
-                  context,
-                  VaultFilter(org: orgKey),
-                  app: onlyApp?.id,
+        builder: (context, candidates, _) => _openOnHover(
+          key,
+          closed: !open && group.apps.isNotEmpty,
+          open: () => _collapsedOrgs.remove(orgKey),
+          child: _SourceRow(
+            menuKey: _menuKey(key),
+            focused: _hasCursor(key),
+            dropHover: candidates.isNotEmpty,
+            menu: [
+              if (group.apps.isNotEmpty)
+                DesktopMenuAction(
+                  'New item…',
+                  () => createItem(
+                    context,
+                    VaultFilter(org: orgKey),
+                    app: onlyApp?.id,
+                  ),
                 ),
-              ),
-            DesktopMenuAction(
-              'New app…',
-              () => createApp(context, organization: org),
-            ),
-            if (org != null) ...[
               DesktopMenuAction(
-                'Rename organization…',
-                () => renameOrganization(context, ref, org),
+                'New app…',
+                () => createApp(context, organization: org),
               ),
-              DesktopMenuAction(
-                'Delete organization…',
-                () => deleteOrganization(
-                  context,
-                  ref,
-                  org,
-                  appCount: group.apps.length,
+              if (org != null) ...[
+                DesktopMenuAction(
+                  'Rename organization…',
+                  () => renameOrganization(context, ref, org),
                 ),
-                destructive: true,
-              ),
+                DesktopMenuAction(
+                  'Delete organization…',
+                  () => deleteOrganization(
+                    context,
+                    ref,
+                    org,
+                    appCount: group.apps.length,
+                  ),
+                  destructive: true,
+                ),
+              ],
             ],
-          ],
-          tree: true,
-          expanded: open,
-          onToggle: group.apps.isEmpty
-              ? null
-              : () => setState(
-                  () => open
-                      ? _collapsedOrgs.add(orgKey)
-                      : _collapsedOrgs.remove(orgKey),
-                ),
-          icon: org == null ? DesktopSymbol.person : DesktopSymbol.organization,
-          label: org ?? 'Personal',
-          count: group.count,
-          selected: _isSelected(tree.filter, org: orgKey),
-          onTap: () {
-            setState(() => _collapsedOrgs.remove(orgKey));
-            _show(VaultFilter(org: orgKey));
-          },
+            tree: true,
+            expanded: open,
+            onToggle: group.apps.isEmpty ? null : () => setOpen(!open),
+            icon: org == null
+                ? DesktopSymbol.person
+                : DesktopSymbol.organization,
+            label: org ?? 'Personal',
+            count: group.count,
+            selected: selected,
+            onTap: _clicked(key, show),
+          ),
         ),
       ),
       if (open)
-        for (final node in group.apps) ..._appRows(node, tree, depth: 1),
+        for (final node in group.apps)
+          ..._appRows(node, tree, parent: key, depth: 1),
     ];
   }
 
   /// An app and, while open, its items. It drags onto an organization, and
   /// takes items dropped on it.
-  List<Widget> _appRows(ExplorerApp node, _TreeContext tree, {int depth = 0}) {
+  List<Widget> _appRows(
+    ExplorerApp node,
+    _TreeContext tree, {
+    required String? parent,
+    int depth = 0,
+  }) {
     final app = node.app;
     final open = _appOpen[app.id] ?? tree.openApp == app.id;
     final organization = app.organization;
+    final key = 'app:${app.id}';
+    void show() {
+      setState(() => _appOpen[app.id] = true);
+      _show(VaultFilter(app: app.id));
+    }
+
+    final selected = _isSelected(tree.filter, app: app.id);
+    _rows.add(
+      _NavRow(
+        key: key,
+        parent: parent,
+        label: app.name,
+        selected: selected,
+        open: node.items.isEmpty ? null : open,
+        setOpen: (on) => setState(() => _appOpen[app.id] = on),
+        activate: show,
+        rename: () => editApp(context, app),
+        delete: () =>
+            deleteApp(context, ref, app, itemCount: node.items.length),
+      ),
+    );
     final row = _itemTarget(
       TreePlace(app: app.id),
-      (hover) => _SourceRow(
-        dropHover: hover,
-        menu: [
-          DesktopMenuAction(
-            'New item…',
-            () => createItem(context, VaultFilter(app: app.id)),
-          ),
-          DesktopMenuAction('Edit app…', () => editApp(context, app)),
-          DesktopMenuAction(
-            'Move to organization…',
-            () => moveAppTo(context, ref, app),
-          ),
-          if (organization != null)
+      (hover) => _openOnHover(
+        key,
+        closed: !open && node.items.isNotEmpty,
+        open: () => _appOpen[app.id] = true,
+        child: _SourceRow(
+          menuKey: _menuKey(key),
+          focused: _hasCursor(key),
+          dropHover: hover,
+          menu: [
             DesktopMenuAction(
-              'Remove from $organization',
-              () => moveApp(context, ref, app, null),
+              'New item…',
+              () => createItem(context, VaultFilter(app: app.id)),
             ),
-          DesktopMenuAction(
-            'Delete app…',
-            () => deleteApp(context, ref, app, itemCount: node.items.length),
-            destructive: true,
-          ),
-        ],
-        tree: true,
-        depth: depth,
-        expanded: open,
-        onToggle: node.items.isEmpty
-            ? null
-            : () => setState(() => _appOpen[app.id] = !open),
-        leading: AppBadge(app: app, size: 14),
-        label: app.name,
-        count: node.items.length,
-        selected: _isSelected(tree.filter, app: app.id),
-        onTap: () {
-          setState(() => _appOpen[app.id] = true);
-          _show(VaultFilter(app: app.id));
-        },
+            DesktopMenuAction('Edit app…', () => editApp(context, app)),
+            DesktopMenuAction(
+              'Move to organization…',
+              () => moveAppTo(context, ref, app),
+            ),
+            if (organization != null)
+              DesktopMenuAction(
+                'Remove from $organization',
+                () => moveApp(context, ref, app, null),
+              ),
+            DesktopMenuAction(
+              'Delete app…',
+              () => deleteApp(context, ref, app, itemCount: node.items.length),
+              destructive: true,
+            ),
+          ],
+          tree: true,
+          depth: depth,
+          expanded: open,
+          onToggle: node.items.isEmpty
+              ? null
+              : () => setState(() => _appOpen[app.id] = !open),
+          leading: AppBadge(app: app, size: 14),
+          label: app.name,
+          count: node.items.length,
+          selected: selected,
+          onTap: _clicked(key, show),
+        ),
       ),
     );
     return [
@@ -363,40 +487,62 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
       ),
       if (open)
         for (final item in node.items)
-          _itemRow(item, app.id, tree, depth: depth + 1),
+          _itemRow(item, app.id, tree, parent: key, depth: depth + 1),
     ];
   }
 
   /// "No app" and, while open, the items without one.
   List<Widget> _noAppRows(List<Item> items, _TreeContext tree) {
-    const key = VaultFilter.none;
-    final open = _appOpen[key] ?? tree.openApp == key;
+    const app = VaultFilter.none;
+    const key = 'app:$app';
+    final open = _appOpen[app] ?? tree.openApp == app;
+    void show() {
+      setState(() => _appOpen[app] = true);
+      _show(const VaultFilter(app: app));
+    }
+
+    final selected = _isSelected(tree.filter, app: app);
+    _rows.add(
+      _NavRow(
+        key: key,
+        label: 'No app',
+        selected: selected,
+        open: open,
+        setOpen: (on) => setState(() => _appOpen[app] = on),
+        activate: show,
+      ),
+    );
     return [
       _itemTarget(
-        const TreePlace(app: key),
-        (hover) => _SourceRow(
-          dropHover: hover,
-          menu: [
-            DesktopMenuAction(
-              'New item…',
-              () => createItem(context, const VaultFilter(app: key)),
-            ),
-          ],
-          tree: true,
-          expanded: open,
-          onToggle: () => setState(() => _appOpen[key] = !open),
-          leading: const AppBadge(app: null, size: 14),
-          label: 'No app',
-          count: items.length,
-          selected: _isSelected(tree.filter, app: key),
-          onTap: () {
-            setState(() => _appOpen[key] = true);
-            _show(const VaultFilter(app: key));
-          },
+        const TreePlace(app: app),
+        (hover) => _openOnHover(
+          key,
+          closed: !open,
+          open: () => _appOpen[app] = true,
+          child: _SourceRow(
+            menuKey: _menuKey(key),
+            focused: _hasCursor(key),
+            dropHover: hover,
+            menu: [
+              DesktopMenuAction(
+                'New item…',
+                () => createItem(context, const VaultFilter(app: app)),
+              ),
+            ],
+            tree: true,
+            expanded: open,
+            onToggle: () => setState(() => _appOpen[app] = !open),
+            leading: const AppBadge(app: null, size: 14),
+            label: 'No app',
+            count: items.length,
+            selected: selected,
+            onTap: _clicked(key, show),
+          ),
         ),
       ),
       if (open)
-        for (final item in items) _itemRow(item, key, tree, depth: 1),
+        for (final item in items)
+          _itemRow(item, app, tree, parent: key, depth: 1),
     ];
   }
 
@@ -408,11 +554,36 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     Item item,
     String appKey,
     _TreeContext tree, {
+    required String parent,
     required int depth,
   }) {
+    final key = 'item:${item.id}';
+    void select() {
+      final filter = tree.filter;
+      final listed =
+          tree.shown.contains(item.id) && filter.kind.includes(item, tree.now);
+      context.go(
+        (listed ? filter : VaultFilter(app: appKey)).location(item: item.id),
+      );
+    }
+
+    final selected = _selectedItem == item.id;
+    _rows.add(
+      _NavRow(
+        key: key,
+        parent: parent,
+        label: item.title,
+        selected: selected,
+        activate: select,
+        rename: item.isReadOnly ? null : () => editItem(context, item),
+        delete: () => deleteItem(context, ref, item),
+      ),
+    );
     final row = _itemTarget(
       TreePlace(app: appKey),
       (hover) => _SourceRow(
+        menuKey: _menuKey(key),
+        focused: _hasCursor(key),
         dropHover: hover,
         menu: itemMenu(context, ref, item),
         tree: true,
@@ -424,18 +595,8 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           if (item.environment case final e?) VaultLabels.environment(e),
         ].join(', '),
         trailing: _ItemPlace(item),
-        selected: _selectedItem == item.id,
-        onTap: () {
-          final filter = tree.filter;
-          final listed =
-              tree.shown.contains(item.id) &&
-              filter.kind.includes(item, tree.now);
-          context.go(
-            (listed ? filter : VaultFilter(app: appKey)).location(
-              item: item.id,
-            ),
-          );
-        },
+        selected: selected,
+        onTap: _clicked(key, select),
       ),
     );
     return item.isReadOnly
@@ -468,6 +629,189 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         onAcceptWithDetails: (d) => moveItem(context, ref, d.data, place),
         builder: (context, candidates, _) => row(candidates.isNotEmpty),
       );
+
+  /// [child], which opens with [open] when something dragged is held over
+  /// it for a moment while it is [closed], so a drop can go deeper. It
+  /// never takes the drop itself: it sits inside the row's own drop
+  /// target, and a drag tries the innermost target first.
+  Widget _openOnHover(
+    String key, {
+    required bool closed,
+    required VoidCallback open,
+    required Widget child,
+  }) => DragTarget<Object>(
+    onWillAcceptWithDetails: (_) {
+      if (closed) {
+        _hoverTimer?.cancel();
+        _hoverKey = key;
+        _hoverTimer = Timer(_openOnHoverDelay, () {
+          if (mounted && _hoverKey == key) setState(open);
+          _hoverKey = null;
+        });
+      }
+      return false;
+    },
+    onLeave: (_) {
+      if (_hoverKey != key) return;
+      _hoverTimer?.cancel();
+      _hoverKey = null;
+    },
+    builder: (context, candidates, rejected) => child,
+  );
+
+  GlobalKey<DesktopContextMenuState> _menuKey(String key) =>
+      _menuKeys[key] ??= GlobalKey(debugLabel: key);
+
+  /// Whether the keyboard cursor is on [key] and the explorer has focus.
+  bool _hasCursor(String key) => _cursor == key && _treeFocus.hasPrimaryFocus;
+
+  /// A click on row [key]: the cursor moves there too, as in a file
+  /// explorer, then [action] runs.
+  VoidCallback _clicked(String key, VoidCallback action) => () {
+    _cursor = key;
+    _treeFocus.requestFocus();
+    action();
+  };
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final rows = _rows;
+    if (rows.isEmpty) return KeyEventResult.ignored;
+    final at = rows.indexWhere((r) => r.key == _cursor);
+    final row = at == -1 ? null : rows[at];
+    final keyboard = HardwareKeyboard.instance;
+    final key = event.logicalKey;
+
+    void moveTo(int i) {
+      final next = rows[i.clamp(0, rows.length - 1)];
+      setState(() => _cursor = next.key);
+      final target = _menuKeys[next.key]?.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          alignmentPolicy: i > at
+              ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+              : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+        );
+      }
+    }
+
+    if (row == null) {
+      if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.end) {
+        moveTo(rows.length - 1);
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowDown ||
+          key == LogicalKeyboardKey.home) {
+        moveTo(0);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
+    if (key == LogicalKeyboardKey.arrowDown) {
+      moveTo(at + 1);
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      moveTo(at - 1);
+    } else if (key == LogicalKeyboardKey.home) {
+      moveTo(0);
+    } else if (key == LogicalKeyboardKey.end) {
+      moveTo(rows.length - 1);
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      if (row.open == false) {
+        row.setOpen!(true);
+      } else if (row.open == true &&
+          at + 1 < rows.length &&
+          rows[at + 1].parent == row.key) {
+        moveTo(at + 1);
+      }
+    } else if (key == LogicalKeyboardKey.arrowLeft) {
+      if (row.open == true) {
+        row.setOpen!(false);
+      } else if (row.parent case final parent?) {
+        moveTo(rows.indexWhere((r) => r.key == parent));
+      }
+    } else if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.space) {
+      row.activate();
+    } else if (key == LogicalKeyboardKey.f2) {
+      row.rename?.call();
+    } else if (key == LogicalKeyboardKey.delete ||
+        (key == LogicalKeyboardKey.backspace && keyboard.isMetaPressed)) {
+      row.delete?.call();
+    } else if (key == LogicalKeyboardKey.contextMenu ||
+        (key == LogicalKeyboardKey.f10 && keyboard.isShiftPressed)) {
+      _menuKeys[row.key]?.currentState?.open();
+    } else if (event.character case final typed?
+        when !command && typed.trim().isNotEmpty) {
+      _typeAhead(typed, at, moveTo);
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
+  /// Moves to the next row whose name starts with what was just typed:
+  /// from the cursor's row while a name is being typed, after it for a
+  /// new first letter, wrapping around.
+  void _typeAhead(String typed, int at, void Function(int) moveTo) {
+    _typedTimer?.cancel();
+    _typedTimer = Timer(_typeAheadPause, () => _typed = '');
+    final first = _typed.isEmpty;
+    _typed += typed.toLowerCase();
+    final rows = _rows;
+    for (var n = first ? 1 : 0; n <= rows.length; n++) {
+      final i = (at + n) % rows.length;
+      if (rows[i].label.toLowerCase().startsWith(_typed)) {
+        moveTo(i);
+        return;
+      }
+    }
+  }
+}
+
+/// How long something dragged is held over a closed row before it opens.
+const _openOnHoverDelay = Duration(milliseconds: 700);
+
+/// The pause after which typing starts a new name to jump to.
+const _typeAheadPause = Duration(seconds: 1);
+
+/// One explorer row, as the keyboard sees it.
+class _NavRow {
+  const _NavRow({
+    required this.key,
+    required this.label,
+    required this.selected,
+    required this.activate,
+    this.parent,
+    this.open,
+    this.setOpen,
+    this.rename,
+    this.delete,
+  });
+
+  /// `org:…`, `app:…` or `item:…`.
+  final String key;
+  final String label;
+  final bool selected;
+
+  /// The row it's under, for ←.
+  final String? parent;
+
+  /// Whether it's open; null for rows that don't open.
+  final bool? open;
+  final ValueChanged<bool>? setOpen;
+
+  /// What clicking it does: list or select it.
+  final VoidCallback activate;
+
+  /// F2 and Delete; null where there's nothing to rename or delete.
+  final VoidCallback? rename;
+  final VoidCallback? delete;
 }
 
 /// What the explorer's rows need from one build.
@@ -605,6 +949,8 @@ class _SourceRow extends StatefulWidget {
     this.dropHover = false,
     this.description,
     this.trailing,
+    this.focused = false,
+    this.menuKey,
   });
 
   final DesktopSymbol? icon;
@@ -639,6 +985,12 @@ class _SourceRow extends StatefulWidget {
   /// Shown at the trailing edge instead of a count.
   final Widget? trailing;
 
+  /// The keyboard cursor is on it: a focus ring in the accent colour.
+  final bool focused;
+
+  /// Opens [menu] from the keyboard.
+  final GlobalKey<DesktopContextMenuState>? menuKey;
+
   @override
   State<_SourceRow> createState() => _SourceRowState();
 }
@@ -668,6 +1020,7 @@ class _SourceRowState extends State<_SourceRow> {
       onTap: widget.onTap,
       excludeSemantics: true,
       child: DesktopContextMenu(
+        key: widget.menuKey,
         actions: widget.menu,
         child: MouseRegion(
           onEnter: (_) => setState(() => _hovered = true),
@@ -687,13 +1040,20 @@ class _SourceRowState extends State<_SourceRow> {
                     : _hovered || widget.dropHover
                     ? colors.innerSeparator
                     : null,
-                border: widget.dropHover
-                    ? Border.all(color: colors.accent, width: 2)
-                    : null,
                 borderRadius: const BorderRadius.all(
                   Radius.circular(DesktopMetrics.menuRadius),
                 ),
               ),
+              // Drawn over the row, so the ring doesn't move its content.
+              foregroundDecoration:
+                  widget.dropHover || (widget.focused && !selected)
+                  ? BoxDecoration(
+                      border: Border.all(color: colors.accent, width: 2),
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(DesktopMetrics.menuRadius),
+                      ),
+                    )
+                  : null,
               child: Row(
                 spacing: 6,
                 children: [

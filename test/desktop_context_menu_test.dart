@@ -77,6 +77,25 @@ void main() {
         handle.dispose();
       });
 
+      testWidgets('opens from the keyboard through its state', (tester) async {
+        final picked = <String>[];
+        final menu = GlobalKey<DesktopContextMenuState>();
+        await pumpDesktop(
+          tester,
+          kit,
+          DesktopContextMenu(
+            key: menu,
+            actions: [DesktopMenuAction('New item…', () => picked.add('new'))],
+            child: const SizedBox(width: 200, height: 24, child: Text('Row')),
+          ),
+        );
+        menu.currentState!.open();
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('New item…'));
+        await tester.pumpAndSettle();
+        expect(picked, ['new']);
+      });
+
       testWidgets('without commands it is just its child', (tester) async {
         await pumpDesktop(
           tester,

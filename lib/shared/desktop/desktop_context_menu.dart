@@ -15,7 +15,9 @@ import 'desktop_theme.dart';
 /// - Linux: Material's menu in the Yaru theme.
 ///
 /// Each action is also a custom semantics action on [child], so assistive
-/// tech reaches the commands without a pointer.
+/// tech reaches the commands without a pointer. With a
+/// `GlobalKey<DesktopContextMenuState>`, [DesktopContextMenuState.open]
+/// opens it from the keyboard (Shift-F10, the menu key).
 class DesktopContextMenu extends StatefulWidget {
   const DesktopContextMenu({
     super.key,
@@ -28,10 +30,10 @@ class DesktopContextMenu extends StatefulWidget {
   final Widget child;
 
   @override
-  State<DesktopContextMenu> createState() => _DesktopContextMenuState();
+  State<DesktopContextMenu> createState() => DesktopContextMenuState();
 }
 
-class _DesktopContextMenuState extends State<DesktopContextMenu> {
+class DesktopContextMenuState extends State<DesktopContextMenu> {
   final _menu = MenuController();
   final _flyout = fl.FlyoutController();
 
@@ -39,6 +41,14 @@ class _DesktopContextMenuState extends State<DesktopContextMenu> {
   void dispose() {
     _flyout.dispose();
     super.dispose();
+  }
+
+  /// Opens the menu under [child]'s leading edge, as a keyboard shortcut
+  /// does.
+  void open() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    _open(box.localToGlobal(Offset(box.size.height / 2, box.size.height)));
   }
 
   void _open(Offset global) {

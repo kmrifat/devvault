@@ -8,6 +8,7 @@ import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:devvault/shared/desktop/desktop_toast.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -46,6 +47,26 @@ void main() {
   }
 
   shot('N03-vault', Routes.vault(), sample: true, interact: selectProduction);
+  shot(
+    'N03-explorer-focus',
+    Routes.vault(),
+    sample: true,
+    brightness: Brightness.light,
+    interact: (tester) async {
+      // Kitchenly clicked, then the cursor moved two rows down by keyboard.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(VaultSidebar),
+          matching: find.text('Kitchenly'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 2; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+    },
+  );
   for (final brightness in Brightness.values) {
     shot(
       brightness == Brightness.dark ? 'N03-toast' : 'N03-toast-light',

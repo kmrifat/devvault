@@ -64,6 +64,15 @@ and exported here under `desktop/`.
       on an app, "No app" or another item moves to that app. An app
       dropped on an organization (or Personal) moves into it. Both toasts
       offer Undo. Drags start from a mouse only, so touch still scrolls.
+      Holding a drag over a closed organization or app for a moment
+      opens it, so the drop can go onto a row inside.
+    - The keyboard works it like a file explorer: ↑/↓, Home and End move
+      a cursor (an accent focus ring, frame `N03-explorer-focus`); →
+      opens a row or steps into it, ← closes it or steps out; Enter or
+      Space opens what the row lists; F2 renames an organization or
+      edits an app or item; Delete (⌘⌫ on macOS) deletes; Shift-F10 or
+      the menu key opens the row's menu; typing jumps to a row by name.
+      Clicking a row puts the cursor there.
     - Tags;
     - a footer with the auto-lock time.
   - The **toolbar** has the title and path, Import, New, the search field
