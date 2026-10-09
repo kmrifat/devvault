@@ -699,8 +699,8 @@ class VaultTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
     final file = item.attachments.firstOrNull?.filename;
-    final text = selected ? colors.onAccent : colors.text;
-    final secondary = selected ? colors.onAccent : colors.secondaryText;
+    final text = selected ? colors.onSelection : colors.text;
+    final secondary = selected ? colors.onSelection : colors.secondaryText;
     final small = TextStyle(
       fontSize: DesktopMetrics.secondarySize,
       color: secondary,
@@ -716,7 +716,7 @@ class VaultTableRow extends StatelessWidget {
         onTap: onTap,
         child: ColoredBox(
           color: selected
-              ? colors.accent
+              ? colors.selection
               : zebra
               ? colors.zebra
               : colors.window,

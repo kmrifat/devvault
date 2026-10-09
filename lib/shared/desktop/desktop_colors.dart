@@ -1,4 +1,7 @@
 import 'package:flutter/widgets.dart';
+import 'package:yaru/yaru.dart' as yaru;
+
+import 'desktop_theme.dart' show DesktopKit;
 
 /// DevVault's desktop colour tokens (docs/design/desktop.md › Colours).
 ///
@@ -6,6 +9,9 @@ import 'package:flutter/widgets.dart';
 /// surfaces and status colours DevVault paints itself: window regions,
 /// zebra rows, group boxes, badges and text. Screens read them from
 /// `context.desktopColors` and never hard-code a colour.
+///
+/// macOS and Windows share one palette, with the blue accent. Linux follows
+/// Ubuntu: Yaru's orange in place of the blue ([of]).
 @immutable
 class DesktopColors {
   const DesktopColors({
@@ -31,11 +37,15 @@ class DesktopColors {
     required this.accent,
     required this.onAccent,
     required this.accentIcon,
+    required this.selection,
+    required this.onSelection,
     required this.success,
     required this.warning,
     required this.warningBadge,
     required this.onWarningBadge,
     required this.danger,
+    required this.dangerButton,
+    required this.onDangerButton,
     required this.dangerBadge,
     required this.onDangerBadge,
     required this.conflict,
@@ -91,12 +101,19 @@ class DesktopColors {
   final Color secondaryText;
   final Color tertiaryText;
 
-  /// Selection fill (selected table row, token pills) and its text.
+  /// The accent: focus and drop rings, the app mark, washes (token pills),
+  /// and the symbol on it.
   final Color accent;
   final Color onAccent;
 
   /// Accent-coloured icons and links, lighter in dark mode.
   final Color accentIcon;
+
+  /// A selected or highlighted row (sidebar, item table, quick open) and
+  /// its text. The accent itself on macOS and Windows; on Linux a darker
+  /// shade of it, since white on Ubuntu's orange isn't AA.
+  final Color selection;
+  final Color onSelection;
 
   final Color success;
 
@@ -105,6 +122,11 @@ class DesktopColors {
   final Color onWarningBadge;
 
   final Color danger;
+
+  /// A filled destructive button (Delete on Windows and Linux) and its
+  /// label: a deeper red than [danger] in dark mode, so white text is AA.
+  final Color dangerButton;
+  final Color onDangerButton;
 
   /// A band or badge tinted for danger (an expired badge, the Expiry
   /// table's Expired group), and the text on it.
@@ -143,11 +165,15 @@ class DesktopColors {
     accent: Color(0xFF0A64D8),
     onAccent: Color(0xFFFFFFFF),
     accentIcon: Color(0xFF0A64D8),
+    selection: Color(0xFF0A64D8),
+    onSelection: Color(0xFFFFFFFF),
     success: Color(0xFF1F9D55),
     warning: Color(0xFFC77700),
     warningBadge: Color(0xFFFFF1D6),
     onWarningBadge: Color(0xFFA15C00),
     danger: Color(0xFFD70015),
+    dangerButton: Color(0xFFD70015),
+    onDangerButton: Color(0xFFFFFFFF),
     dangerBadge: Color(0xFFFDE8EA),
     onDangerBadge: Color(0xFFD70015),
     conflict: Color(0xFF8944AB),
@@ -179,11 +205,16 @@ class DesktopColors {
     accent: Color(0xFF0A64D8),
     onAccent: Color(0xFFFFFFFF),
     accentIcon: Color(0xFF4D9BFF),
+    selection: Color(0xFF0A64D8),
+    onSelection: Color(0xFFFFFFFF),
     success: Color(0xFF32D74B),
     warning: Color(0xFFFFB340),
     warningBadge: Color(0xFF3D2E12),
     onWarningBadge: Color(0xFFFFB340),
     danger: Color(0xFFFF6961),
+    // White on #FF6961 is 2.8:1; the light red carries it at 5.4:1.
+    dangerButton: Color(0xFFD70015),
+    onDangerButton: Color(0xFFFFFFFF),
     dangerBadge: Color(0xFF3D1A1A),
     onDangerBadge: Color(0xFFFF6961),
     conflict: Color(0xFFD49BF5),
@@ -192,6 +223,79 @@ class DesktopColors {
     shadow: Color(0x80000000),
   );
 
-  static DesktopColors of(Brightness brightness) =>
-      brightness == Brightness.dark ? dark : light;
+  /// Linux (Yaru): Ubuntu's orange. White on it is only 3.6:1, so it
+  /// carries symbols and rings, not text. Selected rows, links and icons
+  /// take the darker orange of Yaru's dark theme (white on it, and it on
+  /// white, 6.7:1).
+  static final yaruLight = light._withAccent(
+    accent: yaru.YaruColors.orange,
+    accentIcon: yaru.yaruDark.colorScheme.secondary,
+    selection: yaru.yaruDark.colorScheme.secondary,
+    onSelection: light.onAccent,
+  );
+
+  /// Linux in dark mode: as [yaruLight], with the lighter orange of Yaru's
+  /// light theme for icons and links.
+  static final yaruDark = dark._withAccent(
+    accent: yaru.YaruColors.orange,
+    accentIcon: yaru.yaruLight.colorScheme.secondary,
+    selection: yaru.yaruDark.colorScheme.secondary,
+    onSelection: dark.onAccent,
+  );
+
+  /// The palette for [kit] in [brightness].
+  static DesktopColors of(
+    Brightness brightness, [
+    DesktopKit kit = DesktopKit.macos,
+  ]) => switch ((kit, brightness)) {
+    (DesktopKit.yaru, Brightness.light) => yaruLight,
+    (DesktopKit.yaru, Brightness.dark) => yaruDark,
+    (_, Brightness.light) => light,
+    (_, Brightness.dark) => dark,
+  };
+
+  DesktopColors _withAccent({
+    required Color accent,
+    required Color accentIcon,
+    required Color selection,
+    required Color onSelection,
+  }) => DesktopColors(
+    window: window,
+    lockWindow: lockWindow,
+    sidebar: sidebar,
+    toolbar: toolbar,
+    bar: bar,
+    separator: separator,
+    innerSeparator: innerSeparator,
+    zebra: zebra,
+    groupBox: groupBox,
+    groupBoxInner: groupBoxInner,
+    groupBoxStroke: groupBoxStroke,
+    menu: menu,
+    field: field,
+    fieldStroke: fieldStroke,
+    toolbarField: toolbarField,
+    selectedSegment: selectedSegment,
+    text: text,
+    secondaryText: secondaryText,
+    tertiaryText: tertiaryText,
+    accent: accent,
+    onAccent: onAccent,
+    accentIcon: accentIcon,
+    selection: selection,
+    onSelection: onSelection,
+    success: success,
+    warning: warning,
+    warningBadge: warningBadge,
+    onWarningBadge: onWarningBadge,
+    danger: danger,
+    dangerButton: dangerButton,
+    onDangerButton: onDangerButton,
+    dangerBadge: dangerBadge,
+    onDangerBadge: onDangerBadge,
+    conflict: conflict,
+    conflictBadge: conflictBadge,
+    onConflictBadge: onConflictBadge,
+    shadow: shadow,
+  );
 }

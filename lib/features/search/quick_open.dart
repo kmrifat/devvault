@@ -277,7 +277,7 @@ class _DesktopResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
-    final text = highlighted ? colors.onAccent : colors.text;
+    final text = highlighted ? colors.onSelection : colors.text;
     return Semantics(
       button: true,
       selected: highlighted,
@@ -291,7 +291,7 @@ class _DesktopResultRow extends StatelessWidget {
           onTap: onTap,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: highlighted ? colors.accent : null,
+              color: highlighted ? colors.selection : null,
               borderRadius: const BorderRadius.all(
                 Radius.circular(DesktopMetrics.menuRadius),
               ),
@@ -331,7 +331,7 @@ class _DesktopResultRow extends StatelessWidget {
                             style: TextStyle(
                               fontSize: DesktopMetrics.secondarySize,
                               color: highlighted
-                                  ? colors.onAccent
+                                  ? colors.onSelection
                                   : colors.secondaryText,
                             ),
                           ),

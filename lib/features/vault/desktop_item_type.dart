@@ -80,7 +80,7 @@ class DesktopTypeTile extends StatelessWidget {
   /// Edge length. The symbol is half of it and the corners scale with it.
   final double size;
 
-  /// On an accent-filled (selected) row: drawn in the colour on the accent.
+  /// On a selected row: drawn in the colour of its text.
   final bool selected;
 
   /// Read out instead of the type's label (an unknown type's wire name).
@@ -89,7 +89,7 @@ class DesktopTypeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
-    final tint = selected ? colors.onAccent : type.desktopTint(colors);
+    final tint = selected ? colors.onSelection : type.desktopTint(colors);
     // The inspector's 40 pt tile has a menu's corners, a little rounder.
     final radius =
         size *

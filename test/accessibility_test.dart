@@ -4,6 +4,7 @@ import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/vault_filter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,6 +182,38 @@ void main() {
           semantics.dispose();
         }, tags: ['golden']);
       }
+    }
+  }
+
+  // Linux draws the desktop with the Yaru kit and Ubuntu's orange: the same
+  // screens, rendered as Linux, hold AA text contrast too. Dark mode only
+  // for now: in light mode the Ubuntu font's thin 11 pt strokes render
+  // secondary text (#66666B, 4.8:1 or more as a colour) at 4.1-4.4:1
+  // here, a gap still open. The palette's own pairs are checked for every
+  // kit and brightness in desktop_colors_test.dart.
+  for (final brightness in [Brightness.dark]) {
+    for (final MapEntry(key: name, value: (route, vault)) in screens.entries) {
+      testWidgets('linux ${brightness.name} $name: AA text contrast', (
+        tester,
+      ) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+        try {
+          final semantics = await open(
+            tester,
+            route,
+            vault,
+            AppLayout.desktop,
+            brightness,
+          );
+          await expectLater(
+            tester,
+            meetsGuideline(_Contrast(dark: brightness == Brightness.dark)),
+          );
+          semantics.dispose();
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+        }
+      }, tags: ['golden']);
     }
   }
 }

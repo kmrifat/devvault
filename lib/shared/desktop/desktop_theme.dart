@@ -77,7 +77,7 @@ class DesktopTheme extends StatelessWidget {
     final data = DesktopThemeData(
       kit: kit,
       brightness: brightness,
-      colors: DesktopColors.of(brightness),
+      colors: DesktopColors.of(brightness, kit),
       nativeWindow: nativeWindow && kit == DesktopKit.macos,
     );
     final scoped = _DesktopScope(data: data, child: child);
@@ -136,7 +136,12 @@ class DesktopTheme extends StatelessWidget {
       ...Theme.of(context).extensions,
     };
     return Theme(
-      data: yaruTheme.copyWith(extensions: extensions.values),
+      // Yaru's themes are built once, with the density of the platform at
+      // the time; Linux's is compact.
+      data: yaruTheme.copyWith(
+        extensions: extensions.values,
+        visualDensity: VisualDensity.compact,
+      ),
       child: child,
     );
   }
@@ -176,6 +181,6 @@ extension DesktopThemeContext on BuildContext {
   /// The kit drawing desktop controls here.
   DesktopKit get desktopKit => DesktopTheme.of(this).kit;
 
-  /// DevVault's desktop colours in the current brightness.
+  /// DevVault's desktop colours for the kit, in the current brightness.
   DesktopColors get desktopColors => DesktopTheme.of(this).colors;
 }

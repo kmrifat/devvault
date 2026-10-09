@@ -2,6 +2,7 @@ import 'package:devvault/app/theme.dart' show AppColors;
 import 'package:devvault/shared/desktop_ui.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart'
     show DropdownButton, Icons, PopupMenuButton, Theme, ThemeData;
 import 'package:flutter/services.dart';
@@ -396,6 +397,63 @@ void main() {
         expect(field.textInputAction, isNot(TextInputAction.done));
         expect(field.autocorrect, isTrue);
       });
+    });
+  }
+
+  // Windows and Linux fields are taller than macOS's 22 pt row; the token
+  // field, which DevVault draws, keeps level with them in a form. On Linux
+  // the combo box and pop-up do too.
+  for (final (kit, platform) in [
+    (DesktopKit.fluent, TargetPlatform.windows),
+    (DesktopKit.yaru, TargetPlatform.linux),
+  ]) {
+    testWidgets('${kit.name}: form controls are as tall as a text field', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = platform;
+      try {
+        await pumpDesktop(
+          tester,
+          kit,
+          SizedBox(
+            width: 300,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const DesktopTextField(key: Key('text')),
+                DesktopTokenField(
+                  key: const Key('tokens'),
+                  tokens: const ['ios'],
+                  onChanged: (_) {},
+                ),
+                DesktopComboBox(
+                  key: const Key('combo'),
+                  value: 'production',
+                  suggestions: const ['staging'],
+                  onChanged: (_) {},
+                ),
+                Row(
+                  children: [
+                    DesktopPopup<int>(
+                      key: const Key('popup'),
+                      value: 1,
+                      choices: const [DesktopChoice(1, 'Kitchenly')],
+                      onChanged: (_) {},
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+        double height(String key) =>
+            tester.getSize(find.byKey(Key(key))).height;
+        expect(height('tokens'), height('text'));
+        expect(height('combo'), height('text'));
+        if (kit == DesktopKit.yaru) expect(height('popup'), height('text'));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
   }
 }

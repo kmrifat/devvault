@@ -13,8 +13,8 @@ import 'desktop_theme.dart';
 /// on save, so a tag typed without Return isn't lost (Save by keyboard
 /// doesn't leave the field).
 ///
-/// No kit has one, so DevVault draws it in its own colours, sized like the
-/// kit's text fields (22 pt on macOS).
+/// No kit has one, so DevVault draws it in its own colours, as tall as the
+/// kit's text fields ([DesktopMetrics.tokenFieldHeight]; 22 pt on macOS).
 class DesktopTokenField extends StatefulWidget {
   const DesktopTokenField({
     super.key,
@@ -114,12 +114,15 @@ class _DesktopTokenFieldState extends State<DesktopTokenField> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: DesktopMetrics.controlHeight - 6,
+            constraints: BoxConstraints(
+              // Less the padding above.
+              minHeight:
+                  DesktopMetrics.tokenFieldHeight(context.desktopKit) - 4,
             ),
             child: Wrap(
               spacing: 4,
               runSpacing: 2,
+              runAlignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 for (final tag in widget.tokens)

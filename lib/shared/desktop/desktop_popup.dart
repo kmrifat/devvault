@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:yaru/yaru.dart' as yaru;
 
 import 'desktop_macos_menu.dart';
 import 'desktop_metrics.dart';
@@ -19,9 +20,9 @@ class DesktopChoice<T> {
 /// time). For a value the user may also type, use `DesktopComboBox`.
 ///
 /// On macOS a DevVault-drawn pop-up as tall as a text field, Fluent
-/// `ComboBox` on Windows, or Material's `DropdownButton`
-/// in the Yaru theme. [value] null shows [placeholder]. A choice too long
-/// for the button ends in an ellipsis.
+/// `ComboBox` on Windows, or Material's `DropdownButton` in the Yaru theme,
+/// outlined like Yaru's text fields and combo boxes. [value] null shows
+/// [placeholder]. A choice too long for the button ends in an ellipsis.
 class DesktopPopup<T> extends StatelessWidget {
   const DesktopPopup({
     super.key,
@@ -67,21 +68,30 @@ class DesktopPopup<T> extends StatelessWidget {
           ],
         ),
       ),
+      // The field's outline (Yaru's input theme) in place of Material's
+      // underline, as `DropdownButtonFormField` draws it.
       DesktopKit.yaru => IntrinsicWidth(
-        child: DropdownButton<T>(
-          value: value,
-          hint: hint,
-          isDense: true,
-          isExpanded: true,
-          onChanged: onChanged == null
-              ? null
-              : (v) {
-                  if (v != null) onChanged(v);
-                },
-          items: [
-            for (final c in choices)
-              DropdownMenuItem(value: c.value, child: _label(c.label)),
-          ],
+        child: InputDecorator(
+          decoration: InputDecoration(enabled: onChanged != null),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: value,
+              hint: hint,
+              isDense: true,
+              isExpanded: true,
+              // The combo box's chevron.
+              icon: const Icon(yaru.YaruIcons.pan_down),
+              onChanged: onChanged == null
+                  ? null
+                  : (v) {
+                      if (v != null) onChanged(v);
+                    },
+              items: [
+                for (final c in choices)
+                  DropdownMenuItem(value: c.value, child: _label(c.label)),
+              ],
+            ),
+          ),
         ),
       ),
     };

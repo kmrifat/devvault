@@ -1036,7 +1036,7 @@ class _SourceRowState extends State<_SourceRow> {
               ),
               decoration: BoxDecoration(
                 color: selected
-                    ? colors.accent
+                    ? colors.selection
                     : _hovered || widget.dropHover
                     ? colors.innerSeparator
                     : null,
@@ -1073,7 +1073,7 @@ class _SourceRowState extends State<_SourceRow> {
                                     : DesktopSymbol.chevronRight,
                                 size: 10,
                                 color: selected
-                                    ? colors.onAccent
+                                    ? colors.onSelection
                                     : colors.tertiaryText,
                               ),
                             ),
@@ -1089,7 +1089,7 @@ class _SourceRowState extends State<_SourceRow> {
                                   icon,
                                   size: 14,
                                   color: selected
-                                      ? colors.onAccent
+                                      ? colors.onSelection
                                       : widget.iconColor ??
                                             colors.secondaryText,
                                 )),
@@ -1105,7 +1105,7 @@ class _SourceRowState extends State<_SourceRow> {
                         fontWeight: selected
                             ? FontWeight.w600
                             : FontWeight.w400,
-                        color: selected ? colors.onAccent : colors.text,
+                        color: selected ? colors.onSelection : colors.text,
                       ),
                     ),
                   ),
@@ -1117,7 +1117,7 @@ class _SourceRowState extends State<_SourceRow> {
                       style: TextStyle(
                         fontSize: DesktopMetrics.secondarySize,
                         color: selected
-                            ? colors.onAccent
+                            ? colors.onSelection
                             : colors.secondaryText,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
