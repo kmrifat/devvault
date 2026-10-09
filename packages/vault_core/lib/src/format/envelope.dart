@@ -14,7 +14,8 @@ enum ObjectType {
   blob(0x03, 'blob', 'blobs'),
   tombstone(0x04, 'tombstone', 'tombstones'),
   vkWrapPassword(0x05, 'vk_wrap_password', null),
-  vkWrapRecovery(0x06, 'vk_wrap_recovery', null);
+  vkWrapRecovery(0x06, 'vk_wrap_recovery', null),
+  organization(0x07, 'organization', 'organizations');
 
   const ObjectType(this.code, this.wireName, this.folder);
 

@@ -15,6 +15,7 @@ class VaultIndex {
   VaultIndex(VaultContents contents)
     : items = Map.unmodifiable(contents.items),
       apps = Map.unmodifiable(contents.apps),
+      organizationRecords = Map.unmodifiable(contents.organizations),
       quarantined = List.unmodifiable(contents.quarantined) {
     for (final item in items.values) {
       _tokens[item.id] = _searchTextFor(item);
@@ -23,6 +24,10 @@ class VaultIndex {
 
   final Map<String, Item> items;
   final Map<String, AppRecord> apps;
+
+  /// Organization records by id. An organization can also exist only
+  /// through its apps' `organization`; [organizations] has both.
+  final Map<String, OrganizationRecord> organizationRecords;
   final List<ObjectSlot> quarantined;
   final Map<String, String> _tokens = {};
 
@@ -70,32 +75,40 @@ class VaultIndex {
     return nodes;
   }();
 
-  /// Every organization the vault's apps name, once each, A–Z ignoring
-  /// case: what the app form suggests.
+  /// Every organization, once each, A–Z ignoring case: the names of the
+  /// organization records and every name the vault's apps give. What the
+  /// app form suggests.
   late final List<String> organizations = {
+    for (final org in organizationRecords.values) org.name,
     for (final app in apps.values) ?app.organization,
   }.toList()..sort(_byText);
 
-  /// The [tree]'s apps grouped by organization, organizations A–Z, then
-  /// the apps without one (organization null, "Personal"). The "No app"
-  /// node isn't an app and is in no group. Empty when no app in the tree
-  /// has an organization: then the tree stays flat.
+  /// The [tree]'s apps grouped by organization: every organization in
+  /// [organizations] A–Z, those without apps too, then the apps without
+  /// one (organization null, "Personal") if there are any. The "No app"
+  /// node isn't an app and is in no group. Empty when there is no
+  /// organization: then the tree stays flat.
   late final List<OrgGroup> orgGroups = () {
-    final appNodes = [
-      for (final node in tree)
-        if (node.app != null) node,
-    ];
-    if (!appNodes.any((n) => n.app!.organization != null)) {
-      return const <OrgGroup>[];
-    }
+    if (organizations.isEmpty) return const <OrgGroup>[];
     final byOrg = <String?, List<AppNode>>{};
-    for (final node in appNodes) {
-      (byOrg[node.app!.organization] ??= []).add(node);
+    for (final node in tree) {
+      if (node.app case final app?) {
+        (byOrg[app.organization] ??= []).add(node);
+      }
     }
-    final orgs = [...byOrg.keys.nonNulls]..sort(_byText);
+    final records = <String, List<OrganizationRecord>>{};
+    for (final org in organizationRecords.values) {
+      (records[org.name] ??= []).add(org);
+    }
     return [
-      for (final org in [...orgs, if (byOrg.containsKey(null)) null])
-        OrgGroup._(organization: org, apps: byOrg[org]!),
+      for (final org in organizations)
+        OrgGroup._(
+          organization: org,
+          apps: byOrg[org] ?? const [],
+          records: (records[org] ?? [])..sort((a, b) => a.id.compareTo(b.id)),
+        ),
+      if (byOrg[null] case final personal?)
+        OrgGroup._(organization: null, apps: personal, records: const []),
     ];
   }();
 
@@ -181,14 +194,24 @@ class VaultIndex {
 /// An organization's apps in the sidebar tree; [organization] is null for
 /// the apps without one ("Personal").
 class OrgGroup {
-  OrgGroup._({required this.organization, required List<AppNode> apps})
-    : apps = List.unmodifiable(apps),
-      count = apps.fold(0, (sum, node) => sum + node.count);
+  OrgGroup._({
+    required this.organization,
+    required List<AppNode> apps,
+    required List<OrganizationRecord> records,
+  }) : apps = List.unmodifiable(apps),
+       records = List.unmodifiable(records),
+       count = apps.fold(0, (sum, node) => sum + node.count);
 
   final String? organization;
 
-  /// In the tree's order (by name).
+  /// In the tree's order (by name). Empty for an organization without
+  /// apps.
   final List<AppNode> apps;
+
+  /// The organization records with exactly this name, by id: usually one,
+  /// more when two devices created it at once. Empty when it exists only
+  /// through its apps, and for "Personal".
+  final List<OrganizationRecord> records;
 
   /// Items across [apps].
   final int count;

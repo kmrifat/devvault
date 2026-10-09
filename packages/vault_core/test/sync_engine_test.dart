@@ -277,6 +277,111 @@ void main() {
     }
   });
 
+  group('organizations', () {
+    Future<Map<String, OrganizationRecord>> orgs(Vault vault) async =>
+        (await vault.loadAll()).organizations;
+
+    test('a new organization travels to the other device', () async {
+      final a = await createOnA();
+      final org = await a.putOrganization(a.newOrganization(name: 'Globex'));
+      expect((await engine(a).sync()).pushed, 2);
+      expect(bucket.keys, contains('${a.vaultId}/organizations/${org.id}.enc'));
+      final b = await joinOnB(a.vaultId);
+      await engine(b).sync();
+      expect((await orgs(b))[org.id]!.name, 'Globex');
+
+      final renamed = await b.putOrganization(org.copyWith(name: 'Globex Inc'));
+      await engine(b).sync();
+      expect((await engine(a).sync()).pulled, 1);
+      expect((await orgs(a))[org.id]!.rev, renamed.rev);
+      expect((await orgs(a))[org.id]!.name, 'Globex Inc');
+    });
+
+    test(
+      'concurrent edits merge: the rename beats an unchanged name',
+      () async {
+        final a = await createOnA();
+        final org = await a.putOrganization(a.newOrganization(name: 'Acme'));
+        await engine(a).sync();
+        final b = await joinOnB(a.vaultId);
+        await engine(b).sync();
+
+        await a.putOrganization(org.copyWith(name: 'Acme Corp'));
+        await b.putOrganization((await orgs(b))[org.id]!);
+        await engine(a).sync();
+        final report = await engine(b).sync();
+        expect(report.merged, 1);
+        await engine(a).sync();
+        for (final v in [a, b]) {
+          expect((await orgs(v))[org.id]!.name, 'Acme Corp');
+        }
+      },
+    );
+
+    test('both renamed: the device that merges keeps its own name', () async {
+      final a = await createOnA();
+      final org = await a.putOrganization(a.newOrganization(name: 'Acme'));
+      await engine(a).sync();
+      final b = await joinOnB(a.vaultId);
+      await engine(b).sync();
+
+      await a.putOrganization(org.copyWith(name: 'Acme Corp'));
+      await b.putOrganization(org.copyWith(name: 'Acme Labs'));
+      await engine(a).sync();
+      expect((await engine(b).sync()).conflicts, 0);
+      await engine(a).sync();
+      for (final v in [a, b]) {
+        expect((await orgs(v))[org.id]!.name, 'Acme Labs');
+      }
+    });
+
+    test('a deletion propagates through its tombstone', () async {
+      final a = await createOnA();
+      final org = await a.putOrganization(a.newOrganization(name: 'Initech'));
+      await engine(a).sync();
+      final b = await joinOnB(a.vaultId);
+      await engine(b).sync();
+
+      await a.delete(org.id, TombstoneKind.organization);
+      await engine(a).sync();
+      expect(
+        bucket.keys,
+        isNot(contains('${a.vaultId}/organizations/${org.id}.enc')),
+      );
+      expect(bucket.keys, contains('${a.vaultId}/tombstones/${org.id}.enc'));
+
+      await engine(b).sync();
+      expect(await orgs(b), isEmpty);
+      expect(
+        (await b.loadAll()).tombstones[org.id]!.kind,
+        TombstoneKind.organization,
+      );
+    });
+
+    test('a remote tombstone deletes the record, even renamed here', () async {
+      final a = await createOnA();
+      final org = await a.putOrganization(a.newOrganization(name: 'Initech'));
+      await engine(a).sync();
+      final b = await joinOnB(a.vaultId);
+      await engine(b).sync();
+
+      // Deleted on B while A renamed it.
+      await b.delete(org.id, TombstoneKind.organization);
+      await engine(b).sync();
+      await a.putOrganization(org.copyWith(name: 'Initrode'));
+      await engine(a).sync();
+      expect(await orgs(a), isEmpty);
+      expect(
+        bucket.keys,
+        isNot(contains('${a.vaultId}/organizations/${org.id}.enc')),
+      );
+      expect(
+        File('${a.store.root.path}/organizations/${org.id}.enc').existsSync(),
+        isFalse,
+      );
+    });
+  });
+
   test('a file that vanishes mid-sync is skipped, not a crash', () async {
     final a = await createOnA();
     final kept = await addItem(a, 'Kept');
@@ -423,6 +528,20 @@ void main() {
       final item = (await items(b2))[kept.id]!;
       expect(item.title, 'Edited on A');
       expect(Conflict.of(item).deletions.single['device_id'], _deviceB);
+    });
+
+    test('an organization added here survives the adoption', () async {
+      final (a, b, _, _) = await rotatedOnA();
+      final org = await b.putOrganization(b.newOrganization(name: 'Globex'));
+
+      final adoption = await engine(b)
+          .adoptRemoteKey(_password, crypto: crypto);
+      expect(adoption.rescued, 1);
+      final onB = (await adoption.vault.loadAll()).organizations;
+      expect(onB[org.id]!.name, 'Globex');
+
+      await engine(a).sync();
+      expect((await a.loadAll()).organizations[org.id]!.name, 'Globex');
     });
 
     test('files B had from before keep working under the new key', () async {

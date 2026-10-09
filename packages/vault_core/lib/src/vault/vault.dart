@@ -201,9 +201,10 @@ class Vault {
 
   /// Replaces the vault key after a suspected compromise (SPEC §9).
   ///
-  /// Every item, app and tombstone is re-encrypted in place and every blob
-  /// under a new id; `vault.json` is written last, with a new recovery key,
-  /// which is returned for the user to save. Old blobs are then removed.
+  /// Every item, app, organization and tombstone is re-encrypted in place
+  /// and every blob under a new id; `vault.json` is written last, with a
+  /// new recovery key, which is returned for the user to save. Old blobs
+  /// are then removed.
   ///
   /// The new key is kept in a device-local journal sealed with the old key
   /// until `vault.json` is replaced, so a crash at any point either leaves a
@@ -342,11 +343,7 @@ class Vault {
     }
 
     // 2. Records: re-encrypt in place; items point at the new blob ids.
-    for (final type in const [
-      ObjectType.item,
-      ObjectType.app,
-      ObjectType.tombstone,
-    ]) {
+    for (final type in recordTypes) {
       for (final id in await store.list(type)) {
         final slot = _slot(type, id);
         final envelope = (await store.read(type, id))!;
@@ -398,6 +395,14 @@ class Vault {
     }
   }
 
+  /// Every type of JSON record, in the order they're loaded and rotated.
+  static const List<ObjectType> recordTypes = [
+    ObjectType.item,
+    ObjectType.app,
+    ObjectType.organization,
+    ObjectType.tombstone,
+  ];
+
   /// A new random object id.
   String newId() => VaultKeys.uuidV4(_crypto);
 
@@ -447,6 +452,20 @@ class Vault {
     );
   }
 
+  /// A new organization, stamped but not yet saved; pass it to
+  /// [putOrganization].
+  OrganizationRecord newOrganization({required String name}) {
+    final now = _now();
+    return OrganizationRecord(
+      id: newId(),
+      name: name,
+      createdAt: now,
+      updatedAt: now,
+      rev: _clock,
+      deviceId: deviceId,
+    );
+  }
+
   /// Saves [item], stamping a new `rev`, this device and the update time.
   Future<Item> putItem(Item item) async {
     if (item.isReadOnly) {
@@ -474,6 +493,26 @@ class Vault {
     return stamped;
   }
 
+  /// Saves [organization], stamping a new `rev`, this device and the update
+  /// time.
+  Future<OrganizationRecord> putOrganization(
+    OrganizationRecord organization,
+  ) async {
+    if (organization.isReadOnly) {
+      throw StateError(
+        'Organization ${organization.id} has a newer schema and is read-only',
+      );
+    }
+    final now = _now();
+    final stamped = organization.copyWith(
+      updatedAt: now,
+      rev: _tick(now),
+      deviceId: deviceId,
+    );
+    await _writeRecord(stamped);
+    return stamped;
+  }
+
   /// Deletes a record: writes its tombstone, then removes the record file.
   /// Its blobs stay until garbage collection (P2).
   Future<Tombstone> delete(String id, TombstoneKind kind) async {
@@ -486,10 +525,7 @@ class Vault {
       deviceId: deviceId,
     );
     await _writeRecord(tombstone);
-    await store.delete(
-      kind == TombstoneKind.item ? ObjectType.item : ObjectType.app,
-      id,
-    );
+    await store.delete(kind.recordType, id);
     return tombstone;
   }
 
@@ -544,21 +580,18 @@ class Vault {
     return bytes;
   }
 
-  /// Decrypts every item, app and tombstone. Objects that fail to open or
-  /// parse are listed in [VaultContents.quarantined] instead of failing the
-  /// whole load (SPEC §5). Also moves this device's clock past every `rev`
-  /// it saw.
+  /// Decrypts every item, app, organization and tombstone. Objects that
+  /// fail to open or parse are listed in [VaultContents.quarantined]
+  /// instead of failing the whole load (SPEC §5). Also moves this device's
+  /// clock past every `rev` it saw.
   Future<VaultContents> loadAll() async {
     final items = <String, Item>{};
     final apps = <String, AppRecord>{};
+    final organizations = <String, OrganizationRecord>{};
     final tombstones = <String, Tombstone>{};
     final quarantined = <ObjectSlot>[];
 
-    for (final type in const [
-      ObjectType.item,
-      ObjectType.app,
-      ObjectType.tombstone,
-    ]) {
+    for (final type in recordTypes) {
       for (final id in await store.list(type)) {
         final slot = _slot(type, id);
         final record = await _readRecord(slot);
@@ -572,6 +605,8 @@ class Vault {
             items[id] = item;
           case final AppRecord app:
             apps[id] = app;
+          case final OrganizationRecord organization:
+            organizations[id] = organization;
           case final Tombstone tombstone:
             tombstones[id] = tombstone;
         }
@@ -580,6 +615,7 @@ class Vault {
     return VaultContents(
       items: items,
       apps: apps,
+      organizations: organizations,
       tombstones: tombstones,
       quarantined: quarantined,
     );
@@ -676,12 +712,14 @@ class VaultContents {
   VaultContents({
     required this.items,
     required this.apps,
+    this.organizations = const {},
     required this.tombstones,
     required this.quarantined,
   });
 
   final Map<String, Item> items;
   final Map<String, AppRecord> apps;
+  final Map<String, OrganizationRecord> organizations;
   final Map<String, Tombstone> tombstones;
 
   /// Objects that failed to decrypt or parse. Shown to the user, never

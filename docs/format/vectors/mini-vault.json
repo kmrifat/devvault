@@ -67,6 +67,9 @@
       "notes": "## Billing API\n\nRotate the **Stripe** keys every *90 days*:\n\n1. Create the new key in the dashboard.\n2. Run `make rotate-keys`.\n\n```sh\nmake deploy ENV=production\n```\n\nRunbook: [wiki](https://wiki.acme.example/billing)"
     }
   },
+  "organizations": {
+    "183b9efa-02f8-4f21-ae67-f3a6f28acd4a": "Globex"
+  },
   "tombstones": [
     "2e3b73da-cb72-43ff-8d2a-5d02e47b4cac"
   ]

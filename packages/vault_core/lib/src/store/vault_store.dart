@@ -12,7 +12,7 @@ import '../format/vault_header.dart';
 ///
 /// ```
 /// <root>/vault.json
-/// <root>/items/<id>.enc   apps/   blobs/   tombstones/
+/// <root>/items/<id>.enc   apps/   organizations/   blobs/   tombstones/
 /// ```
 ///
 /// Every write is atomic: the bytes go to a temporary file in the same

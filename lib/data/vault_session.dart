@@ -264,10 +264,11 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     }
   }
 
-  /// Rotates the vault key (SPEC §9): every item, app, tombstone and file
-  /// is re-encrypted under a new key, with a new recovery key, which is
-  /// returned for the caller to show once and dispose. Needs the master
-  /// password. Other synced devices pause until they adopt the new key.
+  /// Rotates the vault key (SPEC §9): every item, app, organization,
+  /// tombstone and file is re-encrypted under a new key, with a new
+  /// recovery key, which is returned for the caller to show once and
+  /// dispose. Needs the master password. Other synced devices pause until
+  /// they adopt the new key.
   Future<RecoveryKey> rotateVaultKey(String password) => exclusive(() async {
     final current = state;
     if (current is! Unlocked) throw StateError('The vault is locked');
@@ -295,6 +296,11 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
 
   Vault get _vault => switch (state) {
     Unlocked(:final vault) => vault,
+    _ => throw StateError('The vault is locked'),
+  };
+
+  VaultIndex get _index => switch (state) {
+    Unlocked(:final index) => index,
     _ => throw StateError('The vault is locked'),
   };
 
@@ -338,6 +344,64 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
   /// Deletes the app [id]. Its items stay, grouped under "No app".
   Future<void> deleteApp(String id) => exclusive(() async {
     await _vault.delete(id, TombstoneKind.app);
+    await reload();
+  });
+
+  /// A new, unsaved organization (fresh id, this device).
+  OrganizationRecord newOrganization(String name) =>
+      _vault.newOrganization(name: name);
+
+  /// Saves [org] and refreshes the index. Returns it as stored.
+  Future<OrganizationRecord> saveOrganization(OrganizationRecord org) =>
+      exclusive(() async {
+        final saved = await _vault.putOrganization(org);
+        await reload();
+        return saved;
+      });
+
+  /// Renames the organization [from] to [to] (SPEC §6.7): every record
+  /// named [from] (or a new one, when there is none) and every app that
+  /// names it. Throws [StateError] before writing anything when a record
+  /// has a newer schema and can't be rewritten.
+  Future<void> renameOrganization(String from, String to) =>
+      exclusive(() async {
+        final index = _index;
+        final records = [
+          for (final org in index.organizationRecords.values)
+            if (org.name == from) org,
+        ];
+        if (records.any((org) => org.isReadOnly)) {
+          throw StateError('An organization record is read-only');
+        }
+        if (records.isEmpty) {
+          await _vault.putOrganization(_vault.newOrganization(name: to));
+        }
+        for (final org in records) {
+          await _vault.putOrganization(org.copyWith(name: to));
+        }
+        for (final app in index.apps.values) {
+          if (app.organization == from) {
+            await _vault.putApp(app.copyWith(organization: to));
+          }
+        }
+        await reload();
+      });
+
+  /// Deletes the organization [name] (SPEC §6.7): tombstones every record
+  /// with that name and clears it on every app that names it. The apps
+  /// and their items stay.
+  Future<void> deleteOrganization(String name) => exclusive(() async {
+    final index = _index;
+    for (final org in index.organizationRecords.values) {
+      if (org.name == name) {
+        await _vault.delete(org.id, TombstoneKind.organization);
+      }
+    }
+    for (final app in index.apps.values) {
+      if (app.organization == name) {
+        await _vault.putApp(app.copyWith(organization: ''));
+      }
+    }
     await reload();
   });
 
