@@ -55,6 +55,19 @@ class DesktopExpiryTable extends StatelessWidget {
     return past ? '$text ago' : text;
   }
 
+  /// The window's status bar under this table: "6 dated · 36 without a
+  /// date", or "1 expired" when [onlyExpired].
+  static String status(ExpiryGroups groups, {required bool onlyExpired}) {
+    if (onlyExpired) return '${groups.expired.length} expired';
+    final dated =
+        groups.expired.length + groups.soon.length + groups.later.length;
+    return '$dated dated · ${groups.noExpiry} without a date';
+  }
+
+  /// The status bar's reminder state, from the Expiry reminders setting.
+  static String reminders({required bool on}) =>
+      on ? 'Reminders on · at most two per item' : 'Reminders off';
+
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
