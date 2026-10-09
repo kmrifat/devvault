@@ -34,6 +34,7 @@ import '../import/place_fields.dart'
         SourceTag,
         placeSuggestions,
         typedPlace;
+import '../notes/notes.dart' show DesktopNotesEditor, PhoneNotesField;
 import 'item_draft.dart';
 
 /// Opens the item form: [item] to edit it, or null for a new item placed
@@ -287,10 +288,9 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
         ),
         const SizedBox(height: BCSpacing.md),
         const _Label('Notes'),
-        BCTextArea(
+        PhoneNotesField(
           controller: _notes,
-          height: 96,
-          placeholder: 'Anything worth remembering. Notes aren’t searchable.',
+          fieldKey: const ValueKey('item-notes'),
         ),
         if (_saveError case final error?) ...[
           const SizedBox(height: BCSpacing.md),
@@ -511,12 +511,9 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                 ),
                 DesktopFormRow(
                   label: 'Notes',
-                  child: DesktopTextField(
+                  child: DesktopNotesEditor(
                     controller: _notes,
-                    maxLines: 4,
-                    minLines: 3,
-                    placeholder:
-                        'Anything worth remembering. Notes aren’t searchable.',
+                    fieldKey: const ValueKey('item-notes'),
                   ),
                 ),
               ],

@@ -10,6 +10,7 @@ import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../sync/sync_status_chip.dart';
 import '../import/paste_secret_sheet.dart';
+import '../notes/notes.dart' show PhoneNotesCard;
 import 'vault_actions.dart';
 import 'vault_item_row.dart';
 
@@ -102,6 +103,8 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
       }
     }
     final personal = apps.any((a) => a.organization == null);
+    // One app chosen: its notes, if it has any, over its items.
+    final appNotes = index.apps[filter.app]?.notes;
 
     final syncing = ref.watch(syncControllerProvider) is! SyncOff;
 
@@ -210,6 +213,10 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
                     ],
                   ),
                 ),
+              ],
+              if (appNotes != null) ...[
+                const SizedBox(height: 16),
+                PhoneNotesCard(notes: appNotes, title: 'App notes'),
               ],
             ],
           ),
