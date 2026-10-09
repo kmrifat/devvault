@@ -200,6 +200,10 @@ through `package:devvault/shared/desktop_ui.dart`:
 - `DesktopSymbol` / `DesktopIcon`: icons by meaning, drawn from each OS's
   own set (Cupertino, Fluent, Yaru). CupertinoIcons has no Touch ID or
   Face ID glyph, so macOS uses the app's Lucide ones for those two.
+- `DesktopTypeTile` (`lib/features/vault/desktop_item_type.dart`, beside
+  each type's symbol and tint): the item-type tile of the inspector
+  header, the import and editor sheets and quick open, the type's symbol
+  on a light wash of its tint. Phones keep bc_ui's `TypeIconTile`.
 - `DesktopWindow`: the main window's frame. In the app on macOS it is
   `MacosWindow` + `Sidebar`, so the sidebar runs under the traffic lights
   with the system's vibrancy and can be resized; `macos_window_utils` sets

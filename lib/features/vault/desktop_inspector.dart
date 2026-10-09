@@ -203,7 +203,6 @@ class _Header extends ConsumerWidget {
     ].join(' › ');
     final path = place.isEmpty ? item.typeLabel : '${item.typeLabel} · $place';
     final file = item.attachments.firstOrNull;
-    final tint = item.typeTint(colors);
 
     // Each button its own node, so screen readers (and tests) find it by
     // its label alone.
@@ -212,22 +211,7 @@ class _Header extends ConsumerWidget {
     return Row(
       spacing: 12,
       children: [
-        Semantics(
-          label: item.typeLabel,
-          excludeSemantics: true,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: tint.withValues(alpha: 0.14),
-              borderRadius: const BorderRadius.all(
-                Radius.circular(DesktopMetrics.menuRadius + 2),
-              ),
-            ),
-            child: SizedBox.square(
-              dimension: DesktopMetrics.inspectorTileSize,
-              child: DesktopIcon(item.typeSymbol, size: 20, color: tint),
-            ),
-          ),
-        ),
+        DesktopTypeTile(type: item.type, semanticLabel: item.typeLabel),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
