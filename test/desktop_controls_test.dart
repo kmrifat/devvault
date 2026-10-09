@@ -106,6 +106,55 @@ void main() {
         expect(find.text('Android'), findsOneWidget);
       });
 
+      // A long "Organization › App" label is cut short with an ellipsis,
+      // in the button and in its menu, whether the pop-up fills its row or
+      // is as wide as its choice.
+      for (final fill in [true, false]) {
+        testWidgets('pop-up fits a long label (${fill ? 'filled' : 'loose'})', (
+          tester,
+        ) async {
+          const long =
+              'Acme Corporation International Holdings › Payments Gateway '
+              'Reconciliation Service (Production, EU West) › Webhooks';
+          final popup = DesktopPopup<String>(
+            value: 'long',
+            onChanged: (_) {},
+            choices: const [
+              DesktopChoice('short', 'Personal › Notes'),
+              DesktopChoice('long', long),
+            ],
+          );
+          await pumpDesktop(
+            tester,
+            kit,
+            SizedBox(
+              width: 280,
+              child: fill
+                  ? popup
+                  : Align(alignment: Alignment.centerLeft, child: popup),
+            ),
+          );
+          // Closed: the label stays inside the button.
+          expect(tester.takeException(), isNull);
+          final button = tester.getRect(find.byType(DesktopPopup<String>));
+          expect(button.width, lessThanOrEqualTo(280));
+          for (final label in find.text(long).evaluate()) {
+            expect(_right(label), lessThanOrEqualTo(button.right));
+          }
+
+          // Open: the menu's row stays inside the window.
+          await tester.tap(_popup(kit));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          final window =
+              tester.view.physicalSize / tester.view.devicePixelRatio;
+          expect(find.text(long), findsWidgets);
+          for (final label in find.text(long).evaluate()) {
+            expect(_right(label), lessThanOrEqualTo(window.width));
+          }
+        });
+      }
+
       testWidgets('token field adds and removes tags', (tester) async {
         final log = <List<String>>[];
         await pumpDesktop(
@@ -266,6 +315,12 @@ Widget _combo(List<String> log, {required String initial}) => SizedBox(
     ),
   ),
 );
+
+/// Where [text]'s laid-out box ends, in window coordinates.
+double _right(Element text) {
+  final box = text.renderObject! as RenderBox;
+  return box.localToGlobal(box.size.bottomRight(Offset.zero)).dx;
+}
 
 String _fieldText(WidgetTester tester) =>
     tester.widget<EditableText>(find.byType(EditableText)).controller.text;

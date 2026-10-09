@@ -19,6 +19,10 @@ abstract final class DesktopMetrics {
   static const double menuRadius = 6;
   static const double menuItemRadius = 4;
 
+  /// The widest a menu grows for a long choice (unless its field is wider);
+  /// longer labels end in an ellipsis.
+  static const double menuMaxWidth = 400;
+
   /// Corner radius of a tag pill.
   static const double tokenRadius = 9;
 
