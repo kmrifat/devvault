@@ -16,6 +16,7 @@ import '../services/file_import.dart';
 import '../services/file_saver.dart';
 import '../services/folder_revealer.dart';
 import '../services/incoming_files.dart';
+import '../services/link_opener.dart';
 import '../services/notifications.dart';
 import '../services/recovery_kit.dart';
 
@@ -145,6 +146,11 @@ final autoLockProvider = Provider<Duration?>(
 /// Shows folders in Finder / Explorer / the Linux file manager.
 final folderRevealerProvider = Provider<FolderRevealer>(
   (ref) => const SystemFolderRevealer(),
+);
+
+/// Opens the Help menu's pages in the default browser.
+final linkOpenerProvider = Provider<LinkOpener>(
+  (ref) => const SystemLinkOpener(),
 );
 
 /// Open dialogs for choosing files to import.
