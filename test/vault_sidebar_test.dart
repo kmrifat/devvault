@@ -785,6 +785,54 @@ void main() {
       );
       expect(row('Acme Corp, 11 items'), findsOneWidget);
     });
+    testWidgets('New organization… makes an empty one to drag apps into', (
+      tester,
+    ) async {
+      await open(tester);
+      await rightClick(tester, inSidebar('Apps'));
+      await tester.tap(find.text('New organization…'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('organization-name')),
+        'Globex',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Create'));
+      await settle(
+        tester,
+        () =>
+            index(tester).organizationRecords.values
+                .any((o) => o.name == 'Globex'),
+      );
+      expect(row('Globex, 0 items'), findsOneWidget);
+      expect(row('Personal, 11 items'), findsOneWidget);
+      expect(location(tester), Routes.vault(org: 'Globex'));
+
+      await drag(tester, row('Kitchenly'), row('Globex'));
+      await settle(
+        tester,
+        () => app(tester, 'Kitchenly').organization == 'Globex',
+      );
+      expect(row('Globex, 10 items'), findsOneWidget);
+    });
+
+    testWidgets('Delete organization… keeps its apps, under Personal', (
+      tester,
+    ) async {
+      await open(tester);
+      await saveApp(
+        tester,
+        app(tester, 'Ledgerly').copyWith(organization: 'Acme Corp'),
+      );
+      await rightClick(tester, row('Acme Corp'));
+      await tester.tap(find.text('Delete organization…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete organization'));
+      await settle(tester, () => app(tester, 'Ledgerly').organization == null);
+      expect(inSidebar('Acme Corp'), findsNothing);
+      expect(index(tester).items.values, hasLength(12));
+    });
+
     testWidgets('renaming an organization renames it on each of its apps', (
       tester,
     ) async {

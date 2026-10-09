@@ -142,6 +142,10 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                 _SectionLabel(
                   'Apps',
                   menu: [
+                    DesktopMenuAction(
+                      'New organization…',
+                      () => createOrganization(context, ref),
+                    ),
                     DesktopMenuAction('New app…', () => createApp(context)),
                     DesktopMenuAction(
                       'New item…',
@@ -260,19 +264,32 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               'New app…',
               () => createApp(context, organization: org),
             ),
-            if (org != null)
+            if (org != null) ...[
               DesktopMenuAction(
                 'Rename organization…',
                 () => renameOrganization(context, ref, org),
               ),
+              DesktopMenuAction(
+                'Delete organization…',
+                () => deleteOrganization(
+                  context,
+                  ref,
+                  org,
+                  appCount: group.apps.length,
+                ),
+                destructive: true,
+              ),
+            ],
           ],
           tree: true,
           expanded: open,
-          onToggle: () => setState(
-            () => open
-                ? _collapsedOrgs.add(orgKey)
-                : _collapsedOrgs.remove(orgKey),
-          ),
+          onToggle: group.apps.isEmpty
+              ? null
+              : () => setState(
+                  () => open
+                      ? _collapsedOrgs.add(orgKey)
+                      : _collapsedOrgs.remove(orgKey),
+                ),
           icon: org == null ? DesktopSymbol.person : DesktopSymbol.organization,
           label: org ?? 'Personal',
           count: group.count,

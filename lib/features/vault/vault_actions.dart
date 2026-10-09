@@ -218,3 +218,55 @@ Future<void> renameOrganization(
     ),
   );
 }
+
+/// Asks for a name, then creates an organization with no apps, ready for
+/// apps to be dragged in, and lists it. A name the vault already has just
+/// lists that organization.
+Future<void> createOrganization(BuildContext context, WidgetRef ref) async {
+  final name = await showOrganizationSheet(context);
+  if (name == null || !context.mounted) return;
+  final session = ref.read(vaultSessionProvider);
+  if (session is! Unlocked) return;
+  if (!session.index.organizations.contains(name)) {
+    final notifier = ref.read(vaultSessionProvider.notifier);
+    await notifier.saveOrganization(notifier.newOrganization(name));
+    if (!context.mounted) return;
+  }
+  context.go(Routes.vault(org: name));
+}
+
+/// Asks, then deletes [organization]. Its [appCount] apps and their items
+/// stay, under Personal.
+Future<void> deleteOrganization(
+  BuildContext context,
+  WidgetRef ref,
+  String organization, {
+  required int appCount,
+}) async {
+  final confirmed = await showConfirmDialog(
+    context,
+    title: 'Delete “$organization”?',
+    message: appCount == 0
+        ? 'The organization is removed from this vault.'
+        : 'The organization is removed, but its '
+              '${appCount == 1 ? 'app stays' : '$appCount apps stay'}, with '
+              'their items, under Personal.',
+    confirmLabel: 'Delete organization',
+    destructive: true,
+  );
+  if (!confirmed || !context.mounted) return;
+  await ref
+      .read(vaultSessionProvider.notifier)
+      .deleteOrganization(organization);
+  if (!context.mounted) return;
+  if (VaultFilter.fromUri(GoRouterState.of(context).uri).org == organization) {
+    context.go(Routes.vault());
+  }
+  BCToast.show(
+    context,
+    BCToastData(
+      title: '“$organization” deleted',
+      variant: BCToastVariant.success,
+    ),
+  );
+}

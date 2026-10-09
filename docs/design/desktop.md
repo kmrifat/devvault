@@ -51,12 +51,15 @@ and exported here under `desktop/`.
       the trailing edge. Clicking an organization or app lists its items;
       clicking an item selects it.
     - Every explorer row has a context menu:
-      - organization: New item…, New app…, Rename organization…;
+      - organization: New item…, New app…, Rename organization…, Delete
+        organization… (its apps stay, under Personal);
       - app: New item…, Edit app…, Move to organization…, Remove from
         *organization*, Delete app…;
       - item (also on table rows): Edit item…, Move to app…, Delete
         item…;
-      - the Apps label: New app…, New item….
+      - the Apps label: New organization…, New app…, New item….
+    - An organization can be empty (SPEC §6.7): New organization… makes
+      one to drag apps into.
     - Drag to rearrange. An item (from the explorer or the table) dropped
       on an app, "No app" or another item moves to that app. An app
       dropped on an organization (or Personal) moves into it. Both toasts
