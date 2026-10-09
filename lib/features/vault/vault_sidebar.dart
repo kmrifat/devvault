@@ -10,6 +10,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/widgets/app_badge.dart';
+import 'tree_drag.dart';
 import 'vault_actions.dart';
 
 /// Which part of the app the window shows, as the sidebar sees it.
@@ -24,6 +25,12 @@ enum ShellSection { vault, expiry, settings }
 /// their organization, then "Personal" for the apps without one; "No app"
 /// stays last, outside the groups. Clicking an organization lists its
 /// apps' items.
+///
+/// Tree rows have a context menu ("New item…" there, "Edit app…",
+/// "Rename organization…" …), and the tree can be rearranged by dragging:
+/// an item from the list onto an app, platform or environment moves it
+/// there, and an app onto an organization (or "Personal") moves it into
+/// that organization.
 ///
 /// It has no selection state of its own: what is selected is read from
 /// [uri], and every row is a link, so back and forward and a reload all
@@ -202,26 +209,52 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
   /// An organization ("Personal" for apps without one) and, while open,
   /// its apps one level in.
   List<Widget> _orgRows(OrgGroup group, VaultFilter filter) {
-    final orgKey = group.organization ?? VaultFilter.none;
+    final org = group.organization;
+    final orgKey = org ?? VaultFilter.none;
     final open = !_collapsedOrgs.contains(orgKey);
+    // An organization with one app: a new item goes in that app.
+    final onlyApp = group.apps.length == 1 ? group.apps.single.app : null;
     return [
-      _SourceRow(
-        tree: true,
-        expanded: open,
-        onToggle: () => setState(
-          () =>
-              open ? _collapsedOrgs.add(orgKey) : _collapsedOrgs.remove(orgKey),
+      DragTarget<AppRecord>(
+        onWillAcceptWithDetails: (d) => d.data.organization != org,
+        onAcceptWithDetails: (d) => moveApp(context, ref, d.data, org),
+        builder: (context, candidates, _) => _SourceRow(
+          dropHover: candidates.isNotEmpty,
+          menu: [
+            DesktopMenuAction(
+              'New item…',
+              () => createItem(
+                context,
+                VaultFilter(org: orgKey),
+                app: onlyApp?.id,
+              ),
+            ),
+            DesktopMenuAction(
+              'New app…',
+              () => createApp(context, organization: org),
+            ),
+            if (org != null)
+              DesktopMenuAction(
+                'Rename organization…',
+                () => renameOrganization(context, ref, org),
+              ),
+          ],
+          tree: true,
+          expanded: open,
+          onToggle: () => setState(
+            () => open
+                ? _collapsedOrgs.add(orgKey)
+                : _collapsedOrgs.remove(orgKey),
+          ),
+          icon: org == null ? DesktopSymbol.person : DesktopSymbol.organization,
+          label: org ?? 'Personal',
+          count: group.count,
+          selected: _isSelected(filter, org: orgKey),
+          onTap: () {
+            setState(() => _collapsedOrgs.remove(orgKey));
+            _show(VaultFilter(org: orgKey));
+          },
         ),
-        icon: group.organization == null
-            ? DesktopSymbol.person
-            : DesktopSymbol.organization,
-        label: group.organization ?? 'Personal',
-        count: group.count,
-        selected: _isSelected(filter, org: orgKey),
-        onTap: () {
-          setState(() => _collapsedOrgs.remove(orgKey));
-          _show(VaultFilter(org: orgKey));
-        },
       ),
       if (open)
         for (final node in group.apps) ..._appRows(node, filter, depth: 1),
@@ -231,10 +264,33 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
   /// An app and, while open, its platforms; [depth] is 1 under an
   /// organization.
   List<Widget> _appRows(AppNode node, VaultFilter filter, {int depth = 0}) {
-    final appKey = node.app?.id ?? VaultFilter.none;
+    final app = node.app;
+    final appKey = app?.id ?? VaultFilter.none;
     final open = !_collapsedApps.contains(appKey);
-    return [
-      _SourceRow(
+    final organization = app?.organization;
+    final row = _itemTarget(
+      TreePlace(app: appKey),
+      (hover) => _SourceRow(
+        dropHover: hover,
+        menu: [
+          DesktopMenuAction(
+            'New item…',
+            () => createItem(context, VaultFilter(app: appKey)),
+          ),
+          if (app != null) ...[
+            DesktopMenuAction('Edit app…', () => editApp(context, app)),
+            if (organization != null)
+              DesktopMenuAction(
+                'Remove from $organization',
+                () => moveApp(context, ref, app, null),
+              ),
+            DesktopMenuAction(
+              'Delete app…',
+              () => deleteApp(context, ref, app, itemCount: node.count),
+              destructive: true,
+            ),
+          ],
+        ],
         tree: true,
         depth: depth,
         expanded: open,
@@ -242,8 +298,8 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           () =>
               open ? _collapsedApps.add(appKey) : _collapsedApps.remove(appKey),
         ),
-        leading: AppBadge(app: node.app, size: 14),
-        label: node.app?.name ?? 'No app',
+        leading: AppBadge(app: app, size: 14),
+        label: app?.name ?? 'No app',
         count: node.count,
         selected: _isSelected(filter, app: appKey),
         onTap: () {
@@ -251,6 +307,19 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           _show(VaultFilter(app: appKey));
         },
       ),
+    );
+    return [
+      if (app == null)
+        row
+      else
+        TreeDraggable<AppRecord>(
+          data: app,
+          feedback: DragChip(
+            label: app.name,
+            leading: AppBadge(app: app, size: 14),
+          ),
+          child: row,
+        ),
       if (open)
         for (final platform in node.platforms)
           ..._platformRows(appKey, platform, filter, depth: depth + 1),
@@ -268,46 +337,86 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
     final holdsSelection =
         filter.app == appKey && filter.platform == platformKey;
     final open = _platformOpen[key] ?? holdsSelection;
+    final here = VaultFilter(app: appKey, platform: platformKey);
     return [
-      _SourceRow(
-        tree: true,
-        depth: depth,
-        expanded: open,
-        onToggle: () => setState(() => _platformOpen[key] = !open),
-        icon: _platformSymbol(node.platform),
-        label: VaultLabels.platform(node.platform),
-        count: node.count,
-        selected: _isSelected(filter, app: appKey, platform: platformKey),
-        onTap: () {
-          setState(() => _platformOpen[key] = true);
-          _show(VaultFilter(app: appKey, platform: platformKey));
-        },
+      _itemTarget(
+        TreePlace(app: appKey, platform: platformKey),
+        (hover) => _SourceRow(
+          dropHover: hover,
+          menu: [
+            DesktopMenuAction('New item…', () => createItem(context, here)),
+          ],
+          tree: true,
+          depth: depth,
+          expanded: open,
+          onToggle: () => setState(() => _platformOpen[key] = !open),
+          icon: _platformSymbol(node.platform),
+          label: VaultLabels.platform(node.platform),
+          count: node.count,
+          selected: _isSelected(filter, app: appKey, platform: platformKey),
+          onTap: () {
+            setState(() => _platformOpen[key] = true);
+            _show(here);
+          },
+        ),
       ),
       if (open)
         for (final MapEntry(key: env, value: count)
             in node.environments.entries)
-          _SourceRow(
-            tree: true,
-            depth: depth + 1,
-            leading: _EnvDot(env),
-            label: VaultLabels.environment(env),
-            count: count,
-            selected: _isSelected(
-              filter,
+          _envRow(
+            VaultFilter(
               app: appKey,
               platform: platformKey,
               env: env ?? VaultFilter.none,
             ),
-            onTap: () => _show(
-              VaultFilter(
-                app: appKey,
-                platform: platformKey,
-                env: env ?? VaultFilter.none,
-              ),
-            ),
+            env,
+            count,
+            filter,
+            depth: depth + 1,
           ),
     ];
   }
+
+  Widget _envRow(
+    VaultFilter here,
+    String? env,
+    int count,
+    VaultFilter filter, {
+    required int depth,
+  }) => _itemTarget(
+    TreePlace(app: here.app!, platform: here.platform, env: here.env),
+    (hover) => _SourceRow(
+      dropHover: hover,
+      menu: [DesktopMenuAction('New item…', () => createItem(context, here))],
+      tree: true,
+      depth: depth,
+      leading: _EnvDot(env),
+      label: VaultLabels.environment(env),
+      count: count,
+      selected: _isSelected(
+        filter,
+        app: here.app,
+        platform: here.platform,
+        env: here.env,
+      ),
+      onTap: () => _show(here),
+    ),
+  );
+
+  /// [row], built with whether an item is being dragged over it; dropping
+  /// the item moves it to [place]. An item already there, or one this
+  /// version can't write, isn't taken.
+  Widget _itemTarget(TreePlace place, Widget Function(bool hover) row) =>
+      DragTarget<Item>(
+        onWillAcceptWithDetails: (d) {
+          final session = ref.read(vaultSessionProvider);
+          return session is Unlocked &&
+              !d.data.isReadOnly &&
+              !place.holds(d.data, session.index);
+        },
+        onAcceptWithDetails: (d) => moveItem(context, ref, d.data, place),
+        builder: (context, candidates, _) => row(candidates.isNotEmpty),
+      );
 
   static DesktopSymbol _platformSymbol(String? platform) => switch (platform) {
     'ios' || 'macos' => DesktopSymbol.platformApple,
@@ -394,6 +503,8 @@ class _SourceRow extends StatefulWidget {
     this.depth = 0,
     this.expanded = false,
     this.onToggle,
+    this.menu = const [],
+    this.dropHover = false,
   });
 
   final DesktopSymbol? icon;
@@ -414,6 +525,13 @@ class _SourceRow extends StatefulWidget {
 
   /// Set on tree rows that open and close.
   final VoidCallback? onToggle;
+
+  /// The row's context menu; empty for none.
+  final List<DesktopMenuAction> menu;
+
+  /// Something dragged over the row would be taken if dropped: the row is
+  /// outlined in the accent colour.
+  final bool dropHover;
 
   @override
   State<_SourceRow> createState() => _SourceRowState();
@@ -440,90 +558,101 @@ class _SourceRowState extends State<_SourceRow> {
       label: tree ? '${widget.label}$countLabel' : widget.label,
       onTap: widget.onTap,
       excludeSemantics: true,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          child: Container(
-            height: DesktopMetrics.sidebarRowHeight,
-            padding: EdgeInsets.only(
-              left: tree ? 2.0 + widget.depth * 14 : 6,
-              right: 8,
-            ),
-            decoration: BoxDecoration(
-              color: selected
-                  ? colors.accent
-                  : _hovered
-                  ? colors.innerSeparator
-                  : null,
-              borderRadius: const BorderRadius.all(
-                Radius.circular(DesktopMetrics.menuRadius),
+      child: DesktopContextMenu(
+        actions: widget.menu,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            child: Container(
+              height: DesktopMetrics.sidebarRowHeight,
+              padding: EdgeInsets.only(
+                left: tree ? 2.0 + widget.depth * 14 : 6,
+                right: 8,
               ),
-            ),
-            child: Row(
-              spacing: 6,
-              children: [
-                // Tree rows keep the chevron's column, so labels line up
-                // by depth whether or not the row opens.
-                if (tree)
-                  SizedBox(
-                    width: 12,
-                    child: onToggle == null
-                        ? null
-                        : GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: onToggle,
-                            child: DesktopIcon(
-                              widget.expanded
-                                  ? DesktopSymbol.chevronDown
-                                  : DesktopSymbol.chevronRight,
-                              size: 10,
-                              color: selected
-                                  ? colors.onAccent
-                                  : colors.tertiaryText,
-                            ),
-                          ),
-                  ),
-                SizedBox(
-                  width: 16,
-                  child: Center(
-                    child:
-                        widget.leading ??
-                        (icon == null
-                            ? null
-                            : DesktopIcon(
-                                icon,
-                                size: 14,
+              decoration: BoxDecoration(
+                color: selected
+                    ? colors.accent
+                    : _hovered || widget.dropHover
+                    ? colors.innerSeparator
+                    : null,
+                border: widget.dropHover
+                    ? Border.all(color: colors.accent, width: 2)
+                    : null,
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(DesktopMetrics.menuRadius),
+                ),
+              ),
+              child: Row(
+                spacing: 6,
+                children: [
+                  // Tree rows keep the chevron's column, so labels line up
+                  // by depth whether or not the row opens.
+                  if (tree)
+                    SizedBox(
+                      width: 12,
+                      child: onToggle == null
+                          ? null
+                          : GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: onToggle,
+                              child: DesktopIcon(
+                                widget.expanded
+                                    ? DesktopSymbol.chevronDown
+                                    : DesktopSymbol.chevronRight,
+                                size: 10,
                                 color: selected
                                     ? colors.onAccent
-                                    : widget.iconColor ?? colors.secondaryText,
-                              )),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: DesktopMetrics.bodySize,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                      color: selected ? colors.onAccent : colors.text,
+                                    : colors.tertiaryText,
+                              ),
+                            ),
+                    ),
+                  SizedBox(
+                    width: 16,
+                    child: Center(
+                      child:
+                          widget.leading ??
+                          (icon == null
+                              ? null
+                              : DesktopIcon(
+                                  icon,
+                                  size: 14,
+                                  color: selected
+                                      ? colors.onAccent
+                                      : widget.iconColor ??
+                                            colors.secondaryText,
+                                )),
                     ),
                   ),
-                ),
-                if (count != null)
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      fontSize: DesktopMetrics.secondarySize,
-                      color: selected ? colors.onAccent : colors.secondaryText,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: DesktopMetrics.bodySize,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: selected ? colors.onAccent : colors.text,
+                      ),
                     ),
                   ),
-              ],
+                  if (count != null)
+                    Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: DesktopMetrics.secondarySize,
+                        color: selected
+                            ? colors.onAccent
+                            : colors.secondaryText,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

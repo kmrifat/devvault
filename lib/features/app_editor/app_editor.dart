@@ -26,10 +26,17 @@ import '../import/place_fields.dart'
 import '../notes/notes.dart' show DesktopNotesEditor, PhoneNotesField;
 import 'app_draft.dart';
 
-/// Opens the app form: [app] to edit it, or null for a new app. Resolves
-/// to the saved app's id, or null when cancelled.
-Future<String?> showAppEditor(BuildContext context, {AppRecord? app}) {
-  final draft = app == null ? AppDraft.create() : AppDraft.edit(app);
+/// Opens the app form: [app] to edit it, or null for a new app, which
+/// starts in [organization] when the user began from one. Resolves to the
+/// saved app's id, or null when cancelled.
+Future<String?> showAppEditor(
+  BuildContext context, {
+  AppRecord? app,
+  String? organization,
+}) {
+  final draft = app == null
+      ? AppDraft.create(organization: organization)
+      : AppDraft.edit(app);
   if (DesktopTheme.maybeOf(context) != null) {
     return showDesktopSheet<String>(
       context,

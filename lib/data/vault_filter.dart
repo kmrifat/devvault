@@ -184,6 +184,59 @@ class VaultFilter {
   String toString() => 'VaultFilter(${location()})';
 }
 
+/// A row of the sidebar's App › Platform › Environment tree as a place to
+/// put an item: what dropping an item on the row changes. Values are as
+/// in [VaultFilter]: an id or name, or [VaultFilter.none] for "without
+/// one". A null [platform] or [env] leaves the item's own as it is, so
+/// dropping on an app keeps the item's platform and environment.
+class TreePlace {
+  const TreePlace({required this.app, this.platform, this.env});
+
+  /// Exactly where [item] is now, to put it back.
+  TreePlace.of(Item item)
+    : app = item.appId ?? VaultFilter.none,
+      platform = item.platform ?? VaultFilter.none,
+      env = item.environment ?? VaultFilter.none;
+
+  final String app;
+  final String? platform;
+  final String? env;
+
+  /// [item] moved here; nothing else about it changes. It goes through
+  /// the record's own JSON, since `copyWith` can't clear a value, so
+  /// fields this version doesn't know are kept too.
+  Item applyTo(Item item) {
+    String? value(String? wanted, String? current) =>
+        wanted == null ? current : (wanted == VaultFilter.none ? null : wanted);
+    return Item.fromJson({
+      ...item.toJson(),
+      'app_id': value(app, item.appId),
+      'platform': value(platform, item.platform),
+      'environment': value(env, item.environment),
+    });
+  }
+
+  /// Whether [item] already sits here in [index]'s tree, where an item
+  /// whose app is gone counts as "No app".
+  bool holds(Item item, VaultIndex index) {
+    final appKey = index.apps.containsKey(item.appId)
+        ? item.appId!
+        : VaultFilter.none;
+    return app == appKey &&
+        (platform == null || platform == (item.platform ?? VaultFilter.none)) &&
+        (env == null || env == (item.environment ?? VaultFilter.none));
+  }
+
+  /// "Kitchenly › iOS › Staging", as far down as this place goes.
+  String label(VaultIndex index) => [
+    app == VaultFilter.none ? 'No app' : index.apps[app]?.name ?? 'Unknown app',
+    if (platform case final p?)
+      VaultLabels.platform(p == VaultFilter.none ? null : p),
+    if (env case final e?)
+      VaultLabels.environment(e == VaultFilter.none ? null : e),
+  ].join(' \u203a ');
+}
+
 /// Display names for the free-form platform and environment strings
 /// (SPEC §5: clients suggest `ios`, `android`, `macos`, `web`, `server` and
 /// `production`, `staging`, `development`).

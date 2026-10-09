@@ -37,9 +37,11 @@ class AppDraft {
     this.base,
   });
 
-  factory AppDraft.create() => AppDraft._(
+  /// A new app; [organization] is set when the user started it from an
+  /// organization in the sidebar.
+  factory AppDraft.create({String? organization}) => AppDraft._(
     name: '',
-    organization: '',
+    organization: organization ?? '',
     kindName: null,
     identifiers: [],
     notes: '',

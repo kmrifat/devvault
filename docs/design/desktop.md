@@ -45,7 +45,13 @@ and exported here under `desktop/`.
     - the Apps tree (app › platform › environment). Once any app has an
       organization, apps are grouped under it (then "Personal" for apps
       without one, and "No app" last); an organization row lists its
-      apps' items;
+      apps' items. Every tree row has a context menu (New item… there;
+      New app… and Rename organization… on an organization; Edit app…,
+      Remove from *organization* and Delete app… on an app). Dragging an
+      item from the table onto an app, platform or environment row moves
+      it there, and dragging an app onto an organization (or Personal)
+      moves it in; both toasts offer Undo. Drags start from a mouse only,
+      so touch still scrolls;
     - Tags;
     - a footer with the auto-lock time.
   - The **toolbar** has the title and path, Import, New, the search field
@@ -146,7 +152,9 @@ through `package:devvault/shared/desktop_ui.dart`:
   sheet's choices) and `DesktopProgress` (a spinner).
 - `DesktopPullDownButton`: an icon push button (⋯) that drops a menu of
   commands, destructive ones in red (the inspector's Replace file… and
-  Delete item…). `DesktopScopeBar`: recessed scope buttons that narrow a
+  Delete item…). `DesktopContextMenu` opens the same kind of menu where
+  its child is right-clicked (long-pressed on touch), and exposes each
+  command as a semantics action (the sidebar rows' menus). `DesktopScopeBar`: recessed scope buttons that narrow a
   list (the table's All / Expiring / Files / Secrets); a segmented control
   is for settings.
 - `DesktopLockWindow` for the lock screens (unlock, create, recovery kit,

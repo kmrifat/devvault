@@ -296,6 +296,7 @@ MCP tools:
 - **P5-09 · Packaging + docs** (1d). `dart compile exe` runs in the macOS build, and the binary is embedded and signed at `Contents/Helpers/devvault-mcp`. `docs/agent/USING.md` covers `claude mcp add devvault -- /Applications/DevVault.app/Contents/Helpers/devvault-mcp`, the recommended Claude Code permissions (keep `get_secret` on "ask"), and what reaches the model in each mode.
 - **P5-10 · E2E + threat model** (1d). An integration test runs pair → list → approve → deny → lock against a test vault. `docs/agent/THREATS.md` covers another local process connecting, prompt-injected requests, transcript exposure and stale tokens. Security review before the last PR.
 - **P5-11 · Windows + Linux** (later). Named pipe on Windows; `$XDG_RUNTIME_DIR` socket on Linux.
+- **P5-13 · Sidebar context menus + drag to rearrange** (1d). Right-click any tree row for New item… there (an organization with one app adds to that app), New app… / Rename organization… on organizations, and Edit / Remove from organization / Delete on apps. Drag an item from the table onto an app, platform or environment to move it; drag an app onto an organization or Personal to move it in. Toasts offer Undo. No format change: clearing a place goes through the record's JSON in the app. AC: widget tests for each menu and drop, and `DesktopContextMenu` on all three kits.
 
 **Later:** iCloud backend, Go CLI (grows out of `tools/vectorcheck`), team vaults (`vault_type` reserved, per-vault VK wrapped to members' public keys).
 
