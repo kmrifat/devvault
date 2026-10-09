@@ -220,7 +220,9 @@ an ellipsis within the button; on macOS its menu shows it in full up to
 `DesktopMetrics.menuMaxWidth` (400 pt), as a macOS menu does. The macOS
 kit's goldens are `screenshots/desktop-controls-macos-{light,dark}.png`,
 `desktop-combo-menu-macos-light.png` and
-`desktop-popup-long-label-macos-light.png`.
+`desktop-popup-long-label-macos-light.png`; the same form in the other
+kits is `desktop-controls-{fluent,yaru}-{light,dark}.png` (see
+[Screenshots per OS](#screenshots-per-os)).
 
 ## Menu bar (macOS)
 
@@ -264,3 +266,43 @@ Same layout and regions on every OS; each OS draws them with its own kit:
 | Settings | Separate window (⌘,) | Page in the window | Page in the window |
 
 Spike screenshots of each kit are in [ADR-0005](../adr/0005-desktop-ui-kits.md).
+
+### Screenshots per OS
+
+The main screens are also shot with the Windows (Fluent) and Linux (Yaru)
+kits, as goldens next to the macOS ones in `screenshots/`, named
+`<frame>-<kit>-<brightness>.png`:
+
+| Frame | Windows (Fluent) | Linux (Yaru) |
+|---|---|---|
+| N00 Unlock | [light](../../screenshots/N00-unlock-fluent-light.png) | [light](../../screenshots/N00-unlock-yaru-light.png) |
+| N01 Create vault | [light](../../screenshots/N01-create-fluent-light.png) | [light](../../screenshots/N01-create-yaru-light.png) |
+| N02 Recovery kit | [light](../../screenshots/N02-recovery-kit-fluent-light.png) | [light](../../screenshots/N02-recovery-kit-yaru-light.png) |
+| N03 Vault window | [light](../../screenshots/N03-vault-fluent-light.png), [dark](../../screenshots/N03-vault-fluent-dark.png) | [light](../../screenshots/N03-vault-yaru-light.png), [dark](../../screenshots/N03-vault-yaru-dark.png) |
+| N03e Item editor | [light](../../screenshots/N03e-item-editor-fluent-light.png) | [light](../../screenshots/N03e-item-editor-yaru-light.png) |
+| N04 Import | [light](../../screenshots/N04-import-fluent-light.png) | [light](../../screenshots/N04-import-yaru-light.png) |
+| N05 Conflict | [light](../../screenshots/N05-conflict-fluent-light.png) | [light](../../screenshots/N05-conflict-yaru-light.png) |
+| N06 Expiry | [light](../../screenshots/N06-expiry-fluent-light.png) | [light](../../screenshots/N06-expiry-yaru-light.png) |
+| N07 Settings: Security | [light](../../screenshots/N07-settings-security-fluent-light.png) | [light](../../screenshots/N07-settings-security-yaru-light.png) |
+| N07c Settings: General | [light](../../screenshots/N07c-settings-general-fluent-light.png) | [light](../../screenshots/N07c-settings-general-yaru-light.png) |
+| N09 Agent asks for secrets | [light](../../screenshots/N09-agent-reveal-fluent-light.png) | [light](../../screenshots/N09-agent-reveal-yaru-light.png) |
+| Controls | [light](../../screenshots/desktop-controls-fluent-light.png), [dark](../../screenshots/desktop-controls-fluent-dark.png) | [light](../../screenshots/desktop-controls-yaru-light.png), [dark](../../screenshots/desktop-controls-yaru-dark.png) |
+
+They render on the Mac like every other golden: the test passes `shot()`
+a `kit:` (`test/screenshots/harness.dart`), which renders the app as
+Windows or Linux so it picks that kit and that OS's conventions (Ctrl
+shortcuts, Show in Explorer / Files). Fonts are bundled, so the images are
+the same on any Mac and CI's "Goldens (macOS)" job checks them with the
+rest. Inter stands in for Segoe UI, as it does for SF Pro; Yaru brings its
+own Ubuntu font. Glyphs neither font has (the expiry table's `↑` in
+Ubuntu) show as a box here, though a real Linux desktop falls back to
+another font. Regenerate them with the others, on a Mac:
+
+```sh
+TZ=UTC flutter test --tags golden --update-goldens
+# only these:
+TZ=UTC flutter test --tags golden test/screenshots --name 'fluent|yaru' --update-goldens
+```
+
+When CI's golden job fails, the diffs are in its `golden-failures`
+artifact.

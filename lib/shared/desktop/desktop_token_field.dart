@@ -115,12 +115,21 @@ class _DesktopTokenFieldState extends State<DesktopTokenField> {
                           _commit(text);
                           _focus.requestFocus();
                         },
-                        decoration: InputDecoration.collapsed(
-                          hintText: widget.tokens.isEmpty
-                              ? widget.placeholder
-                              : null,
-                          hintStyle: style.copyWith(color: colors.tertiaryText),
-                        ),
+                        // The box above is the field's border. Yaru's
+                        // theme would otherwise outline the input again.
+                        decoration:
+                            InputDecoration.collapsed(
+                              hintText: widget.tokens.isEmpty
+                                  ? widget.placeholder
+                                  : null,
+                              hintStyle: style.copyWith(
+                                color: colors.tertiaryText,
+                              ),
+                              filled: false,
+                            ).copyWith(
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                            ),
                       ),
                     ),
                   ),

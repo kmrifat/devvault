@@ -29,6 +29,17 @@ void main() {
     ],
     interact: (tester) => tester.tap(find.byType(EditableText)),
   );
+  for (final kit in otherKits) {
+    shot(
+      'N00-unlock-${kit.name}-light',
+      Routes.unlock,
+      vault: TestVault.locked,
+      realKdf: true,
+      brightness: Brightness.light,
+      interact: (tester) => tester.tap(find.byType(EditableText)),
+      kit: kit,
+    );
+  }
   shot(
     'B1-unlock',
     Routes.unlock,

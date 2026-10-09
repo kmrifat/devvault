@@ -80,6 +80,9 @@ class DesktopSearchField extends StatelessWidget {
           hintText: placeholder,
           autofocus: false,
           height: DesktopMetrics.toolbarSearchHeight,
+          // Yaru's default padding is for its 34 pt field; at 28 pt it
+          // pushes the text below the middle.
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           onChanged: onChanged,
           onClear: () {
             controller.clear();

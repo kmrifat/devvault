@@ -62,6 +62,17 @@ void main() {
     );
   }
 
+  for (final kit in otherKits) {
+    shot(
+      'N09-agent-reveal-${kit.name}-light',
+      Routes.vault(),
+      sample: true,
+      interact: ask((_) => const Delivery.reveal()),
+      brightness: Brightness.light,
+      kit: kit,
+    );
+  }
+
   shot(
     'N09b-agent-pair-light',
     Routes.vault(),

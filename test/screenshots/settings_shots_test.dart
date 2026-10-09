@@ -34,6 +34,28 @@ void main() {
       brightness: Brightness.light,
     );
   }
+  // Windows and Linux: General and Security, with the platform's own
+  // biometrics rather than Touch ID.
+  final biometrics = [
+    biometricKeyStoreProvider.overrideWith(
+      (ref) => MemoryBiometricKeyStore(kind: Biometry.biometrics),
+    ),
+  ];
+  for (final kit in otherKits) {
+    for (final (name, route) in [
+      ('N07c-settings-general', Routes.settings),
+      ('N07-settings-security', Routes.settingsSecurity),
+    ]) {
+      shot(
+        '$name-${kit.name}-light',
+        route,
+        sample: true,
+        overrides: biometrics,
+        brightness: Brightness.light,
+        kit: kit,
+      );
+    }
+  }
 
   // Phones: General and Security on one page, sync storage on its own
   // (P3-07).

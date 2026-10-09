@@ -40,7 +40,13 @@ void main() {
   Future<void> importFile(WidgetTester tester) async {
     // Desktop has an Import button in the toolbar; phones an icon in the
     // header, then B4a's choice.
-    final button = find.bySemanticsLabel(RegExp('^Import a file'));
+    var button = find.bySemanticsLabel(RegExp('^Import a file'));
+    if (button.evaluate().isEmpty) {
+      // Yaru's icon buttons are named by their tooltip instead.
+      button = find.byWidgetPredicate(
+        (w) => w is Tooltip && (w.message ?? '').startsWith('Import a file'),
+      );
+    }
     if (button.evaluate().isNotEmpty) {
       await tester.tap(button.first);
     } else {
@@ -106,6 +112,17 @@ void main() {
     interact: fillLikeTheFrame,
     brightness: Brightness.light,
   );
+  for (final kit in otherKits) {
+    shot(
+      'N04-import-${kit.name}-light',
+      Routes.vault(),
+      sample: true,
+      overrides: overrides,
+      interact: fillLikeTheFrame,
+      brightness: Brightness.light,
+      kit: kit,
+    );
+  }
   shot(
     'B4-import',
     Routes.vault(),

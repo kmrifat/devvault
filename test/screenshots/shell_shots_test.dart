@@ -47,6 +47,18 @@ void main() {
   }
 
   shot('N03-vault', Routes.vault(), sample: true, interact: selectProduction);
+  for (final kit in otherKits) {
+    for (final brightness in Brightness.values) {
+      shot(
+        'N03-vault-${kit.name}-${brightness.name}',
+        Routes.vault(),
+        sample: true,
+        interact: selectProduction,
+        brightness: brightness,
+        kit: kit,
+      );
+    }
+  }
   shot(
     'N03-explorer-focus',
     Routes.vault(),
@@ -122,6 +134,16 @@ void main() {
     interact: editKeystore,
     brightness: Brightness.light,
   );
+  for (final kit in otherKits) {
+    shot(
+      'N03e-item-editor-${kit.name}-light',
+      Routes.vault(),
+      sample: true,
+      interact: editKeystore,
+      brightness: Brightness.light,
+      kit: kit,
+    );
+  }
 
   /// Ledgerly as a backend service for a client, with a domain and a
   /// repository; Kitchenly stays personal. Then Ledgerly is selected.
