@@ -12,22 +12,36 @@ macOS only for now. Windows and Linux are planned in P5-11.
 
 1. In DevVault, open **Settings › AI Agents** and turn on **Allow AI
    agents**.
-2. Add the server to Claude Code. Settings › AI Agents has the exact line
-   with a Copy button:
+2. Add the server to your agent. **Settings › AI Agents › Set up an agent**
+   has a pop-up with the exact setup for each client, including the
+   helper's path in the app you're running, and a Copy button. With the
+   app in `/Applications`:
 
-   ```bash
-   claude mcp add --scope user devvault -- /Applications/DevVault.app/Contents/Helpers/devvault-mcp
-   ```
+   | Client | Setup |
+   |---|---|
+   | Claude Code | `claude mcp add --scope user devvault -- /Applications/DevVault.app/Contents/Helpers/devvault-mcp` |
+   | Codex CLI | `~/.codex/config.toml`: `[mcp_servers.devvault]`, `command = "<helper>"`, `tool_timeout_sec = 150` (its 60 s default is shorter than the time you have to approve) |
+   | Cursor | `~/.cursor/mcp.json`: `{"mcpServers": {"devvault": {"command": "<helper>"}}}` |
+   | Gemini CLI | `~/.gemini/settings.json`: the same `mcpServers` entry |
+   | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`: the same `mcpServers` entry, then restart Claude |
+   | VS Code | `.vscode/mcp.json` or your user `mcp.json`: `{"servers": {"devvault": {"type": "stdio", "command": "<helper>"}}}` |
+   | Windsurf | `~/.codeium/windsurf/mcp_config.json`: the same `mcpServers` entry |
+   | Anything else | a stdio MCP server named `devvault` running `<helper>` with no arguments |
 
-   From a source checkout, without a built app:
+   - **The helper:** `<helper>` is
+     `/Applications/DevVault.app/Contents/Helpers/devvault-mcp`, or the
+     path shown in Settings.
+   - **Timeouts:** if your client gives up on tools before 2 minutes,
+     raise its tool timeout. DevVault waits that long for you.
+   - **From a source checkout, without a built app:** use
+     `dart run /path/to/devvault/packages/devvault_mcp/bin/devvault_mcp.dart`
+     as the command.
 
-   ```bash
-   claude mcp add --scope user devvault -- dart run /path/to/devvault/packages/devvault_mcp/bin/devvault_mcp.dart
-   ```
-
-3. Ask Claude for something that needs a credential, e.g. *"set
+3. Ask your agent for something that needs a credential, e.g. *"set
    STRIPE_KEY in .env from my vault"*. The first time, DevVault asks
-   **"claude-code" wants to connect to DevVault**. If the vault is locked,
+   whether that client may connect, under the name it gives itself (e.g.
+   **"claude-code"** or **"cursor"**). Each client pairs and is listed
+   separately, and a 15-minute approval never covers another client. If the vault is locked,
    it asks you to unlock it first. Choose **Allow**.
 
 If DevVault isn't running, the helper starts it. If AI agents are off,
