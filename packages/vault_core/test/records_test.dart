@@ -438,6 +438,91 @@ void main() {
     });
   });
 
+  group('apps: notes (SPEC §6.2)', () {
+    Map<String, Object?> appJson([Map<String, Object?> fields = const {}]) => {
+      'schema': 1,
+      'id': id,
+      'name': 'Billing API',
+      'bundle_ids': <String>[],
+      'package_names': <String>[],
+      'icon_blob_id': null,
+      'created_at': '2025-02-03T10:00:00Z',
+      'updated_at': '2025-02-03T10:00:00Z',
+      'rev': rev.toString(),
+      'device_id': device,
+      ...fields,
+    };
+    const markdown =
+        '## Keys\n\nRotate **every** 90 days.\n\n- `make rotate`\n- '
+        '[wiki](https://wiki.example)';
+
+    test('round-trip: Markdown text kept as typed', () {
+      final json = appJson({'notes': markdown});
+      final app = AppRecord.fromJson(json);
+      expect(app.notes, markdown);
+      expect(app.toJson(), json);
+      final again = decodeRecord(ObjectType.app, encodeRecord(app));
+      expect((again as AppRecord).notes, markdown);
+      expect(encodeRecord(again), encodeRecord(app));
+    });
+
+    test('an app without notes reads as none and encodes no notes key', () {
+      final json = appJson();
+      final app = AppRecord.fromJson(json);
+      expect(app.notes, isNull);
+      expect(app.toJson().containsKey('notes'), isFalse);
+      expect(utf8.decode(encodeRecord(app)), jsonEncode(sortKeys(json)));
+    });
+
+    test('trimmed at both ends; empty or null notes are left out', () {
+      expect(
+        AppRecord.fromJson(appJson({'notes': '\n  $markdown \n\n'})).notes,
+        markdown,
+      );
+      for (final empty in [null, '', ' \n\t ']) {
+        final app = AppRecord.fromJson(appJson({'notes': empty}));
+        expect(app.notes, isNull);
+        expect(app.toJson().containsKey('notes'), isFalse);
+      }
+    });
+
+    test('a client that predates notes keeps them as an unknown field', () {
+      // What an older reader does (SPEC §6): unknown fields ride along.
+      final json = appJson({'notes': markdown});
+      final older = AppRecord.fromJson({
+        for (final MapEntry(:key, :value) in json.entries)
+          if (key != 'notes') key: value,
+      });
+      expect(older.notes, isNull);
+      final rewritten = AppRecord(
+        id: older.id,
+        name: older.name,
+        createdAt: older.createdAt,
+        updatedAt: older.updatedAt,
+        rev: older.rev,
+        deviceId: older.deviceId,
+        unknownFields: {'notes': markdown},
+      );
+      expect(rewritten.toJson()['notes'], markdown);
+    });
+
+    test('malformed notes make the record unreadable', () {
+      expect(
+        () => AppRecord.fromJson(appJson({'notes': 42})),
+        throwsA(isA<VaultFormatException>()),
+      );
+    });
+
+    test('copyWith sets and clears notes; toString never prints them', () {
+      final app = AppRecord.fromJson(appJson());
+      final noted = app.copyWith(notes: markdown);
+      expect(noted.notes, markdown);
+      expect(noted.toString(), isNot(contains('Rotate')));
+      expect(noted.copyWith(notes: '').notes, isNull);
+      expect(noted.copyWith(name: 'Renamed').notes, markdown);
+    });
+  });
+
   test('tombstones round-trip and know what they delete', () {
     final json = {
       'schema': 1,

@@ -428,6 +428,7 @@ class Vault {
     List<String> bundleIds = const [],
     List<String> packageNames = const [],
     List<AppIdentifier> identifiers = const [],
+    String? notes,
   }) {
     final now = _now();
     return AppRecord(
@@ -438,6 +439,7 @@ class Vault {
       bundleIds: bundleIds,
       packageNames: packageNames,
       identifiers: identifiers,
+      notes: notes,
       createdAt: now,
       updatedAt: now,
       rev: _clock,
