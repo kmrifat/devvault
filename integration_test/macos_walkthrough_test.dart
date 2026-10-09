@@ -232,21 +232,29 @@ class _Alerts implements AlertScheduler {
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('macOS walkthrough: everything built so far', (tester) async {
-    final w = _Walk(tester, binding);
-    await w.setUp();
-    try {
-      await w.run();
-    } finally {
-      await w.tearDown();
-    }
-    w.report();
-    expect(
-      w.failures,
-      isEmpty,
-      reason: 'steps failed for reasons not recorded as known issues',
-    );
-  }, timeout: const Timeout(Duration(minutes: 20)));
+  // The roundtrip workflow runs every integration test on every
+  // platform; this one drives the macOS menu bar and toolbar, so it only
+  // runs on macOS.
+  testWidgets(
+    'macOS walkthrough: everything built so far',
+    (tester) async {
+      final w = _Walk(tester, binding);
+      await w.setUp();
+      try {
+        await w.run();
+      } finally {
+        await w.tearDown();
+      }
+      w.report();
+      expect(
+        w.failures,
+        isEmpty,
+        reason: 'steps failed for reasons not recorded as known issues',
+      );
+    },
+    skip: !Platform.isMacOS,
+    timeout: const Timeout(Duration(minutes: 20)),
+  );
 }
 
 /// What one step of the walkthrough found.
