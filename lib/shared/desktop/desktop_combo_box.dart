@@ -105,6 +105,13 @@ class _DesktopComboBoxState extends State<DesktopComboBox> {
             ? PopupMenuButton<String>(
                 tooltip: widget.menuLabel,
                 icon: const Icon(yaru.YaruIcons.pan_down),
+                padding: EdgeInsets.zero,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size.square(
+                    DesktopMetrics.yaruFieldButtonSize,
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 onSelected: _pick,
                 itemBuilder: (context) => [
                   for (final s in widget.suggestions)

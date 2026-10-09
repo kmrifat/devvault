@@ -484,8 +484,8 @@ class _DesktopConflict extends StatelessWidget {
               choices: choices,
               reveal: reveal,
               headers: (
-                'This device · ${when(mine)}${mineNewer ? ' · newer' : ''}',
-                'Other device · ${when(theirs)}${mineNewer ? '' : ' · newer'}',
+                ('This device', when(mine), mineNewer),
+                ('Other device', when(theirs), !mineNewer),
               ),
               onChoose: onChoose,
               onChooseAll: onChooseAll,
@@ -564,7 +564,9 @@ class _ChoiceTable extends StatelessWidget {
   final List<ConflictRow> rows;
   final Map<String, ConflictSide> choices;
   final bool reveal;
-  final (String, String) headers;
+
+  /// Each column's device, when it changed, and whether that's newer.
+  final (_Version, _Version) headers;
   final void Function(String key, ConflictSide side) onChoose;
   final ValueChanged<ConflictSide> onChooseAll;
 
@@ -579,16 +581,9 @@ class _ChoiceTable extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: colors.secondaryText,
     );
-    Widget header(String text, ConflictSide side) => Row(
+    Widget header(_Version header, ConflictSide side) => Row(
       children: [
-        Flexible(
-          child: Text(
-            text,
-            style: headerStyle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        Flexible(child: _Header(header, style: headerStyle)),
         const SizedBox(width: 8),
         _UseAll(side: side, onPressed: () => onChooseAll(side)),
       ],
@@ -614,8 +609,10 @@ class _ChoiceTable extends StatelessWidget {
                 color: colors.bar,
                 border: Border(bottom: border),
               ),
-              child: SizedBox(
-                height: DesktopMetrics.tableHeaderHeight + 2,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: DesktopMetrics.tableHeaderHeight + 2,
+                ),
                 child: _cells([
                   Text('Field', style: headerStyle),
                   header(headers.$1, ConflictSide.mine),
@@ -682,6 +679,37 @@ class _ChoiceTable extends StatelessWidget {
       ],
     ),
   );
+}
+
+typedef _Version = (String device, String changed, bool newer);
+
+/// A column header on two lines, so the date is never cut: the device (and
+/// "newer" on the newer one), then when it changed.
+class _Header extends StatelessWidget {
+  const _Header(this.header, {required this.style});
+
+  final _Version header;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final (device, changed, newer) = header;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final text in [newer ? '$device · newer' : device, changed])
+            Text(
+              text,
+              style: style,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// A column header's link: keeps every value from that device.

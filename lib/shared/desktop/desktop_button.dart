@@ -14,7 +14,8 @@ enum DesktopButtonKind {
   primary,
 
   /// An action that destroys data (Delete): red on Windows and Linux, a
-  /// plain button with a red label on macOS.
+  /// plain button with a red label on macOS (red, too, in dark mode, where
+  /// that label would be too faint).
   destructive,
 }
 
@@ -56,6 +57,12 @@ class DesktopButton extends StatelessWidget {
     final filled = kind != DesktopButtonKind.plain;
     final danger = kind == DesktopButtonKind.destructive;
     final kit = context.desktopKit;
+    // On a macOS button in dark mode the red label is 2.4:1, so there it
+    // is filled like the others' and keeps a white label.
+    final redFill =
+        danger &&
+        (kit != DesktopKit.macos ||
+            DesktopTheme.of(context).brightness == Brightness.dark);
     final symbol = icon;
     Widget labelled(Widget text) {
       if (symbol == null) return text;
@@ -71,6 +78,8 @@ class DesktopButton extends StatelessWidget {
             size: 14,
             color: onPressed == null
                 ? colors.tertiaryText
+                : redFill
+                ? colors.onDangerButton
                 : onMacAccent
                 ? colors.onAccent
                 : danger
@@ -89,7 +98,8 @@ class DesktopButton extends StatelessWidget {
       // the design's accent (5.6:1).
       DesktopKit.macos
           when kind == DesktopButtonKind.primary && onPressed != null =>
-        _MacosDefaultButton(
+        _MacosFilledButton(
+          fill: colors.accent,
           large: size == DesktopButtonSize.large,
           onPressed: onPressed!,
           child: DefaultTextStyle.merge(
@@ -97,6 +107,15 @@ class DesktopButton extends StatelessWidget {
             child: text,
           ),
         ),
+      DesktopKit.macos when redFill && onPressed != null => _MacosFilledButton(
+        fill: colors.dangerButton,
+        large: size == DesktopButtonSize.large,
+        onPressed: onPressed!,
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: colors.onDangerButton),
+          child: text,
+        ),
+      ),
       // macOS draws a destructive action as a plain button with a red
       // label; only the default action is filled.
       // macos_ui's large push button is 26 pt, level with the 28 pt fields
@@ -117,7 +136,8 @@ class DesktopButton extends StatelessWidget {
       DesktopKit.fluent when filled => fl.FilledButton(
         style: danger
             ? fl.ButtonStyle(
-                backgroundColor: WidgetStatePropertyAll(colors.danger),
+                backgroundColor: WidgetStatePropertyAll(colors.dangerButton),
+                foregroundColor: WidgetStatePropertyAll(colors.onDangerButton),
               )
             : null,
         onPressed: onPressed,
@@ -128,8 +148,8 @@ class DesktopButton extends StatelessWidget {
       // ElevatedButton is the suggested action.
       DesktopKit.yaru when danger => FilledButton(
         style: FilledButton.styleFrom(
-          backgroundColor: colors.danger,
-          foregroundColor: colors.onAccent,
+          backgroundColor: colors.dangerButton,
+          foregroundColor: colors.onDangerButton,
         ),
         onPressed: onPressed,
         child: text,
@@ -138,37 +158,47 @@ class DesktopButton extends StatelessWidget {
         onPressed: onPressed,
         child: text,
       ),
-      DesktopKit.yaru => OutlinedButton(onPressed: onPressed, child: text),
+      DesktopKit.yaru => OutlinedButton(
+        style: symbol == null
+            ? null
+            : OutlinedButton.styleFrom(
+                padding: DesktopMetrics.yaruSymbolButtonPadding,
+              ),
+        onPressed: onPressed,
+        child: text,
+      ),
     };
   }
 }
 
-/// The macOS default (blue) push button, in [DesktopColors.accent]: the
-/// same size, corners and pressed state as macos_ui's.
-class _MacosDefaultButton extends StatefulWidget {
-  const _MacosDefaultButton({
+/// A filled macOS push button in [fill]: the default action (blue), or a
+/// destructive one in dark mode. The same size, corners and pressed state
+/// as macos_ui's.
+class _MacosFilledButton extends StatefulWidget {
+  const _MacosFilledButton({
+    required this.fill,
     required this.large,
     required this.onPressed,
     required this.child,
   });
 
+  final Color fill;
   final bool large;
   final VoidCallback onPressed;
   final Widget child;
 
   @override
-  State<_MacosDefaultButton> createState() => _MacosDefaultButtonState();
+  State<_MacosFilledButton> createState() => _MacosFilledButtonState();
 }
 
-class _MacosDefaultButtonState extends State<_MacosDefaultButton> {
+class _MacosFilledButtonState extends State<_MacosFilledButton> {
   bool _down = false;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.desktopColors;
     final accent = _down
-        ? Color.lerp(colors.accent, const Color(0xFF000000), 0.15)!
-        : colors.accent;
+        ? Color.lerp(widget.fill, const Color(0xFF000000), 0.15)!
+        : widget.fill;
     final radius = BorderRadius.all(Radius.circular(widget.large ? 8 : 7));
     return Semantics(
       button: true,

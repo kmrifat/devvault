@@ -107,7 +107,7 @@ and exported here under `desktop/`.
 | Text field, secure field | 22 pt high, 5 pt radius | `MacosTextField` (`obscureText`) |
 | Pop-up (fixed choices) | 22 pt, blue arrows | `MacosPopupButton` |
 | Combo box (suggest + type your own) | 22 pt field, chevron inside its trailing edge | DevVault widget: `MacosTextField` + a menu in the macOS style (`MenuAnchor`) |
-| Token field (tags) | 22 pt, pill tokens | DevVault widget |
+| Token field (tags) | 22 pt, pill tokens (Windows and Linux: as tall as their text fields) | DevVault widget |
 | Push button / default | 22 pt (24 in the inspector) | `PushButton` (`secondary` for plain) |
 | Segmented control | 22 pt | `MacosSegmentedControl` |
 | Switch, checkbox, radio | system sizes | `MacosSwitch`, `MacosCheckbox`, `MacosRadioButton` |
@@ -136,16 +136,47 @@ Light (dark):
 | Success | `#1F9D55` | `#32D74B` |
 | Warning | `#C77700`, badge `#FFF1D6` / `#A15C00` | `#FFB340`, badge `#3D2E12` |
 | Danger | `#D70015`, badge `#FDE8EA` | `#FF6961`, badge `#3D1A1A` |
+| Destructive button (white label) | `#D70015` | `#D70015`² |
 | Conflict | `#8944AB`, badge `#F1E4F8` | `#D49BF5`, badge `#3A2846` |
 
 ¹ The frames use `#6E6E73`, which is 4.25:1 on the sidebar. The app uses
 `#66666B`, the nearest shade that reaches WCAG AA (4.5:1) there. Tertiary
 text is only for placeholders and disabled controls.
 
+² White on `#FF6961` is 2.8:1, so a filled destructive button keeps the
+light red in dark mode (5.4:1). Windows and Linux fill it; macOS draws a
+plain button with a red label in light mode, and fills it in dark mode,
+where that label would be 2.4:1 on the button.
+
+### Linux (Yaru)
+
+Linux follows Ubuntu: the accent is Ubuntu's orange, `#E95420`
+(`YaruColors.orange`, the Yaru theme's primary), wherever the app uses
+its accent, and the default button stays Yaru's green suggested action
+(`#0E8420`). White on `#E95420` is only 3.6:1, so the bright orange
+carries symbols, rings and washes, not text (the app mark, focus and
+drop rings, tag pills, Yaru's own checkboxes and switches). What carries
+text takes Yaru's darker orange, `#9D3E1C` (its dark theme's secondary:
+Ubuntu orange 30% darker and 15% less saturated):
+
+| Token | Light | Dark |
+|---|---|---|
+| Accent (rings, app mark, pill wash) | `#E95420` | `#E95420` |
+| Selection (sidebar, item table, quick open), white text | `#9D3E1C` (6.7:1) | `#9D3E1C` (6.7:1) |
+| Accent icons and links | `#9D3E1C` (6.7:1 on white) | `#ED764D`, Yaru's light secondary (5.8:1 on the window) |
+
+Yaru draws its own selected list rows as a grey wash and its chips as the
+accent at 40% under plain text. A selected row here keeps the shape it has
+on the other kits, filled, with white text, in the darker orange: a pale
+tint under dark text passes as colours, but the rendered contrast check
+reads it against the sidebar around it and fails it. Everything else
+(surfaces, text, status colours) is the table above.
+
 In code these come from the kit's theme (`MacosTheme`, `MacosColors`) plus
 DevVault's own tokens (`DesktopColors`, read with `context.desktopColors`)
-for the surfaces, fields, badges and group boxes. No colour is hard-coded in
-a screen.
+for the surfaces, fields, badges and group boxes. `DesktopColors.of` takes
+the kit, so Linux gets the orange palette. No colour is hard-coded in a
+screen. `test/desktop_colors_test.dart` holds every kit's text pairs to AA.
 
 ## In code
 
@@ -271,7 +302,7 @@ Same layout and regions on every OS; each OS draws them with its own kit:
 | Menus | `PlatformMenuBar` | `MenuBar` in the window | `MenuBar` in the window |
 | Fields | `MacosTextField` | `TextBox`, `PasswordBox` | `TextField` (Yaru theme) |
 | Combo box | DevVault widget | `EditableComboBox` | `YaruAutocomplete` |
-| Pop-up | `MacosPopupButton` | `ComboBox` | `DropdownMenu` |
+| Pop-up | `MacosPopupButton` | `ComboBox` | `DropdownButton`, outlined like a field |
 | Sheets | `MacosSheet` | `ContentDialog` | `AlertDialog` (Yaru) |
 | Settings | Separate window (⌘,) | Page in the window | Page in the window |
 
@@ -304,9 +335,9 @@ Windows or Linux so it picks that kit and that OS's conventions (Ctrl
 shortcuts, Show in Explorer / Files). Fonts are bundled, so the images are
 the same on any Mac and CI's "Goldens (macOS)" job checks them with the
 rest. Inter stands in for Segoe UI, as it does for SF Pro; Yaru brings its
-own Ubuntu font. Glyphs neither font has (the expiry table's `↑` in
-Ubuntu) show as a box here, though a real Linux desktop falls back to
-another font. Regenerate them with the others, on a Mac:
+own Ubuntu font. Arrows and other symbols are icons from the kit's set,
+not text, since the Ubuntu font lacks some of them. Regenerate them with
+the others, on a Mac:
 
 ```sh
 TZ=UTC flutter test --tags golden --update-goldens

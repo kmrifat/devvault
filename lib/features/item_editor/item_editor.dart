@@ -327,6 +327,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     final items = unlocked?.index.items.values ?? const <Item>[];
     final draft = _draft;
     final base = draft.base;
+    final placeWidth = DesktopMetrics.placeFieldWidth(context.desktopKit);
 
     return DesktopSheet(
       width: 640,
@@ -395,10 +396,9 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                   child: Row(
                     spacing: DesktopMetrics.formLabelGap,
                     children: [
-                      // The widest: an app's label carries its
-                      // organization ("Acme Corp › Billing API").
+                      // The rest: an app's label carries its organization
+                      // ("Acme Corp › Billing API") and ends in an ellipsis.
                       Expanded(
-                        flex: 2,
                         child: DesktopPopup<String>(
                           // An app deleted since shows as no app, as in the
                           // sidebar.
@@ -415,7 +415,8 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                           ),
                         ),
                       ),
-                      Expanded(
+                      SizedBox(
+                        width: placeWidth,
                         child: DesktopComboBox(
                           key: const ValueKey('item-platform'),
                           value: draft.platform ?? '',
@@ -429,7 +430,8 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                               setState(() => draft.platform = typedPlace(text)),
                         ),
                       ),
-                      Expanded(
+                      SizedBox(
+                        width: placeWidth,
                         child: DesktopComboBox(
                           key: const ValueKey('item-environment'),
                           value: draft.environment ?? '',

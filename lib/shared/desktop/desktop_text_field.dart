@@ -150,6 +150,12 @@ class DesktopTextField extends StatelessWidget {
           hintStyle: style?.copyWith(color: colors.tertiaryText),
           isDense: true,
           suffixIcon: suffix,
+          // Material keeps a 40 px square for it, which made a combo box
+          // taller than a text field.
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: DesktopMetrics.yaruFieldButtonSize,
+            minHeight: DesktopMetrics.yaruFieldButtonSize,
+          ),
         ),
       ),
     };

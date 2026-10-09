@@ -225,11 +225,33 @@ class _HeaderRow extends StatelessWidget {
           cell('Name'),
           cell('Type'),
           cell('Where'),
-          // Soonest first: the order the rows are in.
+          // Soonest first: the order the rows are in, with the item
+          // table's sort symbol (not a glyph the OS font may lack).
           Semantics(
             label: 'Expires, soonest first',
             excludeSemantics: true,
-            child: cell('Expires ↑'),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 3,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Expires',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
+                    ),
+                  ),
+                  DesktopIcon(
+                    DesktopSymbol.sortAscending,
+                    size: 10,
+                    color: colors.secondaryText,
+                  ),
+                ],
+              ),
+            ),
           ),
           cell('Left'),
           cell('Date from'),
