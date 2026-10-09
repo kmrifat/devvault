@@ -63,4 +63,14 @@ void main() {
     interact: openConflict,
     brightness: Brightness.light,
   );
+  for (final kit in otherKits) {
+    shot(
+      'N05-conflict-${kit.name}-light',
+      Routes.vault(),
+      sample: true,
+      interact: openConflict,
+      brightness: Brightness.light,
+      kit: kit,
+    );
+  }
 }

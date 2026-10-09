@@ -145,6 +145,9 @@ class DesktopTextField extends StatelessWidget {
         minLines: minLines,
         decoration: InputDecoration(
           hintText: placeholder,
+          // Material colours the hint with the field's style, which made a
+          // mono placeholder look like a typed value.
+          hintStyle: style?.copyWith(color: colors.tertiaryText),
           isDense: true,
           suffixIcon: suffix,
         ),

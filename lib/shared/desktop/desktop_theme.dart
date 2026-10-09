@@ -46,6 +46,9 @@ class DesktopTheme extends StatelessWidget {
     required this.child,
   });
 
+  /// Windows' UI font, which the Fluent kit's text uses.
+  static const windowsFont = 'Segoe UI';
+
   /// Defaults to the running OS's kit; tests render each one.
   final DesktopKit? kit;
 
@@ -102,6 +105,10 @@ class DesktopTheme extends StatelessWidget {
     final theme = fl.FluentThemeData(
       brightness: brightness,
       accentColor: fl.Colors.blue,
+      // Fluent leaves the family to the engine's default, which is Segoe UI
+      // on Windows. Named, so text Fluent styles outside the app's Material
+      // theme (dialog titles and buttons) has a font in tests too.
+      fontFamily: windowsFont,
     );
     // Fluent controls look up their own strings; the app's Localizations
     // only carries Material's and Cupertino's.

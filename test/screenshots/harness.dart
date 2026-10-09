@@ -14,6 +14,12 @@
 /// Images land in `screenshots/<name>.png` at the repo root, named after the
 /// design frame they implement (`D03-vault`, `B2-vault`, …), so they can be
 /// compared side by side with `design/DevVault.fig`.
+///
+/// Desktop frames render with the macOS kit, as designed. The main screens
+/// are also shot with the Windows (Fluent) and Linux (Yaru) kits, named
+/// `<frame>-<kit>-<brightness>` (`N03-vault-fluent-light`), by passing
+/// [shot] a `kit` from [otherKits]: they render on the same Mac with the
+/// same bundled fonts, so they are goldens like the rest.
 @Tags(['golden'])
 library;
 
@@ -21,6 +27,7 @@ import 'dart:convert';
 
 import 'package:devvault/app/app.dart';
 import 'package:devvault/app/layout.dart';
+import 'package:devvault/shared/desktop/desktop_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -72,6 +79,17 @@ enum ShotDevice {
   final TargetPlatform platform;
 }
 
+/// The desktop kits besides macOS's, for the Windows and Linux shots.
+const otherKits = [DesktopKit.fluent, DesktopKit.yaru];
+
+/// The platform [kit] is native to, so the app picks that kit
+/// ([DesktopKit.current]) and the OS's conventions (Ctrl, not ⌘) with it.
+TargetPlatform _platformFor(DesktopKit kit) => switch (kit) {
+  DesktopKit.macos => TargetPlatform.macOS,
+  DesktopKit.fluent => TargetPlatform.windows,
+  DesktopKit.yaru => TargetPlatform.linux,
+};
+
 /// Registers a test that opens [route] on [device] and compares it with
 /// `screenshots/<name>.png`.
 ///
@@ -81,6 +99,9 @@ enum ShotDevice {
 ///
 /// [interact] runs after the first frame settles (tap through to a dialog,
 /// type into a field) before the capture.
+///
+/// [kit] draws a desktop shot with another OS's kit by rendering as that
+/// OS (see [otherKits]).
 void shot(
   String name,
   String route, {
@@ -91,7 +112,15 @@ void shot(
   TestVault? vault,
   bool sample = false,
   bool realKdf = false,
+  DesktopKit kit = DesktopKit.macos,
 }) {
+  assert(
+    kit == DesktopKit.macos || device == ShotDevice.desktop,
+    'Only desktop shots have a kit.',
+  );
+  final platform = device == ShotDevice.desktop
+      ? _platformFor(kit)
+      : device.platform;
   testWidgets(name, (tester) async {
     final ratio = device.pixelRatio;
     final padding = FakeViewPadding(
@@ -113,7 +142,7 @@ void shot(
     // flag has to be restored inside the body: it is checked before
     // tearDowns run.
     debugDisableShadows = false;
-    debugDefaultTargetPlatformOverride = device.platform;
+    debugDefaultTargetPlatformOverride = platform;
     // Seeded per shot, so vault ids, recovery keys and nonces are the same
     // on every run and the image only changes when the UI does.
     final crypto = await tester.runAsync(

@@ -17,5 +17,14 @@ void main() {
     sample: true,
     brightness: Brightness.light,
   );
+  for (final kit in otherKits) {
+    shot(
+      'N06-expiry-${kit.name}-light',
+      Routes.expiry,
+      sample: true,
+      brightness: Brightness.light,
+      kit: kit,
+    );
+  }
   shot('B-expiry', Routes.expiry, sample: true, device: ShotDevice.mobile);
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:devvault/shared/desktop/desktop_theme.dart' show DesktopTheme;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,9 +38,14 @@ Future<void> _loadAppFonts() async {
   for (final entry in manifest.cast<Map<String, dynamic>>()) {
     final family = entry['family'] as String;
     final fonts = (entry['fonts'] as List).cast<Map<String, dynamic>>();
-    // macos_ui asks for the macOS system font, which tests don't have.
-    // Inter stands in for it, as it does in the design frames.
-    for (final name in [family, if (family == 'Inter') _macosSystemFont]) {
+    // macos_ui and fluent_ui ask for the OS's system font (SF Pro, Segoe
+    // UI), which tests don't have. Inter stands in for both, as it does in
+    // the design frames. Yaru bundles its Ubuntu font, so Linux shots use
+    // the real one.
+    for (final name in [
+      family,
+      if (family == 'Inter') ...[_macosSystemFont, DesktopTheme.windowsFont],
+    ]) {
       final loader = FontLoader(name);
       for (final font in fonts) {
         loader.addFont(rootBundle.load(font['asset'] as String));

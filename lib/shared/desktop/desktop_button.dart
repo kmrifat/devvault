@@ -27,7 +27,9 @@ enum DesktopButtonSize {
 }
 
 /// A push button drawn by the desktop kit: `PushButton`, Fluent `Button` /
-/// `FilledButton`, or Yaru-themed `OutlinedButton` / `FilledButton`.
+/// `FilledButton`, or Yaru-themed `OutlinedButton` / `ElevatedButton` (the
+/// default action, Ubuntu's green "suggested action") / `FilledButton` (red,
+/// destructive).
 class DesktopButton extends StatelessWidget {
   const DesktopButton({
     super.key,
@@ -122,10 +124,17 @@ class DesktopButton extends StatelessWidget {
         child: text,
       ),
       DesktopKit.fluent => fl.Button(onPressed: onPressed, child: text),
-      DesktopKit.yaru when filled => FilledButton(
-        style: danger
-            ? FilledButton.styleFrom(backgroundColor: colors.danger)
-            : null,
+      // Yaru's FilledButton is a neutral grey that reads as disabled; its
+      // ElevatedButton is the suggested action.
+      DesktopKit.yaru when danger => FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: colors.danger,
+          foregroundColor: colors.onAccent,
+        ),
+        onPressed: onPressed,
+        child: text,
+      ),
+      DesktopKit.yaru when filled => ElevatedButton(
         onPressed: onPressed,
         child: text,
       ),

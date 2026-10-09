@@ -1,6 +1,7 @@
-/// The desktop layer's controls drawn by the macOS kit, light and dark,
-/// in a sheet-style form (docs/design/desktop.md › Controls). Goldens cover
-/// the macOS kit only (ADR-0005); see harness.dart for how they're made.
+/// The desktop layer's controls in a sheet-style form
+/// (docs/design/desktop.md › Controls), light and dark, drawn by each kit:
+/// macOS, Windows (Fluent) and Linux (Yaru). The menus and the sheet are
+/// shot in the macOS kit only; see harness.dart for how goldens are made.
 @Tags(['golden'])
 library;
 
@@ -141,33 +142,41 @@ void main() {
     }
   });
 
-  for (final brightness in Brightness.values) {
-    final name = 'desktop-controls-macos-${brightness.name}';
-    testWidgets(name, (tester) async {
-      tester.view
-        ..physicalSize = const Size(1120, 1040)
-        ..devicePixelRatio = 2;
-      addTearDown(tester.view.reset);
-      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-      // Real shadows, as in harness.dart (restored in the body).
-      debugDisableShadows = false;
-      try {
-        await pumpDesktop(
-          tester,
-          DesktopKit.macos,
-          const _Gallery(),
-          brightness: brightness,
-        );
-        await tester.pumpAndSettle();
-        await expectLater(
-          find.byType(_Gallery),
-          matchesGoldenFile('../../screenshots/$name.png'),
-        );
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-        debugDisableShadows = true;
-      }
-    });
+  // Every kit, so the Windows and Linux controls can be reviewed too.
+  // Yaru's controls are Material-sized, so its gallery is taller.
+  for (final (kit, platform, height) in [
+    (DesktopKit.macos, TargetPlatform.macOS, 1040.0),
+    (DesktopKit.fluent, TargetPlatform.windows, 1040.0),
+    (DesktopKit.yaru, TargetPlatform.linux, 1240.0),
+  ]) {
+    for (final brightness in Brightness.values) {
+      final name = 'desktop-controls-${kit.name}-${brightness.name}';
+      testWidgets(name, (tester) async {
+        tester.view
+          ..physicalSize = Size(1120, height)
+          ..devicePixelRatio = 2;
+        addTearDown(tester.view.reset);
+        debugDefaultTargetPlatformOverride = platform;
+        // Real shadows, as in harness.dart (restored in the body).
+        debugDisableShadows = false;
+        try {
+          await pumpDesktop(
+            tester,
+            kit,
+            const _Gallery(),
+            brightness: brightness,
+          );
+          await tester.pumpAndSettle();
+          await expectLater(
+            find.byType(_Gallery),
+            matchesGoldenFile('../../screenshots/$name.png'),
+          );
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+          debugDisableShadows = true;
+        }
+      });
+    }
   }
 }
 
