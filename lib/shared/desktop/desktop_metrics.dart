@@ -79,6 +79,12 @@ abstract final class DesktopMetrics {
   /// one would look like it wants more.
   static const double narrowFieldWidth = 220;
 
+  /// A note's Markdown preview (item and app editors) and an app's notes
+  /// over the item table: at least about three lines, and scrolling past
+  /// the maximum.
+  static const double notesPreviewMinHeight = 64;
+  static const double notesPreviewMaxHeight = 200;
+
   /// Body text and secondary text.
   static const double bodySize = 13;
   static const double secondarySize = 11;

@@ -217,6 +217,7 @@ Future<void> generate(Directory out) async {
         ),
         AppIdentifier.of(IdentifierKind.bundleId, 'com.acme.billing'),
       ],
+      notes: _billingNotes,
     ),
   );
   vault.lock();
@@ -250,6 +251,7 @@ Future<void> generate(Directory out) async {
           'bundle_ids': a.bundleIds,
           'package_names': a.packageNames,
           'identifiers': [for (final i in a.identifiers) i.toJson()],
+          'notes': a.notes,
         },
     },
     'tombstones': [doomed.id],
@@ -258,6 +260,21 @@ Future<void> generate(Directory out) async {
     '${const JsonEncoder.withIndent('  ').convert(expected)}\n',
   );
 }
+
+/// A Markdown note on an app (SPEC §6.2).
+const _billingNotes =
+    '## Billing API\n'
+    '\n'
+    'Rotate the **Stripe** keys every *90 days*:\n'
+    '\n'
+    '1. Create the new key in the dashboard.\n'
+    '2. Run `make rotate-keys`.\n'
+    '\n'
+    '```sh\n'
+    'make deploy ENV=production\n'
+    '```\n'
+    '\n'
+    'Runbook: [wiki](https://wiki.acme.example/billing)';
 
 /// SPEC §6.2: app records as a writer might have stored them, each with
 /// the exact bytes a conforming writer stores when it rewrites the record
@@ -335,6 +352,22 @@ List<Map<String, Object?>> _appRecordVectors() {
         ],
       }),
     ),
+    (
+      'Notes: Markdown text, kept as typed apart from white space trimmed '
+          'at both ends.',
+      record({'notes': '\n  $_billingNotes\n\n'}),
+    ),
+    (
+      'Notes with raw HTML, an image and non-ASCII text: stored as text, '
+          'nothing escaped that needn\'t be.',
+      record({
+        'notes':
+            '<b>Not bold</b> & ![logo](https://acme.example/logo.png)\n'
+            '\n'
+            '> Café — \u65e5\u672c \u{1F511}',
+      }),
+    ),
+    ('Empty notes: left out.', record({'notes': ' \n\t '})),
   ];
   return [
     for (final (about, json) in cases)

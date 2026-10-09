@@ -17,6 +17,7 @@ import '../../shared/widgets/mono_text.dart';
 import '../../shared/widgets/provenance_label.dart';
 import '../../shared/widgets/secret_row.dart' show SecretRow;
 import '../conflict/conflict_dialog.dart';
+import '../notes/notes.dart' show NoteView;
 import 'desktop_item_type.dart';
 import 'vault_actions.dart';
 
@@ -125,17 +126,7 @@ class DesktopInspector extends ConsumerWidget {
                 ),
               ),
             if (item.notes case final notes? when notes.trim().isNotEmpty)
-              _Section(
-                title: 'Notes',
-                child: SelectableText(
-                  notes,
-                  style: TextStyle(
-                    fontSize: DesktopMetrics.bodySize,
-                    height: 1.4,
-                    color: context.desktopColors.text,
-                  ),
-                ),
-              ),
+              _Section(title: 'Notes', child: NoteView(notes)),
             if (item.tags.isNotEmpty)
               _Section(
                 title: 'Tags',

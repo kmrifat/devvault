@@ -253,6 +253,16 @@ void main() {
       expect(find('sk_live'), isEmpty);
     });
 
+    test('app notes are never searchable', () async {
+      final billing = await vault.putApp(
+        vault.newApp(name: 'Billing API', notes: 'Rotate **quarterly**'),
+      );
+      await item('Stripe key', ItemType.genericSecret, app: billing);
+      final idx = await index();
+      expect(idx.filter(query: 'billing').map((i) => i.title), ['Stripe key']);
+      expect(idx.filter(query: 'quarterly'), isEmpty);
+    });
+
     test('lists organizations and groups the tree by them', () async {
       final billing = await orgApp('Billing API', organization: 'Acme Corp');
       final web = await orgApp('Web', organization: 'acme labs');

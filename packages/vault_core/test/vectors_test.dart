@@ -116,6 +116,7 @@ void main() {
       expect([
         for (final i in app.identifiers) i.toJson(),
       ], want['identifiers']);
+      expect(app.notes, want['notes']);
     }
 
     final recovery = RecoveryKey.parse(
