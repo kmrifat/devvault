@@ -191,8 +191,9 @@ Future<void> moveApp(
   );
 }
 
-/// Asks for a new name for [organization], then renames it on every app
-/// that names it. A name another organization already has merges the two.
+/// Asks for a new name for [organization], then renames it: its records
+/// and every app that names it. A name another organization already has
+/// merges the two.
 Future<void> renameOrganization(
   BuildContext context,
   WidgetRef ref,
@@ -200,13 +201,10 @@ Future<void> renameOrganization(
 ) async {
   final name = await showRenameOrganizationSheet(context, organization);
   if (name == null || name == organization || !context.mounted) return;
-  final session = ref.read(vaultSessionProvider);
-  if (session is! Unlocked) return;
-  final apps = [
-    for (final app in session.index.apps.values)
-      if (app.organization == organization) app.copyWith(organization: name),
-  ];
-  await ref.read(vaultSessionProvider.notifier).saveApps(apps);
+  if (ref.read(vaultSessionProvider) is! Unlocked) return;
+  await ref
+      .read(vaultSessionProvider.notifier)
+      .renameOrganization(organization, name);
   if (!context.mounted) return;
   final location = VaultFilter.fromUri(GoRouterState.of(context).uri);
   if (location.org == organization) {

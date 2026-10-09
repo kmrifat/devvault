@@ -287,6 +287,8 @@ void main() {
         [
           ('Acme Corp', 'Billing API', 1),
           ('acme labs', 'Web', 1),
+          // Its only app has no items, so isn't in the tree.
+          ('Zeta', '', 0),
           (null, 'Kitchenly', 1),
         ],
       );
@@ -300,6 +302,85 @@ void main() {
       final idx = await index();
       expect(idx.organizations, isEmpty);
       expect(idx.orgGroups, isEmpty);
+    });
+  });
+
+  group('organization records (SPEC §6.7)', () {
+    Future<OrganizationRecord> org(String name) =>
+        vault.putOrganization(vault.newOrganization(name: name));
+
+    Future<AppRecord> orgApp(String name, {String? organization}) =>
+        vault.putApp(vault.newApp(name: name, organization: organization));
+
+    List<(String?, String, int, int)> groups(VaultIndex idx) => [
+      for (final g in idx.orgGroups)
+        (
+          g.organization,
+          [for (final n in g.apps) n.app!.name].join(', '),
+          g.count,
+          g.records.length,
+        ),
+    ];
+
+    test('an organization without apps is listed and gets a group', () async {
+      final globex = await org('Globex');
+      final idx = await index();
+      expect(idx.organizationRecords.keys, [globex.id]);
+      expect(idx.organizations, ['Globex']);
+      expect(groups(idx), [
+        ('Globex', '', 0, 1),
+      ], reason: 'no Personal group: no app lacks an organization');
+      expect(idx.orgGroups.single.records.single.id, globex.id);
+    });
+
+    test('a record and the apps naming it are one group', () async {
+      final acme = await org('Acme Corp');
+      final billing = await orgApp('Billing API', organization: 'Acme Corp');
+      final web = await orgApp('Web', organization: 'Initech');
+      await item('A', ItemType.genericSecret, app: billing);
+      await item('B', ItemType.genericSecret, app: web);
+      await item('C', ItemType.genericSecret, app: billing);
+      final idx = await index();
+      expect(idx.organizations, ['Acme Corp', 'Initech']);
+      expect(groups(idx), [
+        ('Acme Corp', 'Billing API', 2, 1),
+        ('Initech', 'Web', 1, 0),
+      ]);
+      expect(idx.orgGroups.first.records.single.id, acme.id);
+      expect(idx.filter(organization: 'Acme Corp').map((i) => i.title), [
+        'A',
+        'C',
+      ]);
+    });
+
+    test('records with the same name are one organization', () async {
+      final first = await org('Globex');
+      final second = await org('Globex');
+      final idx = await index();
+      expect(idx.organizations, ['Globex']);
+      expect(groups(idx), [('Globex', '', 0, 2)]);
+      expect(
+        idx.orgGroups.single.records.map((r) => r.id),
+        ([first.id, second.id]..sort()),
+      );
+    });
+
+    test('organizations sort A–Z ignoring case; Personal comes last, '
+        'only when an app has no organization', () async {
+      await org('zeta');
+      await org('Acme');
+      final kitchenly = await orgApp('Kitchenly');
+      await item('K', ItemType.genericSecret, app: kitchenly);
+      await item('No app', ItemType.genericSecret);
+      final idx = await index();
+      expect(idx.organizations, ['Acme', 'zeta']);
+      expect(groups(idx), [
+        ('Acme', '', 0, 1),
+        ('zeta', '', 0, 1),
+        (null, 'Kitchenly', 1, 0),
+      ]);
+      // The "No app" node stays out of the groups.
+      expect(idx.tree.last.app, isNull);
     });
   });
 

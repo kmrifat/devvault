@@ -140,7 +140,13 @@ void main() {
       expect(ObjectType.app.folder, 'apps');
       expect(ObjectType.blob.folder, 'blobs');
       expect(ObjectType.tombstone.folder, 'tombstones');
+      expect(ObjectType.organization.folder, 'organizations');
       expect(ObjectType.vkWrapPassword.folder, isNull);
+    });
+
+    test('organizations are type 0x07, named organization', () {
+      expect(ObjectType.organization.code, 0x07);
+      expect(ObjectType.organization.wireName, 'organization');
     });
 
     test('type codes are distinct', () {

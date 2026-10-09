@@ -294,6 +294,64 @@ void main() {
     });
   });
 
+  group('mergeOrganizations', () {
+    OrganizationRecord org(_Device d, String name) => OrganizationRecord(
+      id: '00000000-0000-4000-8000-0000000000b1',
+      name: name,
+      createdAt: _t0,
+      updatedAt: _t0,
+      rev: d.tick(),
+      deviceId: d.id,
+    );
+
+    test('name: the changed side wins', () {
+      final base = org(a, 'Acme');
+      final remote = base.copyWith(name: 'Acme Corp', rev: b.tick());
+      final local = base.copyWith(rev: a.tick());
+      expect(
+        mergeOrganizations(base: base, local: local, remote: remote).name,
+        'Acme Corp',
+      );
+      expect(
+        mergeOrganizations(base: base, local: remote, remote: local).name,
+        'Acme Corp',
+      );
+    });
+
+    test('on a clash, or without a base, the local name stays', () {
+      final base = org(a, 'Acme');
+      final local = base.copyWith(name: 'Acme Labs', rev: a.tick());
+      final remote = base.copyWith(name: 'Acme Corp', rev: b.tick());
+      final merged = mergeOrganizations(
+        base: base,
+        local: local,
+        remote: remote,
+      );
+      expect(merged.name, 'Acme Labs');
+      expect(merged.rev, remote.rev > local.rev ? remote.rev : local.rev);
+      expect(
+        mergeOrganizations(local: local, remote: remote).name,
+        'Acme Labs',
+      );
+    });
+
+    test('one side unchanged since the base: the other is taken whole', () {
+      final base = org(a, 'Acme');
+      final remote = OrganizationRecord.fromJson({
+        ...base.toJson(),
+        'name': 'Acme Corp',
+        'colour': 'teal',
+        'rev': b.tick().toString(),
+      });
+      final merged = mergeOrganizations(
+        base: base,
+        local: base,
+        remote: remote,
+      );
+      expect(merged, same(remote));
+    });
+  });
+
   group('property: no secret is ever dropped', () {
     // Random concurrent edits of one item on two devices. Every secret
     // value either side wrote (changed from the base) must survive the

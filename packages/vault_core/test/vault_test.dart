@@ -122,6 +122,63 @@ void main() {
     expect(loaded.deviceId, vault.deviceId);
   });
 
+  test('newOrganization + putOrganization saves one that loads back', () async {
+    final (vault, _) = await create();
+    final fresh = vault.newOrganization(name: '  Acme Corp ');
+    expect(fresh.name, 'Acme Corp');
+    expect(fresh.id, isNot(vault.newOrganization(name: 'Acme Corp').id));
+    writes.clear();
+    final saved = await vault.putOrganization(fresh);
+    expect(writes, ['organizations/${fresh.id}.enc']);
+    expect(saved.rev > fresh.rev, isTrue);
+    final loaded = (await vault.loadAll()).organizations[fresh.id]!;
+    expect(loaded.name, 'Acme Corp');
+    expect(loaded.deviceId, vault.deviceId);
+    expect(loaded.rev, saved.rev);
+
+    final renamed = await vault.putOrganization(loaded.copyWith(name: 'Acme'));
+    expect(renamed.rev > saved.rev, isTrue);
+    expect((await vault.loadAll()).organizations[fresh.id]!.name, 'Acme');
+  });
+
+  test('a read-only organization is never rewritten', () async {
+    final (vault, _) = await create();
+    final newer = OrganizationRecord.fromJson({
+      ...vault.newOrganization(name: 'Acme').toJson(),
+      'schema': recordSchema + 1,
+    });
+    expect(() => vault.putOrganization(newer), throwsStateError);
+  });
+
+  test('deleting an organization writes a tombstone and removes it', () async {
+    final (vault, _) = await create();
+    final org = await vault.putOrganization(
+      vault.newOrganization(name: 'Acme'),
+    );
+    writes.clear();
+    final tombstone = await vault.delete(org.id, TombstoneKind.organization);
+    expect(writes, [
+      'tombstones/${org.id}.enc',
+      '-organizations/${org.id}.enc',
+    ]);
+    final contents = await vault.loadAll();
+    expect(contents.organizations, isEmpty);
+    expect(contents.tombstones[org.id]!.kind, TombstoneKind.organization);
+    expect(contents.tombstones[org.id]!.rev, tombstone.rev);
+  });
+
+  test('a damaged organization is quarantined', () async {
+    final (vault, _) = await create();
+    final a = await vault.putOrganization(vault.newOrganization(name: 'A'));
+    final b = await vault.putOrganization(vault.newOrganization(name: 'B'));
+    File('${vault.store.root.path}/organizations/${a.id}.enc')
+        .copySync('${vault.store.root.path}/organizations/${b.id}.enc');
+    final contents = await vault.loadAll();
+    expect(contents.organizations.keys, [a.id]);
+    expect(contents.quarantined.single.type, ObjectType.organization);
+    expect(contents.quarantined.single.objectId, b.id);
+  });
+
   test('revs keep growing after unlocking on a later run', () async {
     final (vault, _) = await create();
     final first = await addKeystore(vault);

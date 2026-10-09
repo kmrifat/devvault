@@ -119,6 +119,20 @@ void main() {
       expect(app.notes, want['notes']);
     }
 
+    final organizations = expected['organizations']! as Map<String, Object?>;
+    expect(organizations, isNotEmpty);
+    expect({
+      for (final o in contents.organizations.values) o.id: o.name,
+    }, organizations);
+    // Globex has no apps; Acme Corp exists through an app alone. Both are
+    // organizations (SPEC §6.7).
+    final index = VaultIndex(contents);
+    expect(index.organizations, ['Acme Corp', 'Globex']);
+    expect(
+      [for (final g in index.orgGroups) (g.organization, g.records.length)],
+      [('Acme Corp', 0), ('Globex', 1), (null, 0)],
+    );
+
     final recovery = RecoveryKey.parse(
       crypto,
       expected['recovery_key_text']! as String,

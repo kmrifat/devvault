@@ -220,6 +220,11 @@ Future<void> generate(Directory out) async {
       notes: _billingNotes,
     ),
   );
+  // An organization without apps (SPEC §6.7). Acme Corp has no record: it
+  // exists through Billing API's organization alone.
+  final globex = await vault.putOrganization(
+    vault.newOrganization(name: 'Globex'),
+  );
   vault.lock();
   staging.renameSync('${vaultsDir.path}/${vault.vaultId}');
 
@@ -254,6 +259,7 @@ Future<void> generate(Directory out) async {
           'notes': a.notes,
         },
     },
+    'organizations': {globex.id: globex.name},
     'tombstones': [doomed.id],
   };
   File('${out.path}/mini-vault.json').writeAsStringSync(

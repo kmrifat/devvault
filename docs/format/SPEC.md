@@ -72,17 +72,19 @@ XChaCha20 is used rather than AES-GCM (96-bit nonces).
 
 ```
 <vault_id>/
-  vault.json                 plaintext header (§4)
-  items/<object_id>.enc      encrypted item record (§6.1)
-  apps/<object_id>.enc       encrypted app record (§6.2)
-  blobs/<object_id>.enc      encrypted file bytes, immutable (§6.3)
-  tombstones/<object_id>.enc encrypted deletion marker (§6.4)
+  vault.json                    plaintext header (§4)
+  items/<object_id>.enc         encrypted item record (§6.1)
+  apps/<object_id>.enc          encrypted app record (§6.2)
+  organizations/<object_id>.enc encrypted organization record (§6.7)
+  blobs/<object_id>.enc         encrypted file bytes, immutable (§6.3)
+  tombstones/<object_id>.enc    encrypted deletion marker (§6.4)
 ```
 
 - `vault_id` and every `object_id` are random **UUIDv4**, lowercase, in
   canonical 8-4-4-4-12 form. Object ids are never derived from content: a
   content hash would reveal that two items hold the same file.
-- A tombstone's `object_id` is the id of the item or app it deletes.
+- A tombstone's `object_id` is the id of the item, app or organization it
+  deletes.
 - **Blobs are immutable.** Replacing a file writes a new blob under a new id
   and points the item at it. Unreferenced blobs are garbage-collected after a
   grace period (P2).
@@ -146,7 +148,8 @@ the vault key, and nothing about the contents.
 ### 4.1 Vault key (VK)
 
 32 random bytes, generated once when the vault is created. It encrypts every
-item, app, blob and tombstone. Changing the password does not change the VK.
+item, app, organization, blob and tombstone. Changing the password does not
+change the VK.
 
 ### 4.2 Password wrap
 
@@ -237,6 +240,7 @@ offset  size  field
 | tombstone | `0x04` | `tombstone` | tombstone JSON (§6.4) |
 | VK, password wrap | `0x05` | `vk_wrap_password` | 32-byte VK |
 | VK, recovery wrap | `0x06` | `vk_wrap_recovery` | 32-byte VK |
+| organization | `0x07` | `organization` | organization JSON (§6.7) |
 
 **Associated data**, UTF-8, no trailing newline:
 
@@ -345,7 +349,7 @@ with `app_id`.
 | Field | Rule |
 |---|---|
 | `name` | Required string. |
-| `organization` | Optional string: who the app is for (an employer, a client), as the user typed it. Never defaulted or inferred. |
+| `organization` | Optional string: who the app is for (an employer, a client), as the user typed it. Never defaulted or inferred. It names an organization (§6.7). |
 | `kind` | Optional string, chosen by the user, never inferred: `mobile`, `web`, `desktop`, `backend`, `cli` (CLI or tool), `library`, `other`. A value a reader doesn't know MUST be kept and MAY be shown as it is. |
 | `bundle_ids` | List of strings: Apple bundle IDs. Always written, `[]` when empty. |
 | `package_names` | List of strings: Android package names. Always written, `[]` when empty. |
@@ -418,8 +422,8 @@ size in v1 is **25 MiB**: blobs are sealed in one AEAD call.
   "deleted_at": "2026-10-07T09:00:00Z", "rev": "…", "device_id": "…" }
 ```
 
-`kind` is `"item"` or `"app"`. Writing a tombstone removes the record file.
-Blobs are left for garbage collection.
+`kind` is `"item"`, `"app"` or `"organization"`. Writing a tombstone
+removes the record file. Blobs are left for garbage collection.
 
 ### 6.5 Item types
 
@@ -454,6 +458,51 @@ reach outside the device or run anything:
 
 Notes are not secret, but they can hold anything the user typed: they are
 never indexed for search, logged or sent to analytics.
+
+### 6.7 Organization
+
+An organization is who apps are for: an employer, a client. Apps belong to
+one by name, through their `organization` (§6.2). An organization record
+declares that an organization with that name exists, so it can exist with
+no apps; it holds no list of its apps.
+
+```json
+{ "schema": 1, "id": "183b…", "name": "Globex",
+  "created_at": "…", "updated_at": "…", "rev": "…", "device_id": "…" }
+```
+
+| Field | Rule |
+|---|---|
+| `name` | Required string, trimmed (Unicode white space at both ends) like an app's `organization`. Empty after trimming makes the record unreadable (§10). Compared exactly, case-sensitively. |
+
+**What an organization is.** The organizations of a vault are the names of
+its organization records together with every app `organization`, each name
+once. A name can exist through records alone (an organization with no
+apps), through apps alone (written before organization records, or by an
+older client), or both. Records with the same name (created on two devices
+at once, or after a rename to a name that already had one) are one
+organization.
+
+**Operations.** Clients run each of these as one operation:
+- **Rename:** rewrite every record with the old name to the new one (or
+  create one when there was none) and every app whose `organization` is
+  the old name.
+- **Delete:** tombstone every record with the name (§6.4, `kind`
+  `"organization"`) and clear `organization` on every app that names it.
+  The apps and their items stay.
+
+**Merging.** `name` merges like an app's fields (§6.2): the side that
+changed since the base wins, and on a clash the local value stays. A
+tombstone deletes the record, edited or not: unlike an item, an
+organization record holds nothing to lose.
+
+**Older clients.** A client that predates organization records ignores
+`organizations/` objects. It still groups apps by their `organization`, but
+doesn't show organizations without apps. A key rotation (§9) run by such a
+client doesn't re-encrypt `organizations/` objects, and newer clients then
+quarantine them (§5): after a rotation from an older client, organizations
+without apps are lost. Organizations that have apps survive through the
+apps.
 
 ---
 
@@ -512,8 +561,11 @@ shown    = 14 groups of 4 joined by "-", e.g. K7QF-2M9X-RT4C-…
 | Change password / reset after recovery | `vault.json` only |
 | Add or edit an item | `items/<id>.enc`, plus a new blob when a file is added or replaced |
 | Delete an item | `tombstones/<id>.enc`, and `items/<id>.enc` is removed |
+| Add an organization | `organizations/<id>.enc` |
+| Rename an organization | each `organizations/<id>.enc` with the old name, or a new one if there was none, and each `apps/<id>.enc` that names it |
+| Delete an organization | `tombstones/<id>.enc` for each of its records, which are removed, and each `apps/<id>.enc` that names it, without `organization` |
 | Replace the recovery key | `vault.json` only |
-| Rotate the vault key | journal (device-local), every blob re-encrypted under a **derived new** id, every item, app and tombstone re-encrypted in place, `vault.json` written **last**, then the journal and old blobs deleted |
+| Rotate the vault key | journal (device-local), every blob re-encrypted under a **derived new** id, every item, app, organization and tombstone re-encrypted in place, `vault.json` written **last**, then the journal and old blobs deleted |
 
 **Rotation rules:**
 - Rotation needs the master password. It creates a new VK **and a new
@@ -531,9 +583,10 @@ shown    = 14 groups of 4 joined by "-", e.g. K7QF-2M9X-RT4C-…
   `new_id = UUIDv4 bits over BLAKE2b-256(key = new VK,
   "devvault/v1/rotated-blob|" old_id)`. A resumed rotation finds the blobs it
   already wrote.
-- **Records:** each item, app and tombstone is opened with the old VK (or
-  skipped if the new VK already opens it), item attachments are pointed at
-  the derived blob ids, and the record is re-encrypted in place.
+- **Records:** each item, app, organization and tombstone is opened with
+  the old VK (or skipped if the new VK already opens it), item attachments
+  are pointed at the derived blob ids, and the record is re-encrypted in
+  place.
 - `vault.json` is written last: new KDF salt, both wraps for the new VK, a
   new `vk_id`. Then the journal and the old blobs are deleted.
 - **Resuming:** a password unlock that finds a journal it can open finishes
@@ -583,8 +636,8 @@ A conforming reader:
 1. Parses `vault.json` and rejects unknown `format` / `format_version` and
    out-of-bounds KDF parameters.
 2. Derives KEK_pw (or KEK_rec), opens the wrapped VK, and checks `vk_id`.
-3. Opens every `items/`, `apps/` and `tombstones/` object using AAD built from
-   its location, and quarantines anything that fails.
+3. Opens every `items/`, `apps/`, `organizations/` and `tombstones/` object
+   using AAD built from its location, and quarantines anything that fails.
 4. Opens blobs on demand and verifies the attachment's `sha256`.
 5. Keeps unknown fields and unknown types.
 6. Reads an app's identifiers from `bundle_ids`, `package_names` and
@@ -594,4 +647,6 @@ The test vectors in `docs/format/vectors/` (P0-14) cover every step above,
 plus a complete `mini-vault/` that a conforming reader can unlock with the
 password `correct horse battery staple`. Its `mini-vault.json` lists each
 app record's fields (`app_records`), including an app with an
-organization, a kind, identifiers and Markdown notes.
+organization, a kind, identifiers and Markdown notes, and each
+organization record's name (`organizations`): Globex, which has no apps.
+Acme Corp has no record; it exists through an app.

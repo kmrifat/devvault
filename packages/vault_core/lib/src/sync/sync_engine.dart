@@ -55,10 +55,11 @@ class SyncReport {
 ///    result saved locally, to be pushed. Remote deletions are applied
 ///    unless the local copy changed (an edit beats a delete).
 /// 2. **Push**, in dependency order: `vault.json` for a new vault, blobs,
-///    items and apps, tombstones, then deletions. Everything is conditional
-///    (`If-None-Match: *` for new objects, `If-Match` the last seen etag
-///    otherwise), so a device that lost a race gets [PreconditionFailed],
-///    pulls again and merges. At most [maxAttempts] rounds.
+///    items, apps and organizations, tombstones, then deletions. Everything
+///    is conditional (`If-None-Match: *` for new objects, `If-Match` the
+///    last seen etag otherwise), so a device that lost a race gets
+///    [PreconditionFailed], pulls again and merges. At most [maxAttempts]
+///    rounds.
 ///
 /// Local changes are found by comparing each object's ciphertext with its
 /// base (the bytes last synced), so no write hook is needed: a password
@@ -90,11 +91,7 @@ class SyncEngine {
   final DateTime Function() _now;
 
   static const _header = VaultHeader.fileName;
-  static const _recordTypes = [
-    ObjectType.item,
-    ObjectType.app,
-    ObjectType.tombstone,
-  ];
+  static const _recordTypes = Vault.recordTypes;
 
   String get _prefix => '$rootPrefix${vault.vaultId}/';
 
@@ -289,6 +286,20 @@ class SyncEngine {
               ? local
               : mergeApps(
                   base: r.base is AppRecord ? r.base! as AppRecord : null,
+                  local: local,
+                  remote: theirs,
+                ),
+        );
+        return 0;
+      case final OrganizationRecord local:
+        final theirs = (await vault.loadAll()).organizations[local.id];
+        await vault.putOrganization(
+          theirs == null
+              ? local
+              : mergeOrganizations(
+                  base: r.base is OrganizationRecord
+                      ? r.base! as OrganizationRecord
+                      : null,
                   local: local,
                   remote: theirs,
                 ),
@@ -539,6 +550,16 @@ class SyncEngine {
         } else {
           await vault.putApp(remote);
         }
+      case OrganizationRecord():
+        await vault.putOrganization(
+          local is OrganizationRecord
+              ? mergeOrganizations(
+                  base: base is OrganizationRecord ? base : null,
+                  local: local,
+                  remote: remote,
+                )
+              : remote,
+        );
       case Tombstone():
         // Deleted on both sides: either tombstone says the same.
         await vault.store.write(
@@ -559,9 +580,7 @@ class SyncEngine {
     Tombstone tombstone,
     SyncReport report,
   ) async {
-    final type = tombstone.kind == TombstoneKind.item
-        ? ObjectType.item
-        : ObjectType.app;
+    final type = tombstone.kind.recordType;
     final key = '${type.folder}/${tombstone.id}.enc';
     final localBytes = await vault.store.read(type, tombstone.id);
     if (localBytes == null) return;
@@ -599,7 +618,7 @@ class SyncEngine {
       if (bytes == null) return 5; // deletions last
       return switch (_slotOf(key)?.$1) {
         ObjectType.blob => 1,
-        ObjectType.item || ObjectType.app => 2,
+        ObjectType.item || ObjectType.app || ObjectType.organization => 2,
         _ => 3,
       };
     }
