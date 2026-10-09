@@ -55,7 +55,7 @@ the walk.
 | 7a | Settings › General › Expiry reminders: reminders were scheduled for the dated items at 09:00, with no secret in them; turning it off withdraws them and the status bar says "Reminders off" | Pass | Against a fake notification centre (8 scheduled) |
 | 7b | Settings › Security › Lock after 1 minute: the sidebar footer says 1m; a minute without input locks the vault and leaves the clipboard empty; the password unlocks | Pass | Idle time moved on the clock, not waited out |
 | 7c | Change… master password: a wrong current password is refused; the change says so with no secret in the toast; the old password no longer opens it, the new one does | Pass | |
-| 7d | New Kit…: Show in Finder, the vault id, a new key after the password; Copy | Pass | WALK-01, WALK-06 |
+| 7d | New Kit…: Show in Finder, the vault id, a new key after the password; Copy | Pass | WALK-01, WALK-06 (both fixed) |
 | 7e | Rotate… with the master password: a new key, the same items; lock, unlock with the password, every file still opens | Pass | |
 | 7f | Settings › Sync with a local folder in place of the bucket: Test Connection, Turn On Sync, a first sync (23 objects), Vault › Sync Now (⌘R); keys only in the keychain, not in settings.json | Pass | |
 | 7g | Pair a device (N08): QR and code, "Works for 10:00"; Done | Pass | No device paired |
@@ -70,7 +70,11 @@ the walk.
 Each needs a card. Severity is **blocker**, **should fix** or **nice to
 have**. None is a blocker.
 
-### WALK-01 · The recovery-key copy toast always says "30 seconds" (should fix)
+### WALK-01 · The recovery-key copy toast always says "30 seconds" (should fix) · fixed
+
+- **Fixed** in #147: `copyKit` reads the time from the clipboard guard,
+  which follows the setting, on desktop and phones. The walk now expects
+  it.
 
 - **Steps:** Settings › Security › Clear copied secrets after 10 seconds.
   Then New Kit…, enter the password, Make New Key, then Copy.
@@ -132,7 +136,11 @@ have**. None is a blocker.
 - **Screenshot:** `10-import-legacy-p12.png` (the toast over the header
   behind the sheet), `14-import-google-services-json.png`
 
-### WALK-06 · New Kit and Rotate show the phone's recovery-key card (should fix)
+### WALK-06 · New Kit and Rotate show the phone's recovery-key card (should fix) · fixed
+
+- **Fixed** in #147: on desktop, the New Kit and Rotate sheets show
+  N02's key box and push buttons (`DesktopRecoveryKitPanel`, shared with
+  the create flow). Phones keep the card. The walk now expects it.
 
 - **Steps:** Settings › Security › New Kit… (or Rotate…), then enter the
   password.
