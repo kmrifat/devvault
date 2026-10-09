@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/app/theme.dart' show AppText;
 import 'package:devvault/data/vault_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,19 +31,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Presses [button], then alternates real time and frames until [until]
-  /// shows up. The work behind the button does real file I/O and runs
-  /// Argon2id on an isolate.
-  Future<void> press(
+  /// Does [action], then alternates real time and frames until [until]
+  /// shows up. The work behind it does real file I/O and runs Argon2id on
+  /// an isolate.
+  Future<void> act(
     WidgetTester tester,
-    String button, {
+    Future<void> Function() action, {
     required Finder until,
   }) async {
     // Rebuild first: typing only marks the field dirty, and the button is
-    // enabled by the next frame. Tapping inside runAsync runs the handler
+    // enabled by the next frame. Acting inside runAsync runs the handler
     // in the real zone, so its file I/O completes on its own.
     await tester.pump();
-    await tester.runAsync(() => tester.tap(find.text(button)));
+    await tester.runAsync(action);
     for (var i = 0; i < 200 && until.evaluate().isEmpty; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -52,9 +53,117 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Presses [button], then waits for [until] as [act] does.
+  Future<void> press(
+    WidgetTester tester,
+    String button, {
+    required Finder until,
+  }) => act(tester, () => tester.tap(find.text(button)), until: until);
+
+  /// Presses Return in the focused field, then waits for [until].
+  Future<void> pressReturn(WidgetTester tester, {required Finder until}) => act(
+    tester,
+    () => tester.testTextInput.receiveAction(TextInputAction.done),
+    until: until,
+  );
+
+  /// No text on screen (labels, messages, toasts) holds any part of [key].
+  void expectKeyNotShown(WidgetTester tester, String key) {
+    for (final text in tester.widgetList<RichText>(find.byType(RichText))) {
+      final plain = text.text.toPlainText();
+      for (final group in key.split('-')) {
+        expect(plain.contains(group), isFalse, reason: 'shows "$plain"');
+      }
+    }
+  }
+
   String location(WidgetTester tester) =>
       GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
           .toString();
+
+  group('desktop key field', () {
+    testWidgets('wraps the whole key over a few lines', (tester) async {
+      await openRecover(tester, AppLayout.desktop);
+      final field = tester.widget<EditableText>(find.byType(EditableText));
+      expect(field.maxLines, 3);
+      expect(field.minLines, 3);
+      expect(field.style.fontFamily, AppText.monoFamily);
+      expect(field.autocorrect, isFalse);
+      expect(field.enableSuggestions, isFalse);
+      expect(field.textInputAction, TextInputAction.done);
+
+      await tester.enterText(find.byType(EditableText), recoveryKey);
+      await tester.pump();
+      // Two lines of text, nothing scrolled out of sight.
+      final editable = tester
+          .state<EditableTextState>(find.byType(EditableText))
+          .renderEditable;
+      final lines = {
+        for (final box in editable.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: recoveryKey.length),
+        ))
+          box.top,
+      };
+      expect(lines, hasLength(2));
+      final scroll = tester.state<ScrollableState>(
+        find.descendant(
+          of: find.byType(EditableText),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(scroll.position.maxScrollExtent, 0);
+    });
+
+    testWidgets('a pasted key with line breaks recovers on Return', (
+      tester,
+    ) async {
+      await openRecover(tester, AppLayout.desktop);
+      // As copied from the recovery kit PDF: two rows of seven groups,
+      // double spaces between groups, a line break between rows.
+      final groups = recoveryKey.split('-');
+      final pasted =
+          '${groups.take(7).join('  ')}\n${groups.skip(7).join('  ')}\n';
+
+      // A typo first: the message names no part of the key.
+      final typo = pasted.replaceRange(0, 1, pasted[0] == 'A' ? 'B' : 'A');
+      await tester.enterText(find.byType(EditableText), typo);
+      final typoError = find.text(
+        'This recovery key has a typo. Check each group.',
+      );
+      await pressReturn(tester, until: typoError);
+      expect(typoError, findsOneWidget);
+      expectKeyNotShown(tester, recoveryKey);
+      expect(appContainer(tester).read(vaultSessionProvider), isA<Locked>());
+
+      await tester.enterText(find.byType(EditableText), pasted);
+      expect(
+        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+        pasted,
+        reason: 'the field keeps what was pasted, line breaks and all',
+      );
+      final stepTwo = find.text('Choose a new master password');
+      await pressReturn(tester, until: stepTwo);
+      expect(stepTwo, findsOneWidget);
+      expect(appContainer(tester).read(vaultSessionProvider), isA<Unlocked>());
+      expectKeyNotShown(tester, recoveryKey);
+      for (final field in tester.widgetList<EditableText>(
+        find.byType(EditableText),
+      )) {
+        expect(field.controller.text, isEmpty);
+      }
+
+      final fields = find.byType(EditableText);
+      await tester.enterText(fields.at(0), 'a brand new password');
+      await tester.enterText(fields.at(1), 'a brand new password');
+      await pressReturn(tester, until: find.text('New master password set'));
+      expect(location(tester), Routes.vault());
+      expectNoSecretInToasts(tester, [
+        'a brand new password',
+        recoveryKey,
+        ...groups,
+      ]);
+    });
+  });
 
   for (final layout in AppLayout.values) {
     group(layout.name, () {

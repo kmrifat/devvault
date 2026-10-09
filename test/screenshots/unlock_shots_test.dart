@@ -54,6 +54,14 @@ void main() {
     vault: TestVault.locked,
     brightness: Brightness.light,
   );
+  // The whole key fits in the field, wrapped, without scrolling.
+  shot(
+    'N00-recover-key',
+    Routes.recover,
+    vault: TestVault.locked,
+    interact: (tester) =>
+        tester.enterText(find.byType(EditableText), lastTestRecoveryKey!),
+  );
 }
 
 /// Face ID is on and the user dismissed the automatic prompt: the screen

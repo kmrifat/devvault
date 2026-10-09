@@ -155,7 +155,9 @@ through `package:devvault/shared/desktop_ui.dart`:
 - `DesktopTheme` goes in `MaterialApp.builder` and picks the kit for the
   OS (`DesktopKit`), so menus the kits push as routes are themed too.
 - `DesktopColors` and `DesktopMetrics` hold the tokens and sizes above.
-- Controls: `DesktopTextField` (also the secure field), `DesktopComboBox`,
+- Controls: `DesktopTextField` (also the secure field, and a text area;
+  a multi-line field with `onSubmitted` wraps one value, like the recovery
+  key, and Return submits it), `DesktopComboBox`,
   `DesktopPopup`, `DesktopTokenField`, `DesktopButton`, `DesktopSegmented`,
   `DesktopSwitch`, `DesktopCheckbox`, `DesktopIconButton`,
   `DesktopSearchField`, and `DesktopForm` / `DesktopFormRow` for sheet

@@ -249,6 +249,53 @@ void main() {
         expect(field.obscureText, isTrue);
         expect(field.autocorrect, isFalse);
       });
+
+      testWidgets('a wrapping field submits on Return', (tester) async {
+        final submitted = <String>[];
+        await pumpDesktop(
+          tester,
+          kit,
+          SizedBox(
+            width: 240,
+            child: DesktopTextField(
+              mono: true,
+              maxLines: 3,
+              minLines: 3,
+              autocorrect: false,
+              onSubmitted: submitted.add,
+            ),
+          ),
+        );
+        final field = tester.widget<EditableText>(find.byType(EditableText));
+        expect(field.maxLines, 3);
+        expect(field.minLines, 3);
+        expect(field.autocorrect, isFalse);
+        expect(field.enableSuggestions, isFalse);
+        // Plain text with Done: the platform submits on Return instead of
+        // typing a new line.
+        expect(field.keyboardType, TextInputType.text);
+        expect(field.textInputAction, TextInputAction.done);
+
+        await tester.enterText(find.byType(EditableText), 'ABCD-EFGH\nJKMN');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+        expect(submitted, ['ABCD-EFGH\nJKMN']);
+      });
+
+      testWidgets('a text area types a new line on Return', (tester) async {
+        await pumpDesktop(
+          tester,
+          kit,
+          const SizedBox(
+            width: 240,
+            child: DesktopTextField(maxLines: 4, minLines: 2),
+          ),
+        );
+        final field = tester.widget<EditableText>(find.byType(EditableText));
+        expect(field.keyboardType, TextInputType.multiline);
+        expect(field.textInputAction, isNot(TextInputAction.done));
+        expect(field.autocorrect, isTrue);
+      });
     });
   }
 }
