@@ -109,15 +109,18 @@ class _PairScreenState extends ConsumerState<PairScreen> {
   Future<void> _copy() async {
     final payload = _payload;
     if (payload == null) return;
-    await ref.read(clipboardGuardProvider).copySecret(payload);
+    final guard = ref.read(clipboardGuardProvider);
+    // The time this copy is cleared after: the setting, read by the guard.
+    final after = guard.clearAfter;
+    await guard.copySecret(payload);
     if (!mounted) return;
     showAppToast(
       context,
-      const BCToastData(
+      BCToastData(
         title: 'Pairing text copied',
         description:
             'Paste it on the other device. It clears from the clipboard '
-            'in 30 seconds.',
+            'in ${after.inSeconds} seconds.',
         variant: BCToastVariant.success,
       ),
     );

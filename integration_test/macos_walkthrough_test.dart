@@ -40,6 +40,7 @@ import 'package:devvault/data/providers.dart';
 import 'package:devvault/data/sync_controller.dart';
 import 'package:devvault/data/sync_setup.dart';
 import 'package:devvault/data/vault_session.dart';
+import 'package:devvault/features/create_vault/desktop_recovery_kit_view.dart';
 import 'package:devvault/features/create_vault/recovery_kit_card.dart';
 import 'package:devvault/features/expiry/desktop_expiry_table.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
@@ -1517,29 +1518,27 @@ class _Walk {
     );
     await tap(button('Make New Key'));
     await until(
-      () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,
+      () => find.byType(DesktopRecoveryKitPanel).evaluate().isNotEmpty,
       what: 'the new key',
     );
     await settle();
     final key = tester
-        .widget<RecoveryKitCard>(find.byType(RecoveryKitCard))
+        .widget<DesktopRecoveryKitPanel>(find.byType(DesktopRecoveryKitPanel))
         .kit
         .recoveryKey;
     await shot('new-recovery-kit');
-    // KNOWN ISSUE WALK-06 (should fix): the sheet shows the phone's
-    // recovery-kit card (bc_ui pill buttons "Save PDF", "Save as text")
-    // instead of N02's desktop push buttons.
-    knownIssue(
-      'WALK-06',
-      find
-          .descendant(
-            of: find.byType(NewRecoveryKitDialog),
-            matching: find.widgetWithText(DesktopButton, 'Save PDF…'),
-          )
-          .evaluate()
-          .isNotEmpty,
-      'Settings › New Kit… shows the key with the desktop (N02) buttons',
-    );
+    // WALK-06 (fixed): the key with N02's desktop push buttons, not the
+    // phone's recovery-kit card.
+    expect(find.byType(RecoveryKitCard), findsNothing);
+    for (final label in ['Save PDF…', 'Print…', 'Save as Text…', 'Copy']) {
+      expect(
+        find.descendant(
+          of: find.byType(NewRecoveryKitDialog),
+          matching: find.widgetWithText(DesktopButton, label),
+        ),
+        findsOneWidget,
+      );
+    }
 
     // Copy goes through the guard; the toast should say when it clears.
     await tap(
@@ -1556,16 +1555,10 @@ class _Walk {
     expectNoSecretInToasts([key]);
     await shot('new-recovery-kit-copied');
     final after = container.read(settingsProvider).clipboardClearAfter;
-    // KNOWN ISSUE WALK-01 (should fix): the toast says "30 seconds"
-    // whatever the setting (recovery_kit_card.dart), here 10.
-    knownIssue(
-      'WALK-01',
-      find
-          .text('It clears from the clipboard in ${after.inSeconds} seconds.')
-          .evaluate()
-          .isNotEmpty,
-      'the recovery-key copy toast says the clipboard clears in '
-          '${after.inSeconds} seconds (the setting), not a fixed 30',
+    // WALK-01 (fixed): the toast says the setting's time, here 10 s.
+    expect(
+      find.text('It clears from the clipboard in ${after.inSeconds} seconds.'),
+      findsOneWidget,
     );
     await container.read(clipboardGuardProvider).clearNow();
     expect(await clipboard(), anyOf(isNull, isEmpty));
@@ -1596,12 +1589,13 @@ class _Walk {
     );
     await tap(button('Rotate Key'));
     await until(
-      () => find.byType(RecoveryKitCard).evaluate().isNotEmpty,
+      () => find.byType(DesktopRecoveryKitPanel).evaluate().isNotEmpty,
       within: const Duration(seconds: 60),
       what: 'the rotation',
     );
     await settle();
     expect(find.text('Your new recovery key'), findsOneWidget);
+    expect(find.byType(RecoveryKitCard), findsNothing);
     await shot('rotate-key-done');
     await tapText("I've saved the new key");
     await tap(
