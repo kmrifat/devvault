@@ -94,10 +94,51 @@ extension ExpiryCounts on VaultIndex {
       byExpiry.where((i) => ExpiryState.of(i, now) == state).length;
 }
 
-/// "1 day", "12 days": whole days left, rounded up. Days are 24-hour
+/// Whole days left until [expiresAt], rounded up: anything within the
+/// next 24 hours is 1 day, 11 days and 2 hours is 12. Days are 24-hour
 /// spans counted from [now], so a daylight-saving change in between
-/// doesn't move the count.
-String daysLeft(DateTime expiresAt, DateTime now) {
-  final days = (expiresAt.difference(now).inMinutes / (24 * 60)).ceil();
-  return days == 1 ? '1 day' : '$days days';
+/// doesn't move the count. For an expiry ahead of [now] only.
+int daysUntil(DateTime expiresAt, DateTime now) =>
+    (expiresAt.difference(now).inMicroseconds / Duration.microsecondsPerDay)
+        .ceil();
+
+/// Whole days since [expiresAt]: calendar days from the local date it
+/// expired on to [now]'s local date. Something that expired on Oct 6 is
+/// 3 days ago all through Oct 9, whatever the time of either, and 0
+/// (today) on Oct 6 itself. The local date is the one the app shows next
+/// to it. For an expiry at or before [now] only.
+int daysSince(DateTime expiresAt, DateTime now) =>
+    calendarDaysBetween(expiresAt.toLocal(), now.toLocal());
+
+/// Calendar days from [from]'s date to [to]'s date, read from their
+/// wall-clock fields as given (convert to the zone that counts first).
+/// Daylight saving doesn't come into it: only the dates do.
+int calendarDaysBetween(DateTime from, DateTime to) => DateTime.utc(
+  to.year,
+  to.month,
+  to.day,
+).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
+
+/// "1 day", "12 days": [daysUntil] in words, for the "days left" badges.
+String daysLeft(DateTime expiresAt, DateTime now) =>
+    _days(daysUntil(expiresAt, now));
+
+/// "12 days", "5 months", "2 years": how long until [expiresAt], counted
+/// as [daysUntil] and said in coarser units once it is 60 days or more.
+String timeLeft(DateTime expiresAt, DateTime now) =>
+    _span(daysUntil(expiresAt, now));
+
+/// "today", "1 day ago", "3 days ago", "5 months ago": how long since
+/// [expiresAt], counted as [daysSince].
+String timeAgo(DateTime expiresAt, DateTime now) {
+  final days = daysSince(expiresAt, now);
+  return days == 0 ? 'today' : '${_span(days)} ago';
 }
+
+String _span(int days) => switch (days) {
+  >= 730 => '${days ~/ 365} years',
+  >= 60 => '${days ~/ 30} months',
+  _ => _days(days),
+};
+
+String _days(int days) => days == 1 ? '1 day' : '$days days';

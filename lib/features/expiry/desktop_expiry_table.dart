@@ -38,22 +38,11 @@ class DesktopExpiryTable extends StatelessWidget {
   final VoidCallback onShowAll;
   final VoidCallback onShowNoExpiry;
 
-  /// Time left as the Left column says it: "12 days", "5 months",
-  /// "today", or "3 days ago" once it has passed.
-  static String left(DateTime expiresAt, DateTime now) {
-    final past = !expiresAt.isAfter(now);
-    final span = past ? now.difference(expiresAt) : expiresAt.difference(now);
-    final days = (span.inMinutes / (24 * 60)).ceil();
-    final text = switch (days) {
-      >= 730 => '${days ~/ 365} years',
-      >= 60 => '${days ~/ 30} months',
-      1 => '1 day',
-      0 => 'today',
-      _ => '$days days',
-    };
-    if (days == 0) return text;
-    return past ? '$text ago' : text;
-  }
+  /// Time left as the Left column says it: "12 days", "5 months", or
+  /// "today", "3 days ago" once it has passed (see [timeLeft], [timeAgo]).
+  static String left(DateTime expiresAt, DateTime now) => expiresAt.isAfter(now)
+      ? timeLeft(expiresAt, now)
+      : timeAgo(expiresAt, now);
 
   /// The window's status bar under this table: "6 dated · 36 without a
   /// date", or "1 expired" when [onlyExpired].

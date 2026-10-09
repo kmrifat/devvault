@@ -10,6 +10,7 @@ import '../../data/vault_session.dart';
 import '../../services/recovery_kit.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart';
+import '../create_vault/desktop_recovery_kit_view.dart';
 import '../create_vault/recovery_kit_card.dart';
 
 /// What the dialog does with the master password.
@@ -27,9 +28,9 @@ enum RecoveryKeyAction {
 /// was never stored), so this issues a new one and the old one stops
 /// working.
 ///
-/// The master password is asked for first. The new key is shown once, in
-/// the same card as on first run (PDF, print, text, copy), and wiped from
-/// memory when the dialog closes.
+/// The master password is asked for first. The new key is shown once, as
+/// on first run (PDF, print, text, copy): N02's panel on desktop, the
+/// phone's card on phones. It's wiped from memory when the dialog closes.
 Future<void> showNewRecoveryKitDialog(BuildContext context) =>
     _show(context, const NewRecoveryKitDialog());
 
@@ -305,7 +306,11 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
         onPressed: _saved ? () => Navigator.of(context).pop() : null,
       ),
     ],
-    child: RecoveryKitCard(kit: _kit(keyText)),
+    // The sheet scrolls its content when it doesn't fit.
+    child: DesktopRecoveryKitPanel(
+      kit: _kit(keyText),
+      buttonSize: DesktopButtonSize.regular,
+    ),
   );
 
   Widget _ask(BuildContext context) {

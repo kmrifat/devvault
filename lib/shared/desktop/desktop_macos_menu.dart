@@ -39,12 +39,14 @@ abstract final class MacosMenuStyle {
     required VoidCallback onPressed,
     bool? checked,
     bool destructive = false,
+    FocusNode? focusNode,
   }) {
     final colors = context.desktopColors;
     bool lit(Set<WidgetState> s) =>
         s.contains(WidgetState.hovered) || s.contains(WidgetState.focused);
     return MenuItemButton(
       onPressed: onPressed,
+      focusNode: focusNode,
       leadingIcon: checked == null
           ? null
           : SizedBox(

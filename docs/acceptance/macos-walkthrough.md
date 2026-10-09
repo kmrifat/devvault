@@ -35,35 +35,35 @@ They aren't committed. The names below are from that folder.
 ## Result
 
 **All 22 steps pass. They found 6 product problems** ([findings](#findings)).
-WALK-04 has been fixed since. The test checks each open one with
-`knownIssue(...)`, which logs and lists the problem instead of failing. It
-also reports when a problem no longer reproduces; a fixed one becomes a
-normal expectation. No Flutter errors (overflows, exceptions) were reported during
-the walk.
+The test checks each one with `knownIssue(...)`, which logs and lists the
+problem instead of failing. It also reports when a problem no longer
+reproduces. No Flutter errors (overflows, exceptions) were reported during
+the walk. Once a problem is fixed, its check becomes a normal expectation
+and the finding is marked **Fixed**.
 
 | # | Flow | Result | Notes |
 |---|---|---|---|
 | 1 | Create a vault (N01): a short password and a mismatched confirmation are refused; the strength meter shows; Argon2id runs | Pass | |
 | 1b | Recovery kit (N02): Open Vault waits for the checkbox; Save as Text… saves the key and the vault id; the toast has no secret | Pass | |
 | 2 | Vault › Lock (⌘L); a wrong password says "That password didn't open this vault" and clears the field; the right one unlocks | Pass | |
-| 3 | Import every type (D04 / N04), alternating the toolbar's Import and File › Import… (⌘I): `.p8` (Team ID asked), `.p12` (password), `.mobileprovision`, `.jks` (store password), `google-services.json`, `GoogleService-Info.plist`, service account, OAuth client, SSH key, an unknown file (generic), and the same file twice (Open existing) | Pass | Every fact the parser reads is on the sheet. The expiry comes from the file, or the sheet says there's none. Each item lands in the table, selected. WALK-04 (fixed), WALK-05 |
+| 3 | Import every type (D04 / N04), alternating the toolbar's Import and File › Import… (⌘I): `.p8` (Team ID asked), `.p12` (password), `.mobileprovision`, `.jks` (store password), `google-services.json`, `GoogleService-Info.plist`, service account, OAuth client, SSH key, an unknown file (generic), and the same file twice (Open existing) | Pass | Every fact the parser reads is on the sheet. The expiry comes from the file, or the sheet says there's none. Each item lands in the table, selected. WALK-04, WALK-05 (both fixed) |
 | 3b | File › New Item (⌘N): two Generic Secrets with your own expiry (in 10 days, 3 days ago) | Pass | Covers Generic Secret: on desktop, Import has no "Paste a secret" (that's the phone's B4b) |
 | 4 | Inspector: fields, "From file", reveal and hide a secret, the status bar's history, Save As… writes the file back byte for byte | Pass | |
 | 4b | Clipboard guard: Settings › Security › Clear copied secrets after 10 seconds; Copy Value puts it on the real clipboard; the toast says 10 seconds and has no secret; cleared after ~9.5–9.7 s; something copied since is left alone | Pass | |
 | 5 | Search (Edit › Find, ⌘F): by title, key ID (`TESTKEY123`) and file name (`google-services.json`); a secret's value finds nothing | Pass | |
 | 5b | Quick open (View › Quick Open, ⌘K): recent items, then by key ID, file name and title; Return opens; Escape closes; secrets aren't found | Pass | |
-| 6 | Expiry (Vault › Expiry, N06): Expired · 1, Within 30 days · 1, Later · 3; "Set by you" / "From file"; status bar "5 dated · 7 without a date", "Reminders on"; sidebar Expired and Expiring lists; a row opens its item | Pass | WALK-03 |
+| 6 | Expiry (Vault › Expiry, N06): Expired · 1, Within 30 days · 1, Later · 3; "Set by you" / "From file"; status bar "5 dated · 7 without a date", "Reminders on"; sidebar Expired and Expiring lists; a row opens its item | Pass | WALK-03 (fixed) |
 | 7a | Settings › General › Expiry reminders: reminders were scheduled for the dated items at 09:00, with no secret in them; turning it off withdraws them and the status bar says "Reminders off" | Pass | Against a fake notification centre (8 scheduled) |
 | 7b | Settings › Security › Lock after 1 minute: the sidebar footer says 1m; a minute without input locks the vault and leaves the clipboard empty; the password unlocks | Pass | Idle time moved on the clock, not waited out |
 | 7c | Change… master password: a wrong current password is refused; the change says so with no secret in the toast; the old password no longer opens it, the new one does | Pass | |
-| 7d | New Kit…: Show in Finder, the vault id, a new key after the password; Copy | Pass | WALK-01, WALK-06 |
+| 7d | New Kit…: Show in Finder, the vault id, a new key after the password; Copy | Pass | WALK-01, WALK-06 (both fixed) |
 | 7e | Rotate… with the master password: a new key, the same items; lock, unlock with the password, every file still opens | Pass | |
 | 7f | Settings › Sync with a local folder in place of the bucket: Test Connection, Turn On Sync, a first sync (23 objects), Vault › Sync Now (⌘R); keys only in the keychain, not in settings.json | Pass | |
 | 7g | Pair a device (N08): QR and code, "Works for 10:00"; Done | Pass | No device paired |
 | 7h | Settings › AI Agents: setup command, no clients; turning agents on opens the socket, turning them off closes it | Pass | |
 | 8a | Explorer: Apps › New organization…; the organization's New app… fills in the organization | Pass | |
 | 8b | Drag an item from the table onto an app with the mouse; the toast's Undo puts it back; drag again | Pass | |
-| 8c | Explorer keyboard: click, →, Return, ←, F2 (Edit app), Shift-F10, Home, type-to-jump; the table row's context menu | Pass | WALK-02 |
+| 8c | Explorer keyboard: click, →, Return, ←, F2 (Edit app), Shift-F10, Home, type-to-jump; the table row's context menu | Pass | WALK-02 (fixed) |
 | 9 | Lock from the toolbar | Pass | |
 
 ## Findings
@@ -71,7 +71,11 @@ the walk.
 Each needs a card. Severity is **blocker**, **should fix** or **nice to
 have**. None is a blocker.
 
-### WALK-01 · The recovery-key copy toast always says "30 seconds" (should fix)
+### WALK-01 · The recovery-key copy toast always says "30 seconds" (should fix) · fixed
+
+- **Fixed** in #147: `copyKit` reads the time from the clipboard guard,
+  which follows the setting, on desktop and phones. The walk now expects
+  it.
 
 - **Steps:** Settings › Security › Clear copied secrets after 10 seconds.
   Then New Kit…, enter the password, Make New Key, then Copy.
@@ -83,7 +87,14 @@ have**. None is a blocker.
   copy toast reads the setting.
 - **Screenshot:** `49-new-recovery-kit-copied.png`
 
-### WALK-02 · The keyboard can't work a context menu (should fix)
+### WALK-02 · The keyboard can't work a context menu (should fix) · fixed
+
+**Fixed:** a context menu now takes the keyboard when it opens, on every
+kit. From Shift-F10 or the menu key its first command is highlighted;
+after a right click nothing is, until ↓ or ↑. ↑/↓ move, Return or Space
+runs the command, and Escape closes the menu and gives the keyboard back
+to the explorer, with the cursor where it was. The macOS ⋯ pull-down
+button's menu works the same way. The walkthrough now expects this.
 
 - **Steps:** In the explorer, click an app row and press Shift-F10. Then
   press Escape, or ↓ then Return. Or right-click a row in the table and
@@ -99,7 +110,7 @@ have**. None is a blocker.
 - **Screenshots:** `68-explorer-shift-f10-menu.png`,
   `69-explorer-menu-after-escape.png`
 
-### WALK-03 · "4 days ago" for something that expired 3 days ago (nice to have)
+### WALK-03 · "4 days ago" for something that expired 3 days ago (nice to have, fixed)
 
 - **Steps:** Make an item with your own expiry 3 days back
   (2026-10-06, on 2026-10-09), then open Vault › Expiry.
@@ -109,6 +120,12 @@ have**. None is a blocker.
   for "days left", but it overstates "days ago". The item in 10 days
   reads "10 days" as it should.
 - **Screenshot:** `39-expiry-sidebar-expired.png`
+- **Fixed:** the time since an expiry is now whole calendar days between
+  the local dates (`daysSince` in `lib/core/expiry.dart`), so it reads
+  "3 days ago" all through Oct 9 and "today" on the day itself. The time
+  left still rounds 24-hour spans up. The dashboard, the phone's expiry
+  list, the inspector and the detail card all use the same helpers. The
+  walkthrough now expects "3 days ago".
 
 ### WALK-04 · The import sheet hides the expiry below the fold (should fix) · Fixed
 
@@ -131,7 +148,7 @@ have**. None is a blocker.
   covers 1280 × 800 and 1280 × 600, and the golden `N04-import-p12-light`
   shows the sheet.
 
-### WALK-05 · The toast covers the inspector's buttons after an import (should fix)
+### WALK-05 · The toast covers the inspector's buttons after an import (should fix, **Fixed**)
 
 - **Steps:** Import any file and look at the inspector right away.
 - **Expected:** Export, Edit and ⋯ can be clicked.
@@ -141,8 +158,17 @@ have**. None is a blocker.
   This happened on 8 of 9 imports.
 - **Screenshot:** `10-import-legacy-p12.png` (the toast over the header
   behind the sheet), `14-import-google-services-json.png`
+- **Fixed:** the macOS banner now sits at the bottom right, 12 pt above
+  the status bar and 12 pt from the right edge, clear of the toolbar and
+  the inspector's header. The Linux snackbar sits above the status bar
+  too, and Fluent's `InfoBar` ends at its top edge. The walk now expects
+  Edit to be clickable right after each import.
 
-### WALK-06 · New Kit and Rotate show the phone's recovery-key card (should fix)
+### WALK-06 · New Kit and Rotate show the phone's recovery-key card (should fix) · fixed
+
+- **Fixed** in #147: on desktop, the New Kit and Rotate sheets show
+  N02's key box and push buttons (`DesktopRecoveryKitPanel`, shared with
+  the create flow). Phones keep the card. The walk now expects it.
 
 - **Steps:** Settings › Security › New Kit… (or Rotate…), then enter the
   password.
