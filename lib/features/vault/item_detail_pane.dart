@@ -242,13 +242,6 @@ class _ExpiryCard extends StatelessWidget {
   final Item item;
   final DateTime now;
 
-  static String _span(Duration d) {
-    final days = d.inDays.abs();
-    if (days >= 730) return '${days ~/ 365} years';
-    if (days >= 60) return '${days ~/ 30} months';
-    return days == 1 ? '1 day' : '$days days';
-  }
-
   @override
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
@@ -268,7 +261,7 @@ class _ExpiryCard extends StatelessWidget {
         LucideIcons.calendarCheck2,
         bc.success,
         'Valid until $date',
-        '${_span(expiresAt!.difference(now))} left',
+        '${timeLeft(expiresAt!, now)} left',
       ),
       ExpiryState.soon => (
         LucideIcons.calendarClock,
@@ -280,7 +273,7 @@ class _ExpiryCard extends StatelessWidget {
         LucideIcons.calendarX2,
         bc.danger,
         'Expired $date',
-        '${_span(now.difference(expiresAt!))} ago',
+        timeAgo(expiresAt!, now),
       ),
     };
     final explanation = switch (item.expiresSource) {

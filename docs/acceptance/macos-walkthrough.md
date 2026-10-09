@@ -51,7 +51,7 @@ the walk.
 | 4b | Clipboard guard: Settings › Security › Clear copied secrets after 10 seconds; Copy Value puts it on the real clipboard; the toast says 10 seconds and has no secret; cleared after ~9.5–9.7 s; something copied since is left alone | Pass | |
 | 5 | Search (Edit › Find, ⌘F): by title, key ID (`TESTKEY123`) and file name (`google-services.json`); a secret's value finds nothing | Pass | |
 | 5b | Quick open (View › Quick Open, ⌘K): recent items, then by key ID, file name and title; Return opens; Escape closes; secrets aren't found | Pass | |
-| 6 | Expiry (Vault › Expiry, N06): Expired · 1, Within 30 days · 1, Later · 3; "Set by you" / "From file"; status bar "5 dated · 7 without a date", "Reminders on"; sidebar Expired and Expiring lists; a row opens its item | Pass | WALK-03 |
+| 6 | Expiry (Vault › Expiry, N06): Expired · 1, Within 30 days · 1, Later · 3; "Set by you" / "From file"; status bar "5 dated · 7 without a date", "Reminders on"; sidebar Expired and Expiring lists; a row opens its item | Pass | WALK-03 (fixed) |
 | 7a | Settings › General › Expiry reminders: reminders were scheduled for the dated items at 09:00, with no secret in them; turning it off withdraws them and the status bar says "Reminders off" | Pass | Against a fake notification centre (8 scheduled) |
 | 7b | Settings › Security › Lock after 1 minute: the sidebar footer says 1m; a minute without input locks the vault and leaves the clipboard empty; the password unlocks | Pass | Idle time moved on the clock, not waited out |
 | 7c | Change… master password: a wrong current password is refused; the change says so with no secret in the toast; the old password no longer opens it, the new one does | Pass | |
@@ -98,7 +98,7 @@ have**. None is a blocker.
 - **Screenshots:** `68-explorer-shift-f10-menu.png`,
   `69-explorer-menu-after-escape.png`
 
-### WALK-03 · "4 days ago" for something that expired 3 days ago (nice to have)
+### WALK-03 · "4 days ago" for something that expired 3 days ago (nice to have, fixed)
 
 - **Steps:** Make an item with your own expiry 3 days back
   (2026-10-06, on 2026-10-09), then open Vault › Expiry.
@@ -108,6 +108,12 @@ have**. None is a blocker.
   for "days left", but it overstates "days ago". The item in 10 days
   reads "10 days" as it should.
 - **Screenshot:** `39-expiry-sidebar-expired.png`
+- **Fixed:** the time since an expiry is now whole calendar days between
+  the local dates (`daysSince` in `lib/core/expiry.dart`), so it reads
+  "3 days ago" all through Oct 9 and "today" on the day itself. The time
+  left still rounds 24-hour spans up. The dashboard, the phone's expiry
+  list, the inspector and the detail card all use the same helpers. The
+  walkthrough now expects "3 days ago".
 
 ### WALK-04 · The import sheet hides the expiry below the fold (should fix)
 

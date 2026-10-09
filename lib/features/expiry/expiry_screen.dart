@@ -259,21 +259,12 @@ class _ExpiryRow extends StatelessWidget {
   final DateTime now;
   final VoidCallback onTap;
 
-  /// "in 12 days", "3 days ago", "in 2 years".
-  static String relative(DateTime expiresAt, DateTime now) {
-    final past = !expiresAt.isAfter(now);
-    final span = past ? now.difference(expiresAt) : expiresAt.difference(now);
-    final days = (span.inMinutes / (24 * 60)).ceil();
-    final text = switch (days) {
-      >= 730 => '${days ~/ 365} years',
-      >= 60 => '${days ~/ 30} months',
-      1 => '1 day',
-      0 => 'today',
-      _ => '$days days',
-    };
-    if (days == 0) return text;
-    return past ? '$text ago' : 'in $text';
-  }
+  /// "in 12 days", "today", "3 days ago", "in 2 years" (see [timeLeft],
+  /// [timeAgo]).
+  static String relative(DateTime expiresAt, DateTime now) =>
+      expiresAt.isAfter(now)
+      ? 'in ${timeLeft(expiresAt, now)}'
+      : timeAgo(expiresAt, now);
 
   @override
   Widget build(BuildContext context) {
