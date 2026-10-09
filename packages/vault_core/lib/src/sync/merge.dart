@@ -242,6 +242,7 @@ AppRecord mergeApps({
       local.identifiers,
       remote.identifiers,
     ),
+    notes: pick(base?.notes, local.notes, remote.notes),
     iconBlobId: pick(base?.iconBlobId, local.iconBlobId, remote.iconBlobId),
     createdAt: local.createdAt.isBefore(remote.createdAt)
         ? local.createdAt

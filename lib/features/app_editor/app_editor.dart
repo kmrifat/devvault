@@ -23,6 +23,7 @@ import '../../shared/desktop_ui.dart'
 import '../../shared/ui.dart';
 import '../import/place_fields.dart'
     show NoteTone, SheetNote, SheetNotice, isNarrowSheet;
+import '../notes/notes.dart' show DesktopNotesEditor, PhoneNotesField;
 import 'app_draft.dart';
 
 /// Opens the app form: [app] to edit it, or null for a new app, which
@@ -84,8 +85,9 @@ String _hintFor(IdentifierKind? kind) => switch (kind) {
 };
 
 /// The app form: its name, the organization it's for, what kind of app it
-/// is, and its identifiers (bundle IDs, package names, domains, URLs,
-/// repositories …), which tie items to it and are searchable. Nothing is
+/// is, its identifiers (bundle IDs, package names, domains, URLs,
+/// repositories …), which tie items to it and are searchable, and notes in
+/// Markdown, which aren't. Nothing is
 /// filled in for the user: organization and kind start empty, and a new
 /// identifier has no kind until one is picked.
 class AppEditor extends ConsumerStatefulWidget {
@@ -101,6 +103,7 @@ class _AppEditorState extends ConsumerState<AppEditor> {
   late final AppDraft _draft = widget.draft;
   late final _name = TextEditingController(text: _draft.name);
   late final _organization = TextEditingController(text: _draft.organization);
+  late final _notes = TextEditingController(text: _draft.notes);
   Map<String, String> _errors = const {};
   bool _saving = false;
   String? _saveError;
@@ -118,6 +121,7 @@ class _AppEditorState extends ConsumerState<AppEditor> {
   void dispose() {
     _name.dispose();
     _organization.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -128,7 +132,9 @@ class _AppEditorState extends ConsumerState<AppEditor> {
   }
 
   Future<void> _save() async {
-    _draft.name = _name.text;
+    _draft
+      ..name = _name.text
+      ..notes = _notes.text;
     final session = ref.read(vaultSessionProvider);
     final others = session is Unlocked
         ? session.index.apps.values
@@ -282,6 +288,12 @@ class _AppEditorState extends ConsumerState<AppEditor> {
             color: BCTextColor.muted,
           ),
         ),
+        const SizedBox(height: BCSpacing.lg),
+        const _Label('Notes'),
+        PhoneNotesField(
+          controller: _notes,
+          fieldKey: const ValueKey('app-notes'),
+        ),
         if (_saveError case final error?) ...[
           const SizedBox(height: BCSpacing.md),
           BCText(
@@ -402,6 +414,18 @@ class _AppEditorState extends ConsumerState<AppEditor> {
               onAdd: _addIdentifier,
               onRemove: _removeIdentifier,
               onChanged: () => setState(() {}),
+            ),
+            DesktopForm(
+              labelWidth: _labelWidth,
+              children: [
+                DesktopFormRow(
+                  label: 'Notes',
+                  child: DesktopNotesEditor(
+                    controller: _notes,
+                    fieldKey: const ValueKey('app-notes'),
+                  ),
+                ),
+              ],
             ),
             if (_saveError case final error?)
               SheetNotice(

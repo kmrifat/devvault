@@ -268,6 +268,30 @@ void main() {
       // The remote side removed the domain; the local side added the repo.
       expect(merged.identifiers, [repo, url]);
     });
+
+    test('notes: the changed side wins; on a clash the local note stays', () {
+      final base = app(a, 'Kitchenly', []).copyWith(notes: 'Base');
+      final remote = base.copyWith(
+        notes: '**Remote**',
+        rev: b.tick(),
+        deviceId: b.id,
+      );
+      final renamed = base.copyWith(name: 'Kitchenly Pro', rev: a.tick());
+      final merged = mergeApps(base: base, local: renamed, remote: remote);
+      expect(merged.name, 'Kitchenly Pro');
+      expect(merged.notes, '**Remote**');
+
+      final local = base.copyWith(notes: '_Local_', rev: a.tick());
+      final clash = mergeApps(base: base, local: local, remote: remote);
+      expect(clash.notes, '_Local_');
+
+      final cleared = base.copyWith(notes: '', rev: a.tick());
+      final unchanged = base.copyWith(name: 'K', rev: b.tick(), deviceId: b.id);
+      expect(
+        mergeApps(base: base, local: cleared, remote: unchanged).notes,
+        isNull,
+      );
+    });
   });
 
   group('property: no secret is ever dropped', () {

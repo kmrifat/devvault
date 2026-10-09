@@ -33,6 +33,7 @@ class AppDraft {
     required this.organization,
     required this.kindName,
     required this.identifiers,
+    required this.notes,
     this.base,
   });
 
@@ -43,6 +44,7 @@ class AppDraft {
     organization: organization ?? '',
     kindName: null,
     identifiers: [],
+    notes: '',
   );
 
   factory AppDraft.edit(AppRecord app) => AppDraft._(
@@ -51,6 +53,7 @@ class AppDraft {
     organization: app.organization ?? '',
     kindName: app.kindName,
     identifiers: [for (final id in app.allIdentifiers) DraftIdentifier.of(id)],
+    notes: app.notes ?? '',
   );
 
   /// The app being edited; null when creating one.
@@ -66,6 +69,10 @@ class AppDraft {
 
   /// In the order the form shows them.
   final List<DraftIdentifier> identifiers;
+
+  /// Markdown text, as typed; empty means none. Never validated: a note
+  /// can say anything.
+  String notes;
 
   bool get isNew => base == null;
 
@@ -116,6 +123,7 @@ class AppDraft {
       // An empty string clears them.
       organization: organization,
       kindName: kindName ?? '',
+      notes: notes,
       identifiers: [
         for (final id in identifiers)
           if (id.kindName case final kind?)

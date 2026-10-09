@@ -43,7 +43,8 @@
       "package_names": [
         "com.kitchenly.app"
       ],
-      "identifiers": []
+      "identifiers": [],
+      "notes": null
     },
     "822bb816-4c48-4776-a88a-fccaa58ca5a1": {
       "name": "Billing API",
@@ -62,7 +63,8 @@
           "kind": "repository",
           "value": "github.com/acme/billing-api"
         }
-      ]
+      ],
+      "notes": "## Billing API\n\nRotate the **Stripe** keys every *90 days*:\n\n1. Create the new key in the dashboard.\n2. Run `make rotate-keys`.\n\n```sh\nmake deploy ENV=production\n```\n\nRunbook: [wiki](https://wiki.acme.example/billing)"
     }
   },
   "tombstones": [

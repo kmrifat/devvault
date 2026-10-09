@@ -319,6 +319,7 @@ Records are UTF-8 JSON objects. Common rules:
 | `fields` | Map of field key → `{value, source, secret?}`. `source` is `"file"` (parsed from an attachment) or `"user"` (typed in). `secret: true` marks values that are masked, never indexed for search and copied only through the clipboard guard. |
 | `attachments[].sha256` | Lowercase hex SHA-256 of the **plaintext** file. Export MUST verify it. |
 | `expires_at` / `expires_source` | Both present or both absent. `expires_source` is `"file"` or `"user"`, never anything else. **There is no inferred expiry.** |
+| `notes` | Optional string: the user's note, as Markdown (CommonMark) text. Clients MAY render it (§6.6); plain text is valid Markdown, so notes written before clients rendered them stay valid and are stored unchanged. Not secret, but never indexed for search. |
 | `conflict` | `null`, or what a sync conflict kept until the user resolves it (ADR-0004): `{"versions": [<item record>…], "deletions": [{"rev", "device_id", "deleted_at"}…]}`. `versions` are the losing item records (each without its own `conflict`), sorted by `rev`, unique by `rev`; `deletions` are deletes that lost to an edit, sorted by `rev`. Conflicts accumulate across merges and are cleared only by an explicit choice. |
 
 ### 6.2 App
@@ -336,6 +337,7 @@ with `app_id`.
     { "kind": "domain", "value": "api.acme.com" },
     { "kind": "repository", "value": "github.com/acme/billing-api" }
   ],
+  "notes": "Rotate the **Stripe** keys every 90 days.",
   "icon_blob_id": null,
   "created_at": "…", "updated_at": "…", "rev": "…", "device_id": "…" }
 ```
@@ -348,12 +350,14 @@ with `app_id`.
 | `bundle_ids` | List of strings: Apple bundle IDs. Always written, `[]` when empty. |
 | `package_names` | List of strings: Android package names. Always written, `[]` when empty. |
 | `identifiers` | Optional list of `{"kind": string, "value": string}`: every other identifier. Kinds: `domain`, `url`, `repository`, `other`. An entry of a kind a reader doesn't know MUST be kept, in place, with any extra fields it has. |
+| `notes` | Optional string: the user's note about the app, as Markdown (CommonMark) text, rendered like an item's `notes` (§6.6). Not secret, but never indexed for search. |
 | `icon_blob_id` | Optional blob id. |
 
-`organization`, `kind` and `identifiers` were added within schema 1: they
-are optional, so a record without them is valid and means "not set", and
-readers that predate them keep them as unknown fields (§6). Readers MUST
-treat a missing field, `null` and (for `identifiers`) `[]` the same.
+`organization`, `kind`, `identifiers` and `notes` were added within schema
+1: they are optional, so a record without them is valid and means "not
+set", and readers that predate them keep them as unknown fields (§6).
+Readers MUST treat a missing field, `null`, `""` (for `notes`, also white
+space only) and (for `identifiers`) `[]` the same.
 
 **Identifiers.** Taken together, an app's identifiers are one list of
 (kind, value) pairs, where `bundle_ids` holds the kind `bundle_id` and
@@ -365,8 +369,10 @@ them is secret.
 **Writer rules.** A writer normalizes every app record it writes. The same
 rules applied by a reader give what the writer would store.
 
-1. `organization` and `kind` are trimmed (Unicode white space at both
-   ends). If the result is empty, or the field is `null`, it is left out.
+1. `organization`, `kind` and `notes` are trimmed (Unicode white space at
+   both ends). If the result is empty, or the field is `null`, it is left
+   out. Inside `notes`, nothing else changes: line breaks and Markdown are
+   kept as typed.
 2. Each identifier's `kind` and `value` are trimmed. An entry whose kind or
    value is then empty is dropped.
 3. Bundle IDs and package names MUST be written in `bundle_ids` /
@@ -388,13 +394,13 @@ type (for example an `identifiers` entry without a string `value`) makes
 the record unreadable, like any other malformed record (§10).
 
 **Older clients.** A client that predates these fields reads `bundle_ids`
-and `package_names` as before, and keeps `organization`, `kind` and
-`identifiers` unchanged when it rewrites the record (§6). It cannot merge
+and `package_names` as before, and keeps `organization`, `kind`,
+`identifiers` and `notes` unchanged when it rewrites the record (§6). It cannot merge
 them field by field: when it merges a concurrent edit (ADR-0004), its local
 copy of those fields wins as a whole.
 
-**Merging.** `name`, `organization`, `kind` and `icon_blob_id` merge like
-item fields: the side that changed since the base wins, and on a clash the
+**Merging.** `name`, `organization`, `kind`, `notes` and `icon_blob_id`
+merge like item fields: the side that changed since the base wins, and on a clash the
 local value stays (apps have no conflict slot). `bundle_ids`,
 `package_names` and `identifiers` merge as sets per kind: everything either
 side added, minus what either side removed since the base.
@@ -429,6 +435,25 @@ Blobs are left for garbage collection.
 | `ssh_key` | OpenSSH private key (`id_ed25519`, `id_rsa` …) | none (OpenSSH keys don't expire) |
 | `generic_file` | anything | user only |
 | `generic_secret` | none (typed in) | user only |
+
+### 6.6 Notes
+
+An item's `notes` (§6.1) and an app's `notes` (§6.2) are Markdown text
+(CommonMark). The stored string is what the user typed; the format doesn't
+change it beyond the trimming §6.2 asks of apps. A client MAY show notes as
+plain text or render them. A client that renders them MUST NOT let a note
+reach outside the device or run anything:
+
+- **No remote fetches.** Images are never loaded, from the network or from
+  disk: a client shows their alt text (or the URL) instead.
+- **No HTML.** Raw HTML, inline or as a block, is shown as the text it is,
+  never interpreted.
+- **Links don't open on their own.** A link is shown with its URL, and is
+  followed only after a separate, explicit action of the user (in DevVault:
+  a confirmation, then the system's browser).
+
+Notes are not secret, but they can hold anything the user typed: they are
+never indexed for search, logged or sent to analytics.
 
 ---
 
@@ -569,4 +594,4 @@ The test vectors in `docs/format/vectors/` (P0-14) cover every step above,
 plus a complete `mini-vault/` that a conforming reader can unlock with the
 password `correct horse battery staple`. Its `mini-vault.json` lists each
 app record's fields (`app_records`), including an app with an
-organization, a kind and identifiers.
+organization, a kind, identifiers and Markdown notes.

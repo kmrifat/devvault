@@ -12,6 +12,7 @@ export 'desktop/desktop_button.dart';
 export 'desktop/desktop_colors.dart';
 export 'desktop/desktop_combo_box.dart';
 export 'desktop/desktop_context_menu.dart';
+export 'desktop/desktop_date_field.dart';
 export 'desktop/desktop_form.dart';
 export 'desktop/desktop_icon_button.dart';
 export 'desktop/desktop_link.dart';

@@ -392,10 +392,12 @@ class AppRecord implements SyncedRecord {
     List<String> bundleIds = const [],
     List<String> packageNames = const [],
     List<AppIdentifier> identifiers = const [],
+    String? notes,
     this.iconBlobId,
     this.schema = recordSchema,
     Map<String, Object?> unknownFields = const {},
   }) : organization = _trimmed(organization),
+       notes = _trimmed(notes),
        kindName = _trimmed(kindName),
        bundleIds = _legacy(bundleIds, identifiers, IdentifierKind.bundleId),
        packageNames = _legacy(
@@ -431,6 +433,10 @@ class AppRecord implements SyncedRecord {
   /// Every other identifier (`identifiers`): domains, URLs, repositories …
   /// Never holds a bundle ID or package name.
   final List<AppIdentifier> identifiers;
+
+  /// The user's note about the app, as Markdown (CommonMark) text. Null
+  /// when not set. Not secret, but never indexed for search or logged.
+  final String? notes;
 
   final String? iconBlobId;
   final DateTime createdAt;
@@ -509,6 +515,7 @@ class AppRecord implements SyncedRecord {
     'bundle_ids',
     'package_names',
     'identifiers',
+    'notes',
     'icon_blob_id',
     'created_at',
     'updated_at',
@@ -530,6 +537,7 @@ class AppRecord implements SyncedRecord {
         for (final entry in r.list('identifiers'))
           AppIdentifier.fromJson(entry),
       ],
+      notes: r.optionalString('notes'),
       iconBlobId: r.optionalString('icon_blob_id'),
       createdAt: r.timestamp('created_at'),
       updatedAt: r.timestamp('updated_at'),
@@ -539,9 +547,9 @@ class AppRecord implements SyncedRecord {
     );
   }
 
-  /// `organization`, `kind` and `identifiers` are left out when not set,
-  /// so an app that uses none of them encodes exactly as before they
-  /// existed.
+  /// `organization`, `kind`, `identifiers` and `notes` are left out when
+  /// not set, so an app that uses none of them encodes exactly as before
+  /// they existed.
   @override
   Map<String, Object?> toJson() => {
     ...unknownFields,
@@ -554,6 +562,7 @@ class AppRecord implements SyncedRecord {
     'package_names': packageNames,
     if (identifiers.isNotEmpty)
       'identifiers': [for (final i in identifiers) i.toJson()],
+    'notes': ?notes,
     'icon_blob_id': iconBlobId,
     'created_at': formatTimestamp(createdAt),
     'updated_at': formatTimestamp(updatedAt),
@@ -562,13 +571,14 @@ class AppRecord implements SyncedRecord {
   };
 
   /// A copy with changes. [identifiers] replaces every identifier, bundle
-  /// IDs and package names included; to clear [organization] or the kind,
-  /// pass an empty string.
+  /// IDs and package names included; to clear [organization], the kind or
+  /// [notes], pass an empty string.
   AppRecord copyWith({
     String? name,
     String? organization,
     String? kindName,
     List<AppIdentifier>? identifiers,
+    String? notes,
     String? iconBlobId,
     DateTime? updatedAt,
     Hlc? rev,
@@ -581,6 +591,7 @@ class AppRecord implements SyncedRecord {
     bundleIds: identifiers == null ? bundleIds : const [],
     packageNames: identifiers == null ? packageNames : const [],
     identifiers: identifiers ?? this.identifiers,
+    notes: notes ?? this.notes,
     iconBlobId: iconBlobId ?? this.iconBlobId,
     createdAt: createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -590,7 +601,7 @@ class AppRecord implements SyncedRecord {
     unknownFields: unknownFields,
   );
 
-  /// Never prints the name or identifiers.
+  /// Never prints the name, identifiers or notes.
   @override
   String toString() => 'AppRecord($id)';
 }

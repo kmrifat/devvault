@@ -304,8 +304,8 @@ func canonicalJSON(v any) string {
 }
 
 // normalizeApp applies SPEC §6.2's writer rules to a decoded app record:
-// organization and kind trimmed (left out when empty), identifier values
-// trimmed, empty ones and repeats within a kind dropped, bundle_id and
+// organization, kind and notes trimmed (left out when empty), identifier
+// values trimmed, empty ones and repeats within a kind dropped, bundle_id and
 // package_name entries moved to bundle_ids / package_names. It returns the
 // record a conforming writer stores and every identifier a reader shows:
 // bundle IDs, package names, then the identifiers array in order.
@@ -314,7 +314,7 @@ func normalizeApp(in map[string]any) (map[string]any, []appIdentifierVec) {
 	for k, v := range in {
 		out[k] = v
 	}
-	for _, key := range []string{"organization", "kind"} {
+	for _, key := range []string{"organization", "kind", "notes"} {
 		s, _ := out[key].(string)
 		if s = strings.TrimSpace(s); s == "" {
 			delete(out, key)
@@ -411,6 +411,7 @@ func checkMiniVault(dir string) {
 			BundleIDs    []string           `json:"bundle_ids"`
 			PackageNames []string           `json:"package_names"`
 			Identifiers  []appIdentifierVec `json:"identifiers"`
+			Notes        *string            `json:"notes"`
 		} `json:"app_records"`
 		Tombstones []string `json:"tombstones"`
 	}
@@ -520,6 +521,9 @@ func checkMiniVault(dir string) {
 		}
 		if !same(optional(rec["organization"]), want.Organization) || !same(optional(rec["kind"]), want.Kind) {
 			fail("app record %s organization / kind", id)
+		}
+		if !same(optional(rec["notes"]), want.Notes) {
+			fail("app record %s notes", id)
 		}
 		var ids []appIdentifierVec
 		if list, _ := rec["identifiers"].([]any); list != nil {

@@ -9,7 +9,9 @@ import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
+import '../../shared/widgets/markdown_note.dart' show MarkdownNote;
 import '../../shared/widgets/mono_text.dart';
+import '../notes/notes.dart' show NoteView;
 import 'desktop_item_type.dart';
 import 'tree_drag.dart';
 import 'vault_actions.dart';
@@ -153,7 +155,8 @@ AppRecord? _selectedApp(VaultFilter filter, VaultIndex index) =>
 
 /// The selected app's organization and kind, when set, over its
 /// identifiers (bundle IDs, package names, domains, URLs, repositories …),
-/// with Edit app… and, under ⋯, Delete app….
+/// with Edit app… and, under ⋯, Delete app…. The app's notes, when it has
+/// any, fold out under them.
 class _AppDetails extends ConsumerWidget {
   const _AppDetails({required this.app, required this.itemCount});
 
@@ -181,54 +184,132 @@ class _AppDetails extends ConsumerWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-        child: Row(
-          spacing: 8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 6,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  if (about.isNotEmpty)
-                    Text(
-                      about,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: style.copyWith(color: colors.text),
-                    ),
-                  if (ids.isEmpty)
-                    Text(
-                      'No identifiers',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: style,
-                    )
-                  else
-                    MonoText(
-                      ids.join(' · '),
-                      middleEllipsis: true,
-                      style: style,
-                    ),
-                ],
-              ),
-            ),
-            DesktopButton(
-              label: 'Edit app…',
-              onPressed: () => editApp(context, app),
-            ),
-            DesktopPullDownButton(
-              label: 'App actions',
-              actions: [
-                DesktopMenuAction(
-                  'Delete app…',
-                  () => deleteApp(context, ref, app, itemCount: itemCount),
-                  destructive: true,
-                ),
-              ],
-            ),
+            _detailsRow(context, ref, about, ids, style),
+            if (app.notes case final notes?)
+              _AppNotes(key: ValueKey(app.id), notes: notes),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _detailsRow(
+    BuildContext context,
+    WidgetRef ref,
+    String about,
+    List<String> ids,
+    TextStyle style,
+  ) {
+    final colors = context.desktopColors;
+    return Row(
+      spacing: 8,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 2,
+            children: [
+              if (about.isNotEmpty)
+                Text(
+                  about,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style.copyWith(color: colors.text),
+                ),
+              if (ids.isEmpty)
+                Text(
+                  'No identifiers',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                )
+              else
+                MonoText(ids.join(' · '), middleEllipsis: true, style: style),
+            ],
+          ),
+        ),
+        DesktopButton(
+          label: 'Edit app…',
+          onPressed: () => editApp(context, app),
+        ),
+        DesktopPullDownButton(
+          label: 'App actions',
+          actions: [
+            DesktopMenuAction(
+              'Delete app…',
+              () => deleteApp(context, ref, app, itemCount: itemCount),
+              destructive: true,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// An app's notes over the item table: folded to their first line, or
+/// shown in full (scrolling past a few lines), rendered as Markdown.
+class _AppNotes extends StatefulWidget {
+  const _AppNotes({super.key, required this.notes});
+
+  final String notes;
+
+  @override
+  State<_AppNotes> createState() => _AppNotesState();
+}
+
+class _AppNotesState extends State<_AppNotes> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final style = TextStyle(
+      fontSize: DesktopMetrics.secondarySize,
+      color: colors.secondaryText,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 4,
+      children: [
+        Row(
+          spacing: 4,
+          children: [
+            DesktopIconButton(
+              symbol: _open
+                  ? DesktopSymbol.chevronDown
+                  : DesktopSymbol.chevronRight,
+              tooltip: _open ? 'Hide notes' : 'Show notes',
+              size: 12,
+              onPressed: () => setState(() => _open = !_open),
+            ),
+            Text('Notes', style: style.copyWith(fontWeight: FontWeight.w600)),
+            if (!_open)
+              Expanded(
+                child: Text(
+                  MarkdownNote.firstLine(widget.notes),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                ),
+              ),
+          ],
+        ),
+        if (_open)
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: DesktopMetrics.notesPreviewMaxHeight,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+              child: NoteView(widget.notes),
+            ),
+          ),
+      ],
     );
   }
 }

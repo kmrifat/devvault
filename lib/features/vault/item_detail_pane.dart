@@ -11,6 +11,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../conflict/conflict_dialog.dart';
+import '../notes/notes.dart' show NoteView;
 import 'vault_actions.dart';
 
 /// Design frame D03's detail pane: one item's type, place in the tree,
@@ -673,7 +674,7 @@ class _NotesCard extends StatelessWidget {
             type: BCTextType.bodySm,
             color: BCTextColor.muted,
           ),
-          SelectableText(notes),
+          NoteView(notes),
         ],
       ),
     );
