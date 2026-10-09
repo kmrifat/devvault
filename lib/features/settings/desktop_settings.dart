@@ -1,6 +1,9 @@
 // Desktop settings still use bc_ui's toasts: the desktop layer has none
 // yet, and the app's toast overlay is bc_ui's.
-import 'package:bc_ui/bc_ui.dart' show BCToast, BCToastData, BCToastVariant;
+import 'package:bc_ui/bc_ui.dart' show BCToastData, BCToastVariant;
+
+import '../../shared/widgets/app_toast.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -452,7 +455,7 @@ class _BiometricRow extends ConsumerWidget {
         );
       } on BiometricKeyUnavailable {
         if (!context.mounted) return;
-        BCToast.show(
+        showAppToast(
           context,
           BCToastData(
             title: "Couldn't turn on ${biometry.label}",
@@ -556,7 +559,7 @@ class _VaultFacts extends ConsumerWidget {
                   .clipboard
                   .write(vault.vaultId);
               if (!context.mounted) return;
-              BCToast.show(
+              showAppToast(
                 context,
                 const BCToastData(
                   title: 'Vault ID copied',

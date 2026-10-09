@@ -86,7 +86,7 @@ class _ChangePasswordFormState extends ConsumerState<ChangePasswordForm> {
       await session.changePassword(_next.text);
       if (!mounted) return;
       // The toast lives above the dialog, so it outlasts it.
-      BCToast.show(
+      showAppToast(
         context,
         const BCToastData(
           title: 'Master password changed',

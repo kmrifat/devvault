@@ -80,7 +80,7 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
           .read(syncSetupProvider.notifier)
           .save(_form.settings, _form.credentials, _tested!);
       if (!mounted) return;
-      BCToast.show(
+      showAppToast(
         context,
         BCToastData(
           title: 'Sync is on',

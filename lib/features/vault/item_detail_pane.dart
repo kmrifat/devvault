@@ -453,7 +453,7 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
     }
     if (!mounted) return;
     if (widget.field.secret) {
-      BCToast.show(
+      showAppToast(
         context,
         BCToastData(
           title: '${widget.label} copied',

@@ -5,6 +5,8 @@ import 'package:devvault/app/routes.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
+import 'package:devvault/shared/desktop/desktop_toast.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +46,35 @@ void main() {
   }
 
   shot('N03-vault', Routes.vault(), sample: true, interact: selectProduction);
+  for (final brightness in Brightness.values) {
+    shot(
+      brightness == Brightness.dark ? 'N03-toast' : 'N03-toast-light',
+      Routes.vault(),
+      sample: true,
+      brightness: brightness,
+      interact: (tester) async {
+        await selectProduction(tester);
+        await tester.pumpAndSettle();
+        showDesktopToast(
+          tester.element(find.byType(VaultSidebar)),
+          title: '“Upload keystore” moved to Kitchenly',
+          kind: DesktopToastKind.success,
+          actionLabel: 'Undo',
+          onAction: () {},
+          // Stays up for the shot, with no timer left running.
+          duration: Duration.zero,
+        );
+        await tester.pumpAndSettle();
+        // Hovered, so the shot shows its ×.
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        await mouse.addPointer(
+          location: tester.getCenter(find.textContaining('moved to')),
+        );
+        addTearDown(mouse.removePointer);
+        await tester.pumpAndSettle();
+      },
+    );
+  }
   shot(
     'N03-vault-light',
     Routes.vault(),

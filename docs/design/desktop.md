@@ -165,6 +165,15 @@ through `package:devvault/shared/desktop_ui.dart`:
 - `showDesktopPanel` + `DesktopPanel`: a floating panel near the top of the
   window, like Spotlight (quick open, ⌘K). `DesktopRadio` (the conflict
   sheet's choices) and `DesktopProgress` (a spinner).
+- `showDesktopToast`: a short, passing message with an optional action
+  (Undo). On macOS it's a banner like Notification Center's, at the top
+  right under the toolbar: a status symbol, the title in bold, a push
+  button for the action, and, on hover, a round × over its top-left
+  corner. Hovering keeps it open. On
+  Windows it's Fluent's `InfoBar` at the bottom; on Linux, a Yaru
+  snackbar. One shows at a time. Screens call `showAppToast`, which
+  picks this on desktop and bc_ui's toast on phones. Frames:
+  `N03-toast`, `N03-toast-light`.
 - `DesktopPullDownButton`: an icon push button (⋯) that drops a menu of
   commands, destructive ones in red (the inspector's Replace file… and
   Delete item…). `DesktopContextMenu` opens the same kind of menu where

@@ -75,6 +75,9 @@ enum DesktopSymbol {
   document,
   remove,
 
+  /// Closes something passing (a toast).
+  close,
+
   // Lock screens (N00–N02).
   fingerprint,
   faceId,
@@ -150,6 +153,7 @@ enum DesktopSymbol {
     agent => CupertinoIcons.sparkles,
     document => CupertinoIcons.doc,
     remove => CupertinoIcons.minus_circle,
+    close => CupertinoIcons.xmark,
     // CupertinoIcons has no Touch ID or Face ID glyph; the app's own
     // Lucide set stands in for them.
     fingerprint => LucideIcons.fingerprint,
@@ -221,6 +225,7 @@ enum DesktopSymbol {
     agent => fl.FluentIcons.robot,
     document => fl.FluentIcons.page,
     remove => fl.FluentIcons.remove,
+    close => fl.FluentIcons.chrome_close,
     fingerprint => fl.FluentIcons.fingerprint,
     faceId => fl.FluentIcons.contact,
     submit => fl.FluentIcons.forward,
@@ -291,6 +296,7 @@ enum DesktopSymbol {
     agent => yaru.YaruIcons.terminal,
     document => yaru.YaruIcons.document,
     remove => yaru.YaruIcons.minus,
+    close => yaru.YaruIcons.window_close,
     fingerprint => yaru.YaruIcons.fingerprint,
     faceId => yaru.YaruIcons.user,
     submit => yaru.YaruIcons.go_next,

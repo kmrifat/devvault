@@ -111,7 +111,7 @@ class _PairScreenState extends ConsumerState<PairScreen> {
     if (payload == null) return;
     await ref.read(clipboardGuardProvider).copySecret(payload);
     if (!mounted) return;
-    BCToast.show(
+    showAppToast(
       context,
       const BCToastData(
         title: 'Pairing text copied',

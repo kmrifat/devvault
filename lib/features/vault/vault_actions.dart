@@ -67,7 +67,7 @@ Future<void> deleteItem(BuildContext context, WidgetRef ref, Item item) async {
   await ref.read(vaultSessionProvider.notifier).deleteItem(item.id);
   if (!context.mounted) return;
   context.go(VaultFilter.fromUri(location).location());
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: '“${item.title}” deleted',
@@ -109,7 +109,7 @@ Future<void> deleteApp(
   await ref.read(vaultSessionProvider.notifier).deleteApp(app.id);
   if (!context.mounted) return;
   context.go(Routes.vault());
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: '“${app.name}” deleted',
@@ -137,7 +137,7 @@ Future<void> moveItem(
   final to = place.label(session.index);
   final saved = await notifier.saveItem(place.applyTo(current));
   if (!context.mounted) return;
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: '“${current.title}” moved to $to',
@@ -172,7 +172,7 @@ Future<void> moveApp(
     current.copyWith(organization: organization ?? ''),
   );
   if (!context.mounted) return;
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: organization == null
@@ -210,7 +210,7 @@ Future<void> renameOrganization(
   if (location.org == organization) {
     context.go(VaultFilter(org: name).withQuery(location.q).location());
   }
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: '“$organization” renamed to “$name”',
@@ -262,7 +262,7 @@ Future<void> deleteOrganization(
   if (VaultFilter.fromUri(GoRouterState.of(context).uri).org == organization) {
     context.go(Routes.vault());
   }
-  BCToast.show(
+  showAppToast(
     context,
     BCToastData(
       title: '“$organization” deleted',

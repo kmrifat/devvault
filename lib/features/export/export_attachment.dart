@@ -44,5 +44,5 @@ Future<void> exportAttachment(
       variant: BCToastVariant.danger,
     ),
   };
-  if (toast != null) BCToast.show(context, toast);
+  if (toast != null) showAppToast(context, toast);
 }

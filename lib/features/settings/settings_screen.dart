@@ -255,7 +255,7 @@ abstract final class _BiometricRow {
         );
       } on BiometricKeyUnavailable {
         if (!context.mounted) return;
-        BCToast.show(
+        showAppToast(
           context,
           BCToastData(
             title: "Couldn't turn on ${biometry.label}",
@@ -415,7 +415,7 @@ class _VaultFacts extends ConsumerWidget {
                   .clipboard
                   .write(vault.vaultId);
               if (!context.mounted) return;
-              BCToast.show(
+              showAppToast(
                 context,
                 const BCToastData(
                   title: 'Vault ID copied',

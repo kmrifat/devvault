@@ -101,7 +101,7 @@ Future<void> copyNoteLink(
 ) async {
   await ref.read(clipboardGuardProvider).clipboard.write(url);
   if (!context.mounted) return;
-  BCToast.show(context, BCToastData(title: 'Link copied', description: url));
+  showAppToast(context, BCToastData(title: 'Link copied', description: url));
 }
 
 /// Desktop: a note's text field, with an Edit / Preview switch that shows
