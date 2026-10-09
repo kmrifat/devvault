@@ -46,7 +46,7 @@ and the finding is marked **Fixed**.
 | 1 | Create a vault (N01): a short password and a mismatched confirmation are refused; the strength meter shows; Argon2id runs | Pass | |
 | 1b | Recovery kit (N02): Open Vault waits for the checkbox; Save as Text… saves the key and the vault id; the toast has no secret | Pass | |
 | 2 | Vault › Lock (⌘L); a wrong password says "That password didn't open this vault" and clears the field; the right one unlocks | Pass | |
-| 3 | Import every type (D04 / N04), alternating the toolbar's Import and File › Import… (⌘I): `.p8` (Team ID asked), `.p12` (password), `.mobileprovision`, `.jks` (store password), `google-services.json`, `GoogleService-Info.plist`, service account, OAuth client, SSH key, an unknown file (generic), and the same file twice (Open existing) | Pass | Every fact the parser reads is on the sheet. The expiry comes from the file, or the sheet says there's none. Each item lands in the table, selected. WALK-04, WALK-05 (fixed) |
+| 3 | Import every type (D04 / N04), alternating the toolbar's Import and File › Import… (⌘I): `.p8` (Team ID asked), `.p12` (password), `.mobileprovision`, `.jks` (store password), `google-services.json`, `GoogleService-Info.plist`, service account, OAuth client, SSH key, an unknown file (generic), and the same file twice (Open existing) | Pass | Every fact the parser reads is on the sheet. The expiry comes from the file, or the sheet says there's none. Each item lands in the table, selected. WALK-04, WALK-05 (both fixed) |
 | 3b | File › New Item (⌘N): two Generic Secrets with your own expiry (in 10 days, 3 days ago) | Pass | Covers Generic Secret: on desktop, Import has no "Paste a secret" (that's the phone's B4b) |
 | 4 | Inspector: fields, "From file", reveal and hide a secret, the status bar's history, Save As… writes the file back byte for byte | Pass | |
 | 4b | Clipboard guard: Settings › Security › Clear copied secrets after 10 seconds; Copy Value puts it on the real clipboard; the toast says 10 seconds and has no secret; cleared after ~9.5–9.7 s; something copied since is left alone | Pass | |
@@ -127,7 +127,7 @@ button's menu works the same way. The walkthrough now expects this.
   list, the inspector and the detail card all use the same helpers. The
   walkthrough now expects "3 days ago".
 
-### WALK-04 · The import sheet hides the expiry below the fold (should fix)
+### WALK-04 · The import sheet hides the expiry below the fold (should fix) · Fixed
 
 - **Steps:** At the default window size (1280 × 800), import `legacy.p12`
   (after its password), `development.mobileprovision` or `test.jks`.
@@ -138,6 +138,15 @@ button's menu works the same way. The walkthrough now expects this.
   view. macOS hides the scroll bar, so nothing shows that the sheet
   scrolls. The facts box (12 rows for a `.p12`) takes the room.
 - **Screenshot:** `10-import-legacy-p12.png` (also `11-…`, `13-…`)
+- **Fixed:** the Details box holds about seven rows and scrolls the rest
+  on its own, so at 1280 × 800 the form, the Keep-password checkbox and
+  the expiry line are in view. Every sheet (`DesktopSheet`) now keeps its
+  title and buttons fixed and scrolls the content between them when the
+  window is too short, with the scroll bar showing and a line where
+  content is cut off (`DesktopScrollView`). The walkthrough checks it as
+  a normal expectation instead of with `knownIssue`; `test/import_test.dart`
+  covers 1280 × 800 and 1280 × 600, and the golden `N04-import-p12-light`
+  shows the sheet.
 
 ### WALK-05 · The toast covers the inspector's buttons after an import (should fix, **Fixed**)
 

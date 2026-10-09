@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
 
 import 'desktop_metrics.dart';
+import 'desktop_scroll_view.dart';
 import 'desktop_theme.dart';
 
 /// Opens [builder]'s [DesktopSheet] the way the OS shows a modal: on macOS
@@ -30,6 +31,12 @@ Future<T?> showDesktopSheet<T>(
 /// A sheet (design frames N03e, N04, N05, N08): a title, the content (a
 /// [DesktopForm], usually), then the buttons at the bottom right, the
 /// default action last. Escape closes it.
+///
+/// As a macOS sheet does, it grows with its content up to the room the
+/// window has. Past that the title and the buttons stay put and the
+/// content between them scrolls, with its scroll bar showing and a line
+/// where content is cut off ([DesktopScrollView]). [child] needn't scroll
+/// on its own.
 class DesktopSheet extends StatelessWidget {
   const DesktopSheet({
     super.key,
@@ -79,7 +86,10 @@ class DesktopSheet extends StatelessWidget {
       spacing: 8,
       children: [?leadingAction, const Spacer(), ...actions],
     );
-    final body = CallbackShortcuts(
+    // Sized to its content, and scrolls when that's taller than the window
+    // allows. [padding] is inside the scrolled area, so content scrolls up
+    // to the header and the buttons.
+    Widget body({EdgeInsetsGeometry? padding}) => CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () =>
             Navigator.of(context).maybePop(),
@@ -93,9 +103,7 @@ class DesktopSheet extends StatelessWidget {
               fontSize: DesktopMetrics.bodySize,
               color: colors.text,
             ),
-            // Sized to its content, and scrolls when that's taller than
-            // the window allows.
-            child: SingleChildScrollView(child: child),
+            child: DesktopScrollView(padding: padding, child: child),
           ),
         ),
       ),
@@ -114,18 +122,29 @@ class DesktopSheet extends StatelessWidget {
               // The frames draw sheets a shade darker than the window, so the
               // white fields and tables inside stand out.
               backgroundColor: colors.groupBox,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: 16,
-                  children: [
-                    header,
-                    Flexible(child: body),
-                    buttons,
-                  ],
-                ),
+              // The content runs the sheet's full width, so its scroll bar
+              // sits at the sheet's edge.
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: header,
+                  ),
+                  Flexible(
+                    child: body(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+                    child: buttons,
+                  ),
+                ],
               ),
             ),
           ),
@@ -134,12 +153,12 @@ class DesktopSheet extends StatelessWidget {
       DesktopKit.fluent => fl.ContentDialog(
         constraints: BoxConstraints(maxWidth: width),
         title: header,
-        content: body,
+        content: body(),
         actions: [buttons],
       ),
       DesktopKit.yaru => AlertDialog(
         title: header,
-        content: SizedBox(width: width, child: body),
+        content: SizedBox(width: width, child: body()),
         actions: [buttons],
       ),
     };

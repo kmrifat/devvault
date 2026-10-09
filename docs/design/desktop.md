@@ -203,7 +203,14 @@ through `package:devvault/shared/desktop_ui.dart`:
   message or subtitle, content, buttons bottom right, Escape closes; on
   macOS it hangs from the toolbar) and `DesktopGroupBox` for the sheets
   and the inspector's boxes. `DesktopFormRow` takes an `error` that
-  replaces its note in red.
+  replaces its note in red. A sheet grows with its content up to the
+  window's height; past that its title and buttons stay put and the
+  content between them scrolls.
+- `DesktopScrollView`: a scroll area that shows it scrolls. While the
+  content is taller than the room, the kit's scroll bar stays visible
+  (macOS would hide it until you scroll) and each cut edge gets a hairline
+  (a sheet's content) or a fade into the box's colour (the import sheet's
+  Details box, which holds about seven rows and scrolls the rest).
 - `showDesktopPanel` + `DesktopPanel`: a floating panel near the top of the
   window, like Spotlight (quick open, ⌘K). `DesktopRadio` (the conflict
   sheet's choices) and `DesktopProgress` (a spinner).

@@ -914,7 +914,6 @@ class _Walk {
 
   Future<void> _importAll() async {
     final parsers = CredentialParsers.standard();
-    final hiddenExpiry = <String>[];
     for (final (i, c) in _imports.indexed) {
       final bytes = fixture(c.file);
       final before = index.all.length;
@@ -992,14 +991,28 @@ class _Walk {
       for (final MapEntry(:key, :value) in c.required.entries) {
         await type(find.byKey(ValueKey('import-field-$key')), value);
       }
-      // Whether the expiry line (what the file says about expiry) is in
-      // view without scrolling, at the window's default size.
+      // WALK-04: the expiry line (what the file says about expiry) is in
+      // view without scrolling at the window's default size, and so is
+      // the Keep-password checkbox; a long details box scrolls on its own.
       final expiryLine = inSheet(
         expires == null
             ? find.textContaining('No expiry date in the file')
             : find.textContaining('Expires '),
       );
-      if (expiryLine.hitTestable().evaluate().isEmpty) hiddenExpiry.add(c.file);
+      expect(
+        expiryLine.hitTestable(),
+        findsOneWidget,
+        reason: 'WALK-04: ${c.file}: the expiry line is out of view',
+      );
+      if (c.secrets.isNotEmpty) {
+        expect(
+          inSheet(find.text('Keep the password with the item')).hitTestable(),
+          findsOneWidget,
+          reason:
+              'WALK-04: ${c.file}: the Keep-password checkbox is out '
+              'of view',
+        );
+      }
       await shot('import-${_slug(c.file)}');
 
       await tap(inSheet(button('Add to Vault')));
@@ -1037,16 +1050,6 @@ class _Walk {
         );
       }
     }
-    // KNOWN ISSUE WALK-04 (should fix): at 1280×800 the import sheet's
-    // expiry line is below the fold for the longer files, with nothing
-    // showing there is more to scroll.
-    knownIssue(
-      'WALK-04',
-      hiddenExpiry.isEmpty,
-      'the import sheet shows the expiry line without scrolling '
-          '(out of view for: ${hiddenExpiry.join(', ')})',
-    );
-
     // A file nothing reads is kept as a generic file, with nothing made up.
     final before = index.all.length;
     final notes = Uint8List.fromList(

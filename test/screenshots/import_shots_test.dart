@@ -123,6 +123,56 @@ void main() {
       kit: kit,
     );
   }
+  // WALK-04: a .p12's long Details box at the app's default window size.
+  // The box scrolls on its own; the form, the Keep-password checkbox and
+  // the expiry stay in view above the buttons.
+  shot(
+    'N04-import-p12-light',
+    Routes.vault(),
+    sample: true,
+    window: const Size(1280, 800),
+    overrides: [
+      fileOpenerProvider.overrideWithValue(const _PickOne('legacy.p12')),
+    ],
+    interact: (tester) async {
+      await tester.tap(find.bySemanticsLabel(RegExp('^Import a file')).first);
+      Future<void> waitFor(Finder finder) async {
+        for (var i = 0; i < 1000 && finder.evaluate().isEmpty; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump();
+        }
+        expect(finder, findsWidgets);
+        // The sheet slides in.
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      await waitFor(find.byKey(const ValueKey('import-secret-password')));
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('import-secret-password')),
+          matching: find.byType(EditableText),
+        ),
+        'test-password',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Unlock file'));
+      await tester.pump();
+      await waitFor(find.text('Details'));
+      await tester.enterText(
+        find
+            .descendant(
+              of: find.byType(DesktopTextField),
+              matching: find.byType(EditableText),
+            )
+            .first,
+        'Apple Development',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+    },
+    brightness: Brightness.light,
+  );
   shot(
     'B4-import',
     Routes.vault(),

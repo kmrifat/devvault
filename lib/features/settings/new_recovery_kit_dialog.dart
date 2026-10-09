@@ -306,11 +306,10 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
         onPressed: _saved ? () => Navigator.of(context).pop() : null,
       ),
     ],
-    child: SingleChildScrollView(
-      child: DesktopRecoveryKitPanel(
-        kit: _kit(keyText),
-        buttonSize: DesktopButtonSize.regular,
-      ),
+    // The sheet scrolls its content when it doesn't fit.
+    child: DesktopRecoveryKitPanel(
+      kit: _kit(keyText),
+      buttonSize: DesktopButtonSize.regular,
     ),
   );
 
