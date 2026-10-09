@@ -127,6 +127,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setAgentMetadataWithoutAsking(bool on) =>
       update(state.copyWith(agentMetadataWithoutAsking: on));
+
+  void setKeepRunningWhenClosed(bool on) =>
+      update(state.copyWith(keepRunningWhenClosed: on));
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(

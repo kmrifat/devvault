@@ -759,6 +759,12 @@ void main() {
       expect(toOther.appId, isNull);
       expect(toOther.platform, isNull);
       expect(toOther.environment, isNull);
+      // Nothing but the place changes.
+      Map<String, Object?> rest(Item i) => i.toJson()
+        ..remove('app_id')
+        ..remove('platform')
+        ..remove('environment');
+      expect(rest(toOther), rest(stripe));
 
       final back = TreePlace.of(stripe).applyTo(toOther);
       expect(back.appId, stripe.appId);

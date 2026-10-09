@@ -44,7 +44,11 @@ macOS only for now. Windows and Linux are planned in P5-11.
    separately, and a 15-minute approval never covers another client. If the vault is locked,
    it asks you to unlock it first. Choose **Allow**.
 
-If DevVault isn't running, the helper starts it. If AI agents are off,
+Closing DevVault's window doesn't stop agents. While AI agents are on,
+it locks the vault and hides DevVault instead of quitting (Settings › AI
+Agents › Keep running when the window is closed). Click the Dock icon to
+bring the window back, or ⌘Q to quit. If DevVault isn't running, the
+helper starts it. If AI agents are off,
 the agent is told to ask you to turn them on.
 
 ## What the agent can do
