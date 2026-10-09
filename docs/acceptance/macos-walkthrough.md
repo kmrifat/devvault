@@ -63,7 +63,7 @@ and the finding is marked **Fixed**.
 | 7h | Settings › AI Agents: setup command, no clients; turning agents on opens the socket, turning them off closes it | Pass | |
 | 8a | Explorer: Apps › New organization…; the organization's New app… fills in the organization | Pass | |
 | 8b | Drag an item from the table onto an app with the mouse; the toast's Undo puts it back; drag again | Pass | |
-| 8c | Explorer keyboard: click, →, Return, ←, F2 (Edit app), Shift-F10, Home, type-to-jump; the table row's context menu | Pass | WALK-02 |
+| 8c | Explorer keyboard: click, →, Return, ←, F2 (Edit app), Shift-F10, Home, type-to-jump; the table row's context menu | Pass | WALK-02 (fixed) |
 | 9 | Lock from the toolbar | Pass | |
 
 ## Findings
@@ -87,7 +87,14 @@ have**. None is a blocker.
   copy toast reads the setting.
 - **Screenshot:** `49-new-recovery-kit-copied.png`
 
-### WALK-02 · The keyboard can't work a context menu (should fix)
+### WALK-02 · The keyboard can't work a context menu (should fix) · fixed
+
+**Fixed:** a context menu now takes the keyboard when it opens, on every
+kit. From Shift-F10 or the menu key its first command is highlighted;
+after a right click nothing is, until ↓ or ↑. ↑/↓ move, Return or Space
+runs the command, and Escape closes the menu and gives the keyboard back
+to the explorer, with the cursor where it was. The macOS ⋯ pull-down
+button's menu works the same way. The walkthrough now expects this.
 
 - **Steps:** In the explorer, click an app row and press Shift-F10. Then
   press Escape, or ↓ then Return. Or right-click a row in the table and

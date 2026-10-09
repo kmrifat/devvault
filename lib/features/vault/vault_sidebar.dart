@@ -674,6 +674,8 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
   };
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    // Not the keys of an open row menu, which sits under the tree.
+    if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }

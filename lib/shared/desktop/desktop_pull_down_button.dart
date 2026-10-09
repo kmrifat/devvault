@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/material.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
 
+import 'desktop_menu_focus.dart';
 import 'desktop_metrics.dart';
 import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
@@ -98,7 +99,7 @@ class DesktopPullDownButton extends StatelessWidget {
 const double _menuPadding = 5;
 const double _menuMinWidth = 160;
 
-class _MacosPullDown extends StatelessWidget {
+class _MacosPullDown extends StatefulWidget {
   const _MacosPullDown({
     required this.label,
     required this.actions,
@@ -110,7 +111,24 @@ class _MacosPullDown extends StatelessWidget {
   final Widget icon;
 
   @override
+  State<_MacosPullDown> createState() => _MacosPullDownState();
+}
+
+class _MacosPullDownState extends State<_MacosPullDown> {
+  /// The push button takes no focus, so the menu always opens from the
+  /// pointer: it holds the keyboard with nothing highlighted.
+  final _focus = DesktopMenuFocus('Pull-down');
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final label = widget.label;
+    final actions = widget.actions;
     final colors = context.desktopColors;
     bool highlighted(Set<WidgetState> states) =>
         states.contains(WidgetState.hovered) ||
@@ -131,10 +149,14 @@ class _MacosPullDown extends StatelessWidget {
           ),
         ),
       ),
+      onOpen: () => _focus.opened(count: actions.length, fromKeyboard: false),
+      onClose: _focus.closed,
       menuChildren: [
-        for (final a in actions)
+        _focus.holder(),
+        for (final (i, a) in actions.indexed)
           MenuItemButton(
             onPressed: a.onSelected,
+            focusNode: _focus.item(i),
             style: ButtonStyle(
               minimumSize: const WidgetStatePropertyAll(
                 Size(_menuMinWidth, DesktopMetrics.controlHeight),
@@ -181,7 +203,7 @@ class _MacosPullDown extends StatelessWidget {
             secondary: true,
             semanticLabel: label,
             onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-            child: icon,
+            child: widget.icon,
           ),
         ),
       ),
