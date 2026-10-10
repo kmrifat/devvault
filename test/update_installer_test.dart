@@ -11,10 +11,13 @@ void main() {
   final release = Release(version: const AppVersion(1, 2, 0));
 
   late List<String> calls;
+  late List<Object?> arguments;
   void answer(Object? Function(MethodCall call) handler) {
     calls = [];
+    arguments = [];
     messenger.setMockMethodCallHandler(channel, (call) async {
       calls.add(call.method);
+      arguments.add(call.arguments);
       return handler(call);
     });
   }
@@ -38,6 +41,12 @@ void main() {
     answer((_) => null);
     await installer!.install(release);
     expect(calls, ['install']);
+    // Windows' installer needs the feed; Sparkle reads its own.
+    expect(arguments.single, {
+      'feed':
+          'https://github.com/kmrifat/devvault/releases/latest/download/'
+          'DevVault.appinstaller',
+    });
   });
 
   test('says so when the updater can’t start', () async {
