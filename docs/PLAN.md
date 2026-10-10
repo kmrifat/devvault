@@ -16,11 +16,12 @@ Progress is tracked on the Claude WM board (`.taskboard/tasks.json`) with **one 
 ### Decisions already made
 | Topic | Decision |
 |---|---|
-| Hosting / review | Private GitHub repo, one PR per sub-task |
+| Hosting / review | Public GitHub repo (`kmrifat/devvault`, open source), one PR per sub-task |
 | Board granularity | One card per milestone (8 cards); detail lives here |
 | Theme | bc_ui dark + light, `ThemeMode.system`, accent `#0485F7` |
 | Default storage suggestion | Cloudflare R2 (no egress fees, conditional writes, `auto` region) |
 | Argon2 parallelism | p = 1 (libsodium limitation), see ADR-0003 |
+| Desktop updates | Opt-in daily check, signed in-place updates per OS, package managers; see ADR-0007 |
 | Still open | Personal tool vs. base of a paid team product (format is ready either way: `vault_type`) |
 
 ---
@@ -302,6 +303,27 @@ MCP tools:
 - **P5-15 · Explorer sidebar** (1.5d). The Apps tree becomes a file-explorer-style Organization › App › Item tree: every app shows (empty ones too), items are leaves with their platform and environment shown as symbols, and platform and environment move to pop-ups above the table. Every row has a context menu (items: Edit, Move to app…, Delete, on table rows too; apps: Move to organization…; New organization… and Delete organization… on P5-14's records, so organizations can be empty), and items drag from the tree or the table onto an app, No app or another item. AC: widget tests for the tree, menus, move sheets and drops; N03 goldens updated.
 
 - **P5-16 · Secure notes + organization notes** (2d). An item type `secure_note` whose body is its `notes` (SPEC §6.5) and Markdown notes on organization records (SPEC §6.7), additive. The body is edited in an in-house WYSIWYG editor (`lib/shared/widgets/note_editor/`): `# ` turns a line into a heading and disappears, and so on for lists, quotes, code and rules; inline marks show faintly only while editing; Markdown mode shows the source; anything unmodelled is kept verbatim. No new dependency: the ready-made editors bring an HTTP client or url_launcher. New secure note… in the explorer's menus and File › New Secure Note (⇧⌘N); Edit organization… edits an organization's name and notes, shown over its items. AC: round-trip and editor widget tests, screen tests on desktop and phone, N03-secure-note, N03e-secure-note-editor, N03-organization-notes, B3-secure-note goldens; vectors and `tools/vectorcheck`.
+
+### P6 · Updates: opt-in check, signed in-place updates, package managers
+Desktop users learn about a new version and can install it without leaving the app, and nothing installs unless it is signed by a key only the release pipeline holds (ADR-0007). Phones keep updating through their stores. **Off until the user says yes:** after the first unlock a one-time banner asks "Check GitHub for new versions of DevVault once a day?"; until *Check daily*, the app makes no update request at all. A check is one `GET api.github.com/repos/kmrifat/devvault/releases/latest` with `User-Agent: DevVault` and nothing else. Drafts and pre-releases are never offered, so publishing the draft is what ships an update. Facts only: the version and date as GitHub returns them, "Last checked" only after a check that succeeded, never "up to date" after a failure.
+
+| File | Update path |
+|---|---|
+| macOS `.dmg` | Sparkle 2: EdDSA-signed appcast + same Developer ID team |
+| Windows `.msix` | App Installer (`DevVault.appinstaller`), started from the app; the OS checks signature and publisher |
+| Windows `.zip`, Linux `.tar.gz` | Notify-only banner → release page; the user checks `SHA256SUMS` / `.asc` |
+| Linux `.AppImage` | Embedded update information + `.zsync` for AppImageUpdate-style tools; notify-only in the app |
+
+**Gate:** on each desktop OS, a Release-signed build of version N with the setting on finds N+1 from a published test release and updates (macOS, MSIX) or shows the banner (zip, tarball, AppImage). With the setting unset or off, a network capture shows no request to GitHub. A feed signed with the wrong key is refused.
+
+- **P6-01 · ADR** (0.5d). Threat model of the update channel, the opt-in rule, one updater per install format, where the feed files live. AC: `docs/adr/0007-updates.md`. **Result:** accepted; see ADR-0007.
+- **P6-02 · Update check + setting** (1.5d). `lib/services/updater.dart`: an `Updater` interface and `GitHubReleaseChecker` (injected `http.Client`), provider in `lib/data/providers.dart`. `AppSettings.updateChecks` is unset / on / off, local to the device, never synced. Launch check when the last success is over 24 h old; *Check now* and "Last checked" in *Settings → General*; the one-time banner; the update banner with *View release*. The tag must match `^v\d+\.\d+\.\d+$`, the release URL is built by the app, the notes are plain text. Design the two banners and the Settings row in `design/DevVault.fig` first (D10). AC: tests with a fake client cover no request while unset or off, a malformed tag, an older or equal tag, a failed check's wording and the built URL; goldens for D10.
+- **P6-03 · AppImage update information** (0.5d). `linux_appimage.sh` passes `-u "gh-releases-zsync|kmrifat|devvault|latest|devvault-linux-x64.AppImage.zsync"` and, when the GPG key is set, `--sign`; `release.yml` uploads the `.zsync`. AC: `appimagetool`'s update info reads back from the built AppImage (`--appimage-updateinformation`) in the workflow.
+- **P6-04 · macOS: Sparkle 2** (2d). Spike first: Sparkle in the **sandboxed** Release build (`SUEnableInstallerLauncherService`, mach-lookup exceptions for `-spks` / `-spki`), and `auto_updater` vs. a method channel to `SPUStandardUpdaterController`, behind `Updater`. `SUEnableAutomaticChecks = NO`; the setting drives `automaticallyChecksForUpdates`; on macOS Sparkle replaces the P6-02 request. `macos_sign_notarize.sh` signs Sparkle's nested code inside-out. `release.yml` runs `sign_update` on the DMG with the new secret `SPARKLE_ED_PRIVATE_KEY` and attaches `appcast.xml`. AC: a signed build N updates itself to N+1 from a local appcast; a wrong `edSignature` is refused; no request while the setting is off.
+- **P6-05 · Windows: App Installer** (1.5d). Spike first: does App Installer follow GitHub's `releases/latest/download` redirect? If not, a workflow on `release: published` puts the `.appinstaller` on GitHub Pages. `tool/release/windows_appinstaller.ps1` writes `DevVault.appinstaller` with **no** automatic checks. A method channel in `windows/runner` calls `CheckUpdateAvailabilityAsync` and `AddPackageByAppInstallerFileAsync(…, ForceTargetAppShutdown)`; installs from the bare MSIX or the zip fall back to the P6-02 banner. `docs/release.md › Windows` says a renewed certificate must keep its subject. AC: an MSIX installed through the feed at N updates to N+1 from a test feed; the fallback shows the banner.
+- **P6-06 · Homebrew + winget** (1d). A cask in `kmrifat/homebrew-tap` (`auto_updates true`), bumped on `release: published`; a winget manifest for the MSIX submitted by `wingetcreate` from the same workflow (needs a `WINGET_TOKEN` secret). AC: `brew install --cask kmrifat/tap/devvault` and `winget install BinaryCastle.DevVault` install the published version; README lists both.
+- **P6-07 · Docs + gate** (1d). README *Security model* covers the update channel (keys, what each OS verifies) and *Check for updates* says what it sends to whom; CHANGELOG entry; `docs/release.md` adds the feed files to the pre-Publish checklist and the Sparkle key (offline copy, rotation). Run the gate above and write it up in `docs/acceptance/p6.md`.
+- **P6-08 · Flathub** (later). Flatpak manifest building from source (libsodium, Flutter in flatpak-builder), keyring through the Secret portal, submitted to Flathub.
 
 **Later:** iCloud backend, Go CLI (grows out of `tools/vectorcheck`), team vaults (`vault_type` reserved, per-vault VK wrapped to members' public keys).
 
