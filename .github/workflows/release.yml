@@ -124,6 +124,17 @@ jobs:
           WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: tool/release/windows_msix.ps1
+      # Where Windows finds the latest release for Update… (ADR-0007 §4):
+      # only for a signed MSIX, the only kind Windows installs.
+      - name: App Installer file (Windows)
+        if: matrix.target == 'windows' && env.SIGN_WINDOWS == 'true'
+        shell: pwsh
+        run: |
+          ./tool/release/windows_appinstaller.ps1 -Msix devvault-windows-x64.msix
+          $version = ((Get-Content pubspec.yaml | Select-String '^version:\s*(\d+\.\d+\.\d+)').Matches[0].Groups[1].Value)
+          if ($env:GITHUB_REF -like 'refs/tags/*' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME doesn't match pubspec version $version"
+          }
 
       # Linux: tarball and AppImage, each with a detached GPG signature.
       - name: Tarball (Linux)
@@ -162,6 +173,7 @@ jobs:
             appcast.xml
             devvault-windows-x64*.zip
             devvault-windows-x64*.msix
+            DevVault.appinstaller
             devvault-linux-x64*.tar.gz*
             devvault-linux-x64*.AppImage*
           if-no-files-found: error

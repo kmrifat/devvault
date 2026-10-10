@@ -35,6 +35,10 @@ const String _start = String.fromEnvironment(
 /// this machine, e.g. `--dart-define=DEVVAULT_DATA=onboarding`.
 const String _dataDirOverride = String.fromEnvironment('DEVVAULT_DATA');
 
+/// CI's Windows update test only (desktop-checks.yml): start installing
+/// the update from [appInstallerFeed] as soon as the app is up.
+const bool _e2eInstall = bool.fromEnvironment('DEVVAULT_E2E_INSTALL');
+
 /// Where `packages/biometric_key` keeps the vault key behind biometrics.
 const _biometricPlatforms = {
   TargetPlatform.iOS,
@@ -111,4 +115,10 @@ Future<void> main() async {
       child: const DevVaultApp(initialLocation: _start, nativeWindow: true),
     ),
   );
+  if (_e2eInstall && installer != null && version != null) {
+    Future<void>.delayed(
+      const Duration(seconds: 5),
+      () => installer.install(Release(version: version)),
+    );
+  }
 }
