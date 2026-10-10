@@ -20,8 +20,14 @@ attached to the GitHub Release.
    ```
 3. Wait for **Release** to finish, open the draft release, check that no
    file ends in `-unsigned`, run through `docs/acceptance/v1.md`, paste the
-   version's section of `CHANGELOG.md` into the notes, publish.
-4. Set the release date in `CHANGELOG.md` in a follow-up PR.
+   version's section of `CHANGELOG.md` into the notes. Check the update
+   feeds (ADR-0007): `appcast.xml` and `DevVault.appinstaller` name this
+   version, and `devvault-linux-x64.AppImage.zsync` is there. Publishing
+   is what ships the update to every installed copy that checks, so
+   publish last.
+4. **Publish** runs by itself: the Homebrew cask and the winget pull
+   request (§ Package managers).
+5. Set the release date in `CHANGELOG.md` in a follow-up PR.
 
 The workflow can also be run by hand (**Actions › Release › Run
 workflow**); without a tag it uploads the files as run artifacts only.

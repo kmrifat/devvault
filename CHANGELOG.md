@@ -124,6 +124,25 @@ SHA-256. Importing a newer file over an item keeps the item and its tags.
 - Off by default. Setup for each client is in Settings › AI Agents and
   `docs/agent/USING.md`; the threat model is in `docs/agent/THREATS.md`.
 
+### Updates (desktop)
+
+- Once you agree (a question under the toolbar, or Settings › General ›
+  *Check for updates*), DevVault asks GitHub once a day for its latest
+  published release. Only that request is sent: no version, device or
+  vault. Until you agree it asks nothing, except when you press *Check
+  Now*.
+- When a newer release is out, a line under the toolbar says so, with
+  the version and date as GitHub gives them. *View Release* opens its
+  page.
+- **macOS:** *Update…* installs it in place with Sparkle, which checks
+  the update's EdDSA signature and the Developer ID before installing.
+  Builds made before the update key exists offer *View Release* only.
+- **Windows (MSIX):** *Update…* hands the release to Windows, which
+  checks the package signature and publisher, installs it and starts
+  DevVault again. The zip offers *View Release*.
+- **Linux:** the AppImage carries update information for AppImageUpdate,
+  Gear Lever and AppImageLauncher; the app itself offers *View Release*.
+
 ### Not in 1.0.0
 
 - AI agents on Windows and Linux (planned).
