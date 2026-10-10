@@ -330,5 +330,91 @@
       "canonical": "{\"bundle_ids\":[],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"name\":\"Billing API\",\"package_names\":[],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
       "identifiers": []
     }
+  ],
+  "organization_records": [
+    {
+      "about": "Written before notes existed: rewritten byte for byte.",
+      "record": {
+        "schema": 1,
+        "id": "183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e",
+        "name": "Globex",
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4"
+      },
+      "canonical": "{\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"id\":\"183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e\",\"name\":\"Globex\",\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}"
+    },
+    {
+      "about": "Name and notes trimmed at both ends; Markdown kept as typed.",
+      "record": {
+        "schema": 1,
+        "id": "183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e",
+        "name": "  Globex ",
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "notes": "\n  **Globex** pays net 30.\n\n- Invoices: billing@globex.example\n- Contract: [MSA](https://globex.example/msa)\n\n"
+      },
+      "canonical": "{\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"id\":\"183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e\",\"name\":\"Globex\",\"notes\":\"**Globex** pays net 30.\\n\\n- Invoices: billing@globex.example\\n- Contract: [MSA](https://globex.example/msa)\",\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}"
+    },
+    {
+      "about": "Notes with raw HTML, an image and non-ASCII text: stored as text, nothing escaped that needn't be.",
+      "record": {
+        "schema": 1,
+        "id": "183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e",
+        "name": "Globex",
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "notes": "<b>Not bold</b> & ![logo](https://globex.example/logo.png)\n\n> Café — 日本 🔑"
+      },
+      "canonical": "{\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"id\":\"183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e\",\"name\":\"Globex\",\"notes\":\"<b>Not bold</b> & ![logo](https://globex.example/logo.png)\\n\\n> Café — 日本 🔑\",\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}"
+    },
+    {
+      "about": "Empty notes: left out.",
+      "record": {
+        "schema": 1,
+        "id": "183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e",
+        "name": "Globex",
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "notes": " \n\t "
+      },
+      "canonical": "{\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"id\":\"183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e\",\"name\":\"Globex\",\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}"
+    },
+    {
+      "about": "Null notes: left out.",
+      "record": {
+        "schema": 1,
+        "id": "183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e",
+        "name": "Globex",
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "notes": null
+      },
+      "canonical": "{\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"id\":\"183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e\",\"name\":\"Globex\",\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}"
+    },
+    {
+      "about": "Fields this version does not know: kept as they are.",
+      "record": {
+        "schema": 1,
+        "id": "183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e",
+        "name": "Globex",
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "notes": "Net 30.",
+        "pinned": true
+      },
+      "canonical": "{\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"id\":\"183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e\",\"name\":\"Globex\",\"notes\":\"Net 30.\",\"pinned\":true,\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}"
+    }
   ]
 }

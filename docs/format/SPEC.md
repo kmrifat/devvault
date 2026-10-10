@@ -323,7 +323,7 @@ Records are UTF-8 JSON objects. Common rules:
 | `fields` | Map of field key → `{value, source, secret?}`. `source` is `"file"` (parsed from an attachment) or `"user"` (typed in). `secret: true` marks values that are masked, never indexed for search and copied only through the clipboard guard. |
 | `attachments[].sha256` | Lowercase hex SHA-256 of the **plaintext** file. Export MUST verify it. |
 | `expires_at` / `expires_source` | Both present or both absent. `expires_source` is `"file"` or `"user"`, never anything else. **There is no inferred expiry.** |
-| `notes` | Optional string: the user's note, as Markdown (CommonMark) text. Clients MAY render it (§6.6); plain text is valid Markdown, so notes written before clients rendered them stay valid and are stored unchanged. Not secret, but never indexed for search. |
+| `notes` | Optional string: the user's note, as Markdown (CommonMark) text. Clients MAY render it (§6.6); plain text is valid Markdown, so notes written before clients rendered them stay valid and are stored unchanged. Not secret, but never indexed for search. For a `secure_note` (§6.5) it is the note's whole body. |
 | `conflict` | `null`, or what a sync conflict kept until the user resolves it (ADR-0004): `{"versions": [<item record>…], "deletions": [{"rev", "device_id", "deleted_at"}…]}`. `versions` are the losing item records (each without its own `conflict`), sorted by `rev`, unique by `rev`; `deletions` are deletes that lost to an edit, sorted by `rev`. Conflicts accumulate across merges and are cleared only by an explicit choice. |
 
 ### 6.2 App
@@ -439,14 +439,28 @@ removes the record file. Blobs are left for garbage collection.
 | `ssh_key` | OpenSSH private key (`id_ed25519`, `id_rsa` …) | none (OpenSSH keys don't expire) |
 | `generic_file` | anything | user only |
 | `generic_secret` | none (typed in) | user only |
+| `secure_note` | none (typed in) | user only |
+
+**Secure notes.** A `secure_note` item is a standalone note: its body is
+the item's `notes` (§6.1), Markdown text under the rules of §6.6. It has no
+attachment and needs no fields (a writer MAY still store fields, which
+are read like any item's). It belongs to an app through `app_id`, or to
+none ("No app"), like any item. Its title is searchable like any title; its
+body, being `notes`, never is.
+
+`secure_note` was added within schema 1. A client that predates it keeps
+such an item and shows it as a generic item (§6.1, `type`), and rewrites it
+with its `type` and `notes` unchanged.
 
 ### 6.6 Notes
 
-An item's `notes` (§6.1) and an app's `notes` (§6.2) are Markdown text
+An item's `notes` (§6.1, the whole body of a `secure_note`, §6.5), an
+app's `notes` (§6.2) and an organization's `notes` (§6.7) are Markdown text
 (CommonMark). The stored string is what the user typed; the format doesn't
-change it beyond the trimming §6.2 asks of apps. A client MAY show notes as
-plain text or render them. A client that renders them MUST NOT let a note
-reach outside the device or run anything:
+change it beyond the trimming §6.2 and §6.7 ask of apps and
+organizations. A client MAY show notes as plain text or render them. A
+client that renders them MUST NOT let a note reach outside the device or
+run anything:
 
 - **No remote fetches.** Images are never loaded, from the network or from
   disk: a client shows their alt text (or the URL) instead.
@@ -468,12 +482,27 @@ no apps; it holds no list of its apps.
 
 ```json
 { "schema": 1, "id": "183b…", "name": "Globex",
+  "notes": "Invoices go to **billing@globex.example**.",
   "created_at": "…", "updated_at": "…", "rev": "…", "device_id": "…" }
 ```
 
 | Field | Rule |
 |---|---|
 | `name` | Required string, trimmed (Unicode white space at both ends) like an app's `organization`. Empty after trimming makes the record unreadable (§10). Compared exactly, case-sensitively. |
+| `notes` | Optional string: the user's note about the organization, as Markdown (CommonMark) text, rendered like an item's `notes` (§6.6). Not secret, but never indexed for search. |
+
+`notes` was added within schema 1, like an app's (§6.2). A writer trims it
+(Unicode white space at both ends) and leaves it out when the result is
+empty or the field is `null`; inside it, nothing else changes: line breaks
+and Markdown are kept as typed. Readers MUST treat a missing `notes`,
+`null`, `""` and white space only the same. A `notes` that is not a string
+makes the record unreadable (§10). A client that predates it keeps it as an
+unknown field (§6) when it rewrites the record, and its local copy wins as
+a whole when it merges a concurrent edit.
+
+Records with the same name (one organization, see below) each keep their
+own `notes`: a client MUST NOT drop one record's note in favour of
+another's.
 
 **What an organization is.** The organizations of a vault are the names of
 its organization records together with every app `organization`, each name
@@ -491,10 +520,10 @@ organization.
   `"organization"`) and clear `organization` on every app that names it.
   The apps and their items stay.
 
-**Merging.** `name` merges like an app's fields (§6.2): the side that
-changed since the base wins, and on a clash the local value stays. A
-tombstone deletes the record, edited or not: unlike an item, an
-organization record holds nothing to lose.
+**Merging.** `name` and `notes` each merge like an app's fields (§6.2):
+the side that changed since the base wins, and on a clash the local value
+stays. A tombstone deletes the record, edited or not, `notes` included:
+unlike an item, an organization record holds nothing secret and no file.
 
 **Older clients.** A client that predates organization records ignores
 `organizations/` objects. It still groups apps by their `organization`, but
@@ -647,6 +676,11 @@ The test vectors in `docs/format/vectors/` (P0-14) cover every step above,
 plus a complete `mini-vault/` that a conforming reader can unlock with the
 password `correct horse battery staple`. Its `mini-vault.json` lists each
 app record's fields (`app_records`), including an app with an
-organization, a kind, identifiers and Markdown notes, and each
-organization record's name (`organizations`): Globex, which has no apps.
-Acme Corp has no record; it exists through an app.
+organization, a kind, identifiers and Markdown notes, each organization
+record's name (`organizations`) and fields (`organization_records`):
+Globex, which has no apps and has Markdown notes, and a `secure_note` item
+in Billing API, whose Markdown body is its `notes`, with no attachment
+(each item's `notes` is in `items`). Acme Corp has no record; it exists
+through an app. `vectors.json` also has `organization_records`:
+organization records as a writer might have stored them, with the bytes a
+conforming writer stores when it rewrites them (§6.7).

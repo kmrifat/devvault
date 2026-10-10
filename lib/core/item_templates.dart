@@ -43,7 +43,8 @@ abstract final class ItemTemplates {
       (key: 'passphrase', secret: true),
     ],
     ItemType.genericSecret => [(key: 'value', secret: true)],
-    ItemType.genericFile => [],
+    // A secure note's body is its notes (SPEC §6.5): no fields to offer.
+    ItemType.genericFile || ItemType.secureNote => [],
   };
 
   /// Platforms and environments the form suggests (SPEC §5); any other

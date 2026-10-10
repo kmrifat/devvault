@@ -12,7 +12,11 @@ enum ItemType {
   oauthClient('oauth_client', 'OAuth Client'),
   sshKey('ssh_key', 'SSH Key'),
   genericFile('generic_file', 'Generic File'),
-  genericSecret('generic_secret', 'Generic Secret');
+  genericSecret('generic_secret', 'Generic Secret'),
+
+  /// A standalone Markdown note (SPEC §6.5): its body is the item's
+  /// `notes`. No attachment, no fields required.
+  secureNote('secure_note', 'Secure Note');
 
   const ItemType(this.wireName, this.label);
 

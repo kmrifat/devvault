@@ -588,6 +588,137 @@ void main() {
     });
   });
 
+  group('organizations: notes (SPEC §6.7)', () {
+    Map<String, Object?> orgJson([Map<String, Object?> fields = const {}]) => {
+      'schema': 1,
+      'id': id,
+      'name': 'Globex',
+      'created_at': '2025-02-03T10:00:00Z',
+      'updated_at': '2025-02-03T10:00:00Z',
+      'rev': rev.toString(),
+      'device_id': device,
+      ...fields,
+    };
+    const markdown =
+        '**Globex** pays net 30.\n\n- <b>raw</b> & '
+        '![logo](https://globex.example/l.png)\n- Caf\u00e9 \u65e5\u672c';
+
+    test('round-trip: Markdown text kept as typed, nothing escaped', () {
+      final json = orgJson({'notes': markdown});
+      final org = OrganizationRecord.fromJson(json);
+      expect(org.notes, markdown);
+      expect(org.toJson(), json);
+      final bytes = encodeRecord(org);
+      expect(utf8.decode(bytes), contains('<b>raw</b> & ![logo]'));
+      final again = decodeRecord(ObjectType.organization, bytes);
+      expect((again as OrganizationRecord).notes, markdown);
+      expect(encodeRecord(again), bytes);
+    });
+
+    test('an organization without notes encodes no notes key', () {
+      final json = orgJson();
+      final org = OrganizationRecord.fromJson(json);
+      expect(org.notes, isNull);
+      expect(org.toJson().containsKey('notes'), isFalse);
+      expect(utf8.decode(encodeRecord(org)), jsonEncode(sortKeys(json)));
+    });
+
+    test('trimmed at both ends; empty or null notes are left out', () {
+      expect(
+        OrganizationRecord.fromJson(orgJson({'notes': '\n  $markdown \n\n'}))
+            .notes,
+        markdown,
+      );
+      for (final empty in [null, '', ' \n\t ']) {
+        final org = OrganizationRecord.fromJson(orgJson({'notes': empty}));
+        expect(org.notes, isNull);
+        expect(org.toJson().containsKey('notes'), isFalse);
+      }
+    });
+
+    test('a client that predates notes keeps them as an unknown field', () {
+      final json = orgJson({'notes': markdown});
+      final older = OrganizationRecord.fromJson({
+        for (final MapEntry(:key, :value) in json.entries)
+          if (key != 'notes') key: value,
+      });
+      expect(older.notes, isNull);
+      final rewritten = OrganizationRecord(
+        id: older.id,
+        name: older.name,
+        createdAt: older.createdAt,
+        updatedAt: older.updatedAt,
+        rev: older.rev,
+        deviceId: older.deviceId,
+        unknownFields: {'notes': markdown},
+      );
+      expect(rewritten.toJson()['notes'], markdown);
+    });
+
+    test(
+      'malformed notes make the record unreadable, and are never echoed',
+      () {
+        expect(
+          () => OrganizationRecord.fromJson(orgJson({'notes': 42})),
+          throwsA(isA<VaultFormatException>()),
+        );
+        expect(
+          () => OrganizationRecord.fromJson(
+            orgJson({'notes': markdown, 'name': ' '}),
+          ),
+          throwsA(
+            isA<VaultFormatException>().having(
+              (e) => e.toString(),
+              'message',
+              isNot(contains('Globex')),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('copyWith sets and clears notes; toString never prints them', () {
+      final org = OrganizationRecord.fromJson(orgJson());
+      final noted = org.copyWith(notes: markdown);
+      expect(noted.notes, markdown);
+      expect(noted.toString(), 'OrganizationRecord($id)');
+      expect(noted.copyWith(notes: '').notes, isNull);
+      expect(noted.copyWith(name: 'Globex Corp').notes, markdown);
+    });
+  });
+
+  group('secure notes (SPEC §6.5)', () {
+    test('the type has a wire name and round-trips with no attachment', () {
+      expect(ItemType.secureNote.wireName, 'secure_note');
+      expect(ItemType.fromWireName('secure_note'), ItemType.secureNote);
+      const body = '# Runbook\n\n1. Page the on-call.\n\n<kbd>Ctrl</kbd>';
+      final json = {
+        'schema': 1,
+        'id': id,
+        'type': 'secure_note',
+        'title': 'Billing runbook',
+        'tags': <String>[],
+        'fields': <String, Object?>{},
+        'attachments': <Object?>[],
+        'notes': body,
+        'created_at': '2025-02-03T10:00:00Z',
+        'updated_at': '2025-02-03T10:00:00Z',
+        'rev': rev.toString(),
+        'device_id': device,
+        'conflict': null,
+      };
+      final note = Item.fromJson(json);
+      expect(note.type, ItemType.secureNote);
+      expect(note.notes, body);
+      expect(note.attachments, isEmpty);
+      expect(note.fields, isEmpty);
+      expect(note.toString(), isNot(contains('Runbook')));
+      final again = decodeRecord(ObjectType.item, encodeRecord(note)) as Item;
+      expect(again.typeName, 'secure_note');
+      expect(again.notes, body);
+    });
+  });
+
   test('tombstones round-trip and know what they delete', () {
     final json = {
       'schema': 1,

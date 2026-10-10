@@ -120,6 +120,7 @@ Future<void> generate(Directory out) async {
     'envelope': envelopes,
     'hlc_sorted': hlcs,
     'app_records': _appRecordVectors(),
+    'organization_records': _organizationRecordVectors(),
   };
   File('${out.path}/vectors.json').writeAsStringSync(
     '${const JsonEncoder.withIndent('  ').convert(vectors)}\n',
@@ -223,7 +224,14 @@ Future<void> generate(Directory out) async {
   // An organization without apps (SPEC §6.7). Acme Corp has no record: it
   // exists through Billing API's organization alone.
   final globex = await vault.putOrganization(
-    vault.newOrganization(name: 'Globex'),
+    vault.newOrganization(name: 'Globex', notes: _globexNotes),
+  );
+  // A secure note (SPEC §6.5): its Markdown body is its notes; no
+  // attachment, no fields.
+  final runbook = await vault.putItem(
+    vault
+        .newItem(type: ItemType.secureNote, title: 'Billing runbook')
+        .copyWith(appId: billing.id, notes: _runbookNotes),
   );
   vault.lock();
   staging.renameSync('${vaultsDir.path}/${vault.vaultId}');
@@ -234,7 +242,7 @@ Future<void> generate(Directory out) async {
     'vault_id': vault.vaultId,
     'vk_id': vault.header.vkId,
     'items': {
-      for (final item in [apns, cert])
+      for (final item in [apns, cert, runbook])
         item.id: {
           'type': item.typeName,
           'title': item.title,
@@ -243,6 +251,7 @@ Future<void> generate(Directory out) async {
             for (final a in item.attachments)
               {'blob_id': a.blobId, 'filename': a.filename, 'sha256': a.sha256},
           ],
+          'notes': item.notes,
         },
     },
     'apps': {app.id: app.name, billing.id: billing.name},
@@ -260,6 +269,10 @@ Future<void> generate(Directory out) async {
         },
     },
     'organizations': {globex.id: globex.name},
+    // What every organization record holds, as SPEC §6.7 reads it.
+    'organization_records': {
+      for (final o in [globex]) o.id: {'name': o.name, 'notes': o.notes},
+    },
     'tombstones': [doomed.id],
   };
   File('${out.path}/mini-vault.json').writeAsStringSync(
@@ -281,6 +294,75 @@ const _billingNotes =
     '```\n'
     '\n'
     'Runbook: [wiki](https://wiki.acme.example/billing)';
+
+/// A Markdown note on an organization (SPEC §6.7).
+const _globexNotes =
+    '**Globex** pays net 30.\n'
+    '\n'
+    '- Invoices: billing@globex.example\n'
+    '- Contract: [MSA](https://globex.example/msa)';
+
+/// The body of a secure note (SPEC §6.5): Markdown, raw HTML and non-ASCII
+/// text kept as typed.
+const _runbookNotes =
+    '# Billing runbook\n'
+    '\n'
+    '1. Page the on-call: `#billing-oncall`.\n'
+    '2. <kbd>Ctrl</kbd>+<kbd>C</kbd> the failing job id.\n'
+    '\n'
+    '> Caf\u00e9 \u2014 \u65e5\u672c \u{1F511}';
+
+/// SPEC §6.7: organization records as a writer might have stored them,
+/// each with the exact bytes a conforming writer stores when it rewrites
+/// the record unchanged (`canonical`).
+List<Map<String, Object?>> _organizationRecordVectors() {
+  Map<String, Object?> record(Map<String, Object?> fields) => {
+    'schema': 1,
+    'id': '183bd0a5-6f2e-4c1d-9a7b-2e4f6a8c0d1e',
+    'name': 'Globex',
+    'created_at': '2026-10-07T09:00:00Z',
+    'updated_at': '2026-10-07T09:00:00Z',
+    'rev': '001759827600000-00000-$deviceId',
+    'device_id': deviceId,
+    ...fields,
+  };
+  final cases = <(String, Map<String, Object?>)>[
+    (
+      'Written before notes existed: rewritten byte for byte.',
+      record(const {}),
+    ),
+    (
+      'Name and notes trimmed at both ends; Markdown kept as typed.',
+      record({'name': '  Globex ', 'notes': '\n  $_globexNotes\n\n'}),
+    ),
+    (
+      'Notes with raw HTML, an image and non-ASCII text: stored as text, '
+          'nothing escaped that needn\'t be.',
+      record({
+        'notes':
+            '<b>Not bold</b> & ![logo](https://globex.example/logo.png)\n'
+            '\n'
+            '> Caf\u00e9 \u2014 \u65e5\u672c \u{1F511}',
+      }),
+    ),
+    ('Empty notes: left out.', record({'notes': ' \n\t '})),
+    ('Null notes: left out.', record({'notes': null})),
+    (
+      'Fields this version does not know: kept as they are.',
+      record({'notes': 'Net 30.', 'pinned': true}),
+    ),
+  ];
+  return [
+    for (final (about, json) in cases)
+      {
+        'about': about,
+        'record': json,
+        'canonical': utf8.decode(
+          encodeRecord(OrganizationRecord.fromJson(json)),
+        ),
+      },
+  ];
+}
 
 /// SPEC §6.2: app records as a writer might have stored them, each with
 /// the exact bytes a conforming writer stores when it rewrites the record

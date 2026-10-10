@@ -611,12 +611,13 @@ class AppRecord implements SyncedRecord {
 /// [AppRecord.organization]; the record holds no list of them.
 ///
 /// [name] is trimmed like [AppRecord.organization]; an empty one is
-/// malformed.
+/// malformed. [notes] is trimmed like [AppRecord.notes].
 @immutable
 class OrganizationRecord implements SyncedRecord {
   OrganizationRecord({
     required this.id,
     required String name,
+    String? notes,
     required this.createdAt,
     required this.updatedAt,
     required this.rev,
@@ -624,6 +625,7 @@ class OrganizationRecord implements SyncedRecord {
     this.schema = recordSchema,
     Map<String, Object?> unknownFields = const {},
   }) : name = name.trim(),
+       notes = AppRecord._trimmed(notes),
        unknownFields = Map.unmodifiable(unknownFields) {
     if (!isCanonicalUuid(id)) {
       throw const VaultFormatException('organization.id is not a UUID');
@@ -638,6 +640,11 @@ class OrganizationRecord implements SyncedRecord {
 
   /// What apps name in their `organization`, as the user typed it.
   final String name;
+
+  /// The user's note about the organization, as Markdown (CommonMark)
+  /// text. Null when not set. Not secret, but never indexed for search or
+  /// logged.
+  final String? notes;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -657,6 +664,7 @@ class OrganizationRecord implements SyncedRecord {
     'schema',
     'id',
     'name',
+    'notes',
     'created_at',
     'updated_at',
     'rev',
@@ -669,6 +677,7 @@ class OrganizationRecord implements SyncedRecord {
       schema: r.integer('schema'),
       id: r.string('id'),
       name: r.string('name'),
+      notes: r.optionalString('notes'),
       createdAt: r.timestamp('created_at'),
       updatedAt: r.timestamp('updated_at'),
       rev: Hlc.parse(r.value('rev')),
@@ -677,27 +686,32 @@ class OrganizationRecord implements SyncedRecord {
     );
   }
 
+  /// `notes` is left out when not set, so an organization without one
+  /// encodes exactly as before it existed.
   @override
   Map<String, Object?> toJson() => {
     ...unknownFields,
     'schema': schema,
     'id': id,
     'name': name,
+    'notes': ?notes,
     'created_at': formatTimestamp(createdAt),
     'updated_at': formatTimestamp(updatedAt),
     'rev': rev.toString(),
     'device_id': deviceId,
   };
 
-  /// A copy with changes.
+  /// A copy with changes. To clear [notes], pass an empty string.
   OrganizationRecord copyWith({
     String? name,
+    String? notes,
     DateTime? updatedAt,
     Hlc? rev,
     String? deviceId,
   }) => OrganizationRecord(
     id: id,
     name: name ?? this.name,
+    notes: notes ?? this.notes,
     createdAt: createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     rev: rev ?? this.rev,
@@ -706,7 +720,7 @@ class OrganizationRecord implements SyncedRecord {
     unknownFields: unknownFields,
   );
 
-  /// Never prints the name.
+  /// Never prints the name or notes.
   @override
   String toString() => 'OrganizationRecord($id)';
 }

@@ -186,6 +186,11 @@ func checkVectors(dir string) {
 			Canonical   string             `json:"canonical"`
 			Identifiers []appIdentifierVec `json:"identifiers"`
 		} `json:"app_records"`
+		OrganizationRecords []struct {
+			About     string         `json:"about"`
+			Record    map[string]any `json:"record"`
+			Canonical string         `json:"canonical"`
+		} `json:"organization_records"`
 	}
 	must(0, json.Unmarshal(must(os.ReadFile(filepath.Join(dir, "vectors.json"))), &v))
 	// An empty group would silently check nothing.
@@ -267,6 +272,41 @@ func checkVectors(dir string) {
 		}
 	}
 	ok("app records (%d)", len(v.AppRecords))
+
+	if len(v.OrganizationRecords) == 0 {
+		fail("organization_records is empty")
+	}
+	for _, o := range v.OrganizationRecords {
+		if got := canonicalJSON(normalizeOrganization(o.Record)); got != o.Canonical {
+			fail("organization record %q: canonical\n got  %s\n want %s", o.About, got, o.Canonical)
+		}
+		var again map[string]any
+		must(0, json.Unmarshal([]byte(o.Canonical), &again))
+		if canonicalJSON(normalizeOrganization(again)) != o.Canonical {
+			fail("organization record %q: canonical form is not stable", o.About)
+		}
+	}
+	ok("organization records (%d)", len(v.OrganizationRecords))
+}
+
+// normalizeOrganization applies SPEC §6.7's writer rules to a decoded
+// organization record: name trimmed, notes trimmed and left out when
+// empty or null. Everything else, unknown fields too, is kept.
+func normalizeOrganization(in map[string]any) map[string]any {
+	out := map[string]any{}
+	for k, v := range in {
+		out[k] = v
+	}
+	if name, isString := out["name"].(string); isString {
+		out["name"] = strings.TrimSpace(name)
+	}
+	notes, _ := out["notes"].(string)
+	if notes = strings.TrimSpace(notes); notes == "" {
+		delete(out, "notes")
+	} else {
+		out["notes"] = notes
+	}
+	return out
 }
 
 func toAny(list []string) []any {
@@ -403,6 +443,7 @@ func checkMiniVault(dir string) {
 				Filename string `json:"filename"`
 				Sha256   string `json:"sha256"`
 			} `json:"attachments"`
+			Notes *string `json:"notes"`
 		} `json:"items"`
 		Apps       map[string]string `json:"apps"`
 		AppRecords map[string]struct {
@@ -414,8 +455,12 @@ func checkMiniVault(dir string) {
 			Identifiers  []appIdentifierVec `json:"identifiers"`
 			Notes        *string            `json:"notes"`
 		} `json:"app_records"`
-		Organizations map[string]string `json:"organizations"`
-		Tombstones    []string          `json:"tombstones"`
+		Organizations       map[string]string `json:"organizations"`
+		OrganizationRecords map[string]struct {
+			Name  string  `json:"name"`
+			Notes *string `json:"notes"`
+		} `json:"organization_records"`
+		Tombstones []string `json:"tombstones"`
 	}
 	must(0, json.Unmarshal(must(os.ReadFile(filepath.Join(dir, "mini-vault.json"))), &expected))
 	root := filepath.Join(dir, "mini-vault", expected.VaultID)
@@ -481,10 +526,33 @@ func checkMiniVault(dir string) {
 		}
 	}
 
+	optional := func(v any) *string {
+		if s, isString := v.(string); isString {
+			return &s
+		}
+		return nil
+	}
+	same := func(a, b *string) bool { return (a == nil && b == nil) || (a != nil && b != nil && *a == *b) }
+
+	secureNotes := 0
 	for id, want := range expected.Items {
 		rec, found := records["item:"+id]
 		if !found || rec["type"] != want.Type || rec["title"] != want.Title {
 			fail("item %s", id)
+		}
+		if !same(optional(rec["notes"]), want.Notes) {
+			fail("item %s notes", id)
+		}
+		attachments, _ := rec["attachments"].([]any)
+		if len(attachments) != len(want.Attachments) {
+			fail("item %s has %d attachments, want %d", id, len(attachments), len(want.Attachments))
+		}
+		// SPEC §6.5: a secure note's body is its notes; it has no attachment.
+		if want.Type == "secure_note" {
+			if body := optional(rec["notes"]); body == nil || *body == "" || len(attachments) != 0 {
+				fail("secure note %s", id)
+			}
+			secureNotes++
 		}
 		fields := rec["fields"].(map[string]any)
 		for k, v := range want.Fields {
@@ -504,14 +572,10 @@ func checkMiniVault(dir string) {
 			fail("app %s", id)
 		}
 	}
-	// SPEC §6.2: the stored app records are already in canonical form.
-	optional := func(v any) *string {
-		if s, isString := v.(string); isString {
-			return &s
-		}
-		return nil
+	if secureNotes == 0 {
+		fail("mini-vault has no secure note")
 	}
-	same := func(a, b *string) bool { return (a == nil && b == nil) || (a != nil && b != nil && *a == *b) }
+	// SPEC §6.2: the stored app records are already in canonical form.
 	for id, want := range expected.AppRecords {
 		rec := records["app:"+id]
 		if rec == nil || rec["name"] != want.Name {
@@ -552,6 +616,23 @@ func checkMiniVault(dir string) {
 			fail("organization %s", id)
 		}
 	}
+	// SPEC §6.7: stored organization records are in canonical form, notes
+	// trimmed and left out when empty.
+	if len(expected.OrganizationRecords) != len(expected.Organizations) {
+		fail("organization_records does not list every organization")
+	}
+	for id, want := range expected.OrganizationRecords {
+		rec := records["organization:"+id]
+		if rec == nil || rec["name"] != want.Name {
+			fail("organization record %s", id)
+		}
+		if canonicalJSON(normalizeOrganization(rec)) != canonicalJSON(rec) {
+			fail("organization record %s is not in canonical form", id)
+		}
+		if !same(optional(rec["notes"]), want.Notes) {
+			fail("organization record %s notes", id)
+		}
+	}
 	for key := range records {
 		if id, isOrg := strings.CutPrefix(key, "organization:"); isOrg {
 			if _, listed := expected.Organizations[id]; !listed {
@@ -564,8 +645,8 @@ func checkMiniVault(dir string) {
 			fail("tombstone %s", id)
 		}
 	}
-	ok("mini-vault: %d items, %d apps, %d organizations, %d tombstones, attachments match sha256",
-		len(expected.Items), len(expected.Apps), len(expected.Organizations), len(expected.Tombstones))
+	ok("mini-vault: %d items (%d secure notes), %d apps, %d organizations, %d tombstones, attachments match sha256",
+		len(expected.Items), secureNotes, len(expected.Apps), len(expected.Organizations), len(expected.Tombstones))
 }
 
 func main() {
