@@ -1,4 +1,6 @@
 import 'package:devvault/shared/desktop_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fl show Divider;
+import 'package:flutter/material.dart' show Divider, MenuItemButton;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/semantics.dart'
@@ -136,8 +138,17 @@ void main() {
               key: menu,
               actions: [
                 DesktopMenuAction('New item…', () => picked.add('new')),
-                DesktopMenuAction('Edit app…', () => picked.add('edit')),
-                DesktopMenuAction('Delete app…', () => picked.add('delete')),
+                // In groups: ↑/↓ step over the separators.
+                DesktopMenuAction(
+                  'Edit app…',
+                  () => picked.add('edit'),
+                  startsGroup: true,
+                ),
+                DesktopMenuAction(
+                  'Delete app…',
+                  () => picked.add('delete'),
+                  startsGroup: true,
+                ),
               ],
               child: Focus(
                 focusNode: row,
@@ -221,6 +232,79 @@ void main() {
           expect(find.text('Delete app…'), findsNothing);
         });
       });
+
+      testWidgets('a separator goes above each group but the first', (
+        tester,
+      ) async {
+        await pumpDesktop(
+          tester,
+          kit,
+          DesktopContextMenu(
+            actions: [
+              // A first command that starts a group gets no separator.
+              DesktopMenuAction('New item…', () {}, startsGroup: true),
+              DesktopMenuAction('New app…', () {}),
+              DesktopMenuAction('Edit app…', () {}, startsGroup: true),
+              DesktopMenuAction(
+                'Delete app…',
+                () {},
+                destructive: true,
+                startsGroup: true,
+              ),
+            ],
+            child: const SizedBox(width: 200, height: 24, child: Text('Row')),
+          ),
+        );
+        await tester.tap(
+          find.text('Row'),
+          buttons: kSecondaryMouseButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        final separators = find.byWidgetPredicate(
+          (w) => w is Divider || w is fl.Divider,
+        );
+        expect(separators, findsNWidgets(2));
+        double top(Finder f) => tester.getTopLeft(f).dy;
+        final [first, second] = [
+          for (final e in separators.evaluate())
+            (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy,
+        ]..sort();
+        expect(first, greaterThan(top(find.text('New app…'))));
+        expect(first, lessThan(top(find.text('Edit app…'))));
+        expect(second, greaterThan(top(find.text('Edit app…'))));
+        expect(second, lessThan(top(find.text('Delete app…'))));
+      });
+
+      // Fluent's flyout sizes its own rows.
+      final rowHeight = switch (kit) {
+        DesktopKit.macos => DesktopMetrics.menuRowHeight,
+        DesktopKit.yaru => DesktopMetrics.yaruMenuRowHeight,
+        DesktopKit.fluent => null,
+      };
+      if (rowHeight != null) {
+        testWidgets('its rows are the system menu\'s height', (tester) async {
+          await pumpDesktop(
+            tester,
+            kit,
+            DesktopContextMenu(
+              actions: [DesktopMenuAction('New item…', () {})],
+              child: const SizedBox(width: 200, height: 24, child: Text('Row')),
+            ),
+          );
+          await tester.tap(
+            find.text('Row'),
+            buttons: kSecondaryMouseButton,
+            kind: PointerDeviceKind.mouse,
+          );
+          await tester.pumpAndSettle();
+          final row = find.ancestor(
+            of: find.text('New item…'),
+            matching: find.byType(MenuItemButton),
+          );
+          expect(tester.getSize(row).height, rowHeight);
+        });
+      }
 
       testWidgets('without commands it is just its child', (tester) async {
         await pumpDesktop(

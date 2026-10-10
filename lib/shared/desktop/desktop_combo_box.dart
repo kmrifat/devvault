@@ -153,14 +153,20 @@ class _MacosComboMenu extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) => MenuAnchor(
         style: MacosMenuStyle.panel(colors),
+        clipBehavior: Clip.antiAlias,
         menuChildren: [
-          for (final s in suggestions)
-            MacosMenuStyle.item(
-              context,
-              label: s,
-              width: constraints.maxWidth,
-              onPressed: () => onPick(s),
-            ),
+          MacosMenuStyle.surface(
+            context,
+            children: [
+              for (final s in suggestions)
+                MacosMenuStyle.item(
+                  context,
+                  label: s,
+                  width: constraints.maxWidth,
+                  onPressed: () => onPick(s),
+                ),
+            ],
+          ),
         ],
         builder: (context, menu, _) {
           void toggle() => menu.isOpen ? menu.close() : menu.open();

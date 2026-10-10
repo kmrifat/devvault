@@ -266,6 +266,7 @@ class _Header extends ConsumerWidget {
               'Delete item…',
               () => deleteItem(context, ref, item),
               destructive: true,
+              startsGroup: true,
             ),
           ],
         ),

@@ -22,7 +22,7 @@ export 'desktop/desktop_metrics.dart';
 export 'desktop/desktop_panel.dart';
 export 'desktop/desktop_popup.dart';
 export 'desktop/desktop_progress.dart';
-export 'desktop/desktop_pull_down_button.dart';
+export 'desktop/desktop_pull_down_button.dart' hide separatorBefore;
 export 'desktop/desktop_radio.dart';
 export 'desktop/desktop_scope_bar.dart';
 export 'desktop/desktop_scroll_view.dart';
