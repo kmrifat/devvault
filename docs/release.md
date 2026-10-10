@@ -34,7 +34,7 @@ Each tag gives these desktop files:
 |---|---|
 | macOS | `DevVault-macos.dmg` (notarized) |
 | Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix` |
-| Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature |
+| Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature, and `devvault-linux-x64.AppImage.zsync` |
 
 ## The agent helper (P5-09)
 
@@ -103,6 +103,15 @@ Users check them with `gpg --verify <file>.asc`, and every file with
 `tool/release/linux_appimage.sh` builds the AppImage from the release
 bundle with `appimagetool`, which is pinned to 1.9.1 and checked against
 its SHA-256. Like the tarball, it uses the host's GTK 3 and libsecret.
+
+The AppImage embeds update information (ADR-0007 §5):
+`gh-releases-zsync|kmrifat|devvault|latest|devvault-linux-x64.AppImage.zsync`.
+AppImageUpdate, Gear Lever and AppImageLauncher read it, fetch the
+latest **published** release's `.zsync` and download only the changed
+blocks. The script checks the embedded string with
+`--appimage-updateinformation` and fails without the `.zsync`
+(`zsyncmake`, from the `zsync` package). Publishing the draft is what
+makes a new AppImage visible to those tools.
 
 ### iOS: TestFlight
 

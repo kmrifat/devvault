@@ -138,9 +138,12 @@ and the Linux tarball.
   `-u "gh-releases-zsync|kmrifat|devvault|latest|devvault-linux-x64.AppImage.zsync"`
   to `appimagetool`, which also writes the `.zsync` file; `release.yml`
   uploads it with the AppImage.
-- The AppImage keeps its detached `.asc` and also embeds a GPG signature
-  (`appimagetool --sign`) when `LINUX_GPG_PRIVATE_KEY` is set, so
-  AppImageUpdate can check it.
+- The AppImage keeps its detached `.asc`. Embedding a GPG signature
+  (`appimagetool --sign`) so AppImageUpdate can check it is deferred
+  until the Linux key exists to test it with: AppImageUpdate only
+  compares embedded signatures when the old and the new AppImage both
+  carry one from the same key, so the first signed release starts that
+  chain.
 - The app does not update itself on Linux. External tools pick up the
   update information if the user runs one; inside the app, §2 applies.
 
