@@ -1,0 +1,106 @@
+name: Publish
+
+# Package managers (ADR-0007 §7, P6-06), once a release is published (not
+# while it's a draft, and never for a pre-release):
+# - Homebrew: Casks/devvault.rb in kmrifat/homebrew-tap, for
+#   `brew install --cask kmrifat/tap/devvault`. Needs HOMEBREW_TAP_TOKEN.
+# - winget: a pull request to microsoft/winget-pkgs updating
+#   BinaryCastle.DevVault. Needs WINGET_TOKEN, and the package's first
+#   version submitted by hand (docs/release.md › Package managers).
+# Each job skips with a notice when its token isn't set.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag, e.g. v1.0.0
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  homebrew:
+    name: Homebrew cask
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: No tap token
+        if: env.TAP_TOKEN == ''
+        run: echo "::notice::HOMEBREW_TAP_TOKEN is not set; the cask was not updated."
+      - name: Write the cask
+        if: env.TAP_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern DevVault-macos.dmg --dir dist
+          sha256="$(sha256sum dist/DevVault-macos.dmg | cut -d' ' -f1)"
+          # Sparkle updates the app when the release has an appcast.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json assets -q '.assets[].name' | grep -qx appcast.xml; then
+            auto_updates=true
+          else
+            auto_updates=false
+          fi
+          tool/release/homebrew_cask.sh "${TAG#v}" "$sha256" "$auto_updates" > devvault.rb
+          cat devvault.rb
+      - name: Push it to the tap
+        if: env.TAP_TOKEN != ''
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/kmrifat/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          cp devvault.rb tap/Casks/devvault.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/devvault.rb
+          if git diff --cached --quiet; then
+            echo "The cask is already at $TAG."
+            exit 0
+          fi
+          git commit -m "devvault ${TAG#v}"
+          git push
+
+  winget:
+    name: winget manifest
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: No winget token
+        if: env.WINGET_TOKEN == ''
+        run: echo "::notice::WINGET_TOKEN is not set; winget was not updated."
+      - name: Submit the update
+        if: env.WINGET_TOKEN != ''
+        shell: pwsh
+        run: |
+          # wingetcreate only updates a package that exists; the first
+          # version is submitted by hand (docs/release.md).
+          gh api repos/microsoft/winget-pkgs/contents/manifests/b/BinaryCastle/DevVault --silent 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::notice::BinaryCastle.DevVault isn't in winget-pkgs yet; submit the first version by hand."
+            exit 0
+          }
+          $url = 'https://github.com/microsoft/winget-create/releases/download/v1.12.13.0/wingetcreate.exe'
+          Invoke-WebRequest $url -OutFile wingetcreate.exe
+          $hash = (Get-FileHash wingetcreate.exe -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne '24042bd37915805615e6cf969ac57c6439124c3fe85823327f5f3fb24bd9ffea') {
+            throw "wingetcreate.exe has SHA-256 $hash"
+          }
+          $version = $env:TAG.TrimStart('v')
+          ./wingetcreate.exe update BinaryCastle.DevVault `
+            --version $version `
+            --urls "https://github.com/kmrifat/devvault/releases/download/$env:TAG/devvault-windows-x64.msix|x64" `
+            --release-notes-url "https://github.com/kmrifat/devvault/releases/tag/$env:TAG" `
+            --submit --no-open --token $env:WINGET_TOKEN
+          if ($LASTEXITCODE -ne 0) { throw "wingetcreate failed ($LASTEXITCODE)" }

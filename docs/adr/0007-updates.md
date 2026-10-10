@@ -176,9 +176,12 @@ and the Linux tarball.
   `-u "gh-releases-zsync|kmrifat|devvault|latest|devvault-linux-x64.AppImage.zsync"`
   to `appimagetool`, which also writes the `.zsync` file; `release.yml`
   uploads it with the AppImage.
-- The AppImage keeps its detached `.asc` and also embeds a GPG signature
-  (`appimagetool --sign`) when `LINUX_GPG_PRIVATE_KEY` is set, so
-  AppImageUpdate can check it.
+- The AppImage keeps its detached `.asc`. Embedding a GPG signature
+  (`appimagetool --sign`) so AppImageUpdate can check it is deferred
+  until the Linux key exists to test it with: AppImageUpdate only
+  compares embedded signatures when the old and the new AppImage both
+  carry one from the same key, so the first signed release starts that
+  chain.
 - The app does not update itself on Linux. External tools pick up the
   update information if the user runs one; inside the app, §2 applies.
 
@@ -203,10 +206,13 @@ user's control, which fits an open-source app better than anything we
 run. They are listed in order of effort:
 
 - **Homebrew cask** in our tap (`kmrifat/homebrew-tap`) until the cask
-  qualifies for `homebrew/cask`. `auto_updates true`, because Sparkle
-  updates the app.
+  qualifies for `homebrew/cask`. `auto_updates true` when the release
+  has an appcast, because Sparkle then updates the app. No `zap`
+  stanza: the app's container holds the vaults.
 - **winget**: a manifest for the MSIX, submitted to `microsoft/winget-pkgs`
-  by `wingetcreate` on `release: published`.
+  by `wingetcreate update` on `release: published`. The first version is
+  submitted by hand, because `wingetcreate` only updates a package that
+  exists.
 - **Flathub** (later): builds from source in Flathub's infrastructure; the
   keyring goes through the Secret portal. It is a separate project because
   of the build (libsodium, Flutter in flatpak-builder) and the sandbox.

@@ -5,7 +5,15 @@
 #
 # appimagetool is pinned to a release and checked against the SHA-256 that
 # GitHub records for it. It fetches the AppImage runtime while packaging.
+#
+# The AppImage carries update information (ADR-0007 §5, P6-03): tools such
+# as AppImageUpdate fetch the latest published release's .zsync and
+# download only the blocks that changed. appimagetool writes the .zsync
+# beside the AppImage with `zsyncmake` (apt package `zsync`).
 set -euo pipefail
+
+name=devvault-linux-x64.AppImage
+update_info="gh-releases-zsync|kmrifat|devvault|latest|$name.zsync"
 
 version=1.9.1
 sha256=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
@@ -40,6 +48,23 @@ Terminal=false
 DESKTOP
 cp linux/runner/resources/app_icon.png "$appdir/com.binarycastle.devvault.png"
 
+command -v zsyncmake >/dev/null || {
+  echo "zsyncmake is missing: install the zsync package" >&2
+  exit 1
+}
+
 # No FUSE on the runners: let the tool unpack itself.
-ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$tool" "$appdir" devvault-linux-x64.AppImage
-echo "Wrote devvault-linux-x64.AppImage"
+ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$tool" \
+  --updateinformation "$update_info" "$appdir" "$name"
+
+# Check what the AppImage says about where its updates come from: the
+# .upd_info ELF section, read without running it (with no FUSE, the
+# runtime would start the app instead of answering).
+objcopy -O binary --only-section=.upd_info "$name" "$tmp/upd_info"
+embedded="$(tr -d '\0' < "$tmp/upd_info")"
+if [ "$embedded" != "$update_info" ]; then
+  echo "Update information is '$embedded', expected '$update_info'" >&2
+  exit 1
+fi
+test -s "$name.zsync" || { echo "No $name.zsync was written" >&2; exit 1; }
+echo "Wrote $name and $name.zsync ($embedded)"
