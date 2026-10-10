@@ -18,8 +18,10 @@ attached to the GitHub Release.
    git tag -s v1.0.0 -m "DevVault 1.0.0"
    git push origin v1.0.0
    ```
-3. Wait for **Release** to finish, open the draft release, check that no
-   file ends in `-unsigned`, run through `docs/acceptance/v1.md`, paste the
+3. Wait for **Release** to finish and open the draft release. Unsigned
+   files are never attached: the draft's notes list any that were left
+   out, so check that list is what you expect (for 1.0.0: Windows, which
+   has no certificate yet). Run through `docs/acceptance/v1.md`, paste the
    version's section of `CHANGELOG.md` into the notes. Check the update
    feeds (ADR-0007): `appcast.xml` and `DevVault.appinstaller` name this
    version, and `devvault-linux-x64.AppImage.zsync` is there. Publishing
