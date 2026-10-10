@@ -33,7 +33,7 @@ Each tag gives these desktop files:
 | Platform | Files |
 |---|---|
 | macOS | `DevVault-macos.dmg` (notarized), `appcast.xml` (when `SPARKLE_ED_PRIVATE_KEY` is set) |
-| Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix` |
+| Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix`, `DevVault.appinstaller` (signed builds) |
 | Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature, and `devvault-linux-x64.AppImage.zsync` |
 
 ## The agent helper (P5-09)
@@ -118,6 +118,22 @@ runner can't use.
 with the `msix` package (`msix_config` in `pubspec.yaml`), signed with the
 same certificate; the certificate's subject becomes the MSIX publisher.
 Windows installs a signed MSIX only when it trusts that certificate.
+
+With a signed MSIX, **Release** also writes `DevVault.appinstaller`
+(`tool/release/windows_appinstaller.ps1`, ADR-0007 §4) and attaches it.
+DevVault's *Update…* hands
+`releases/latest/download/DevVault.appinstaller` to Windows, which
+downloads the MSIX it names, checks its signature and publisher, closes
+DevVault, installs and starts it again. The MSIX version is pubspec's
+`major.minor.patch.0`, so every release needs a new version, not just a
+new build number. **Renew the certificate with the same subject**:
+Windows refuses an update from another publisher, so a new subject
+strands every installed copy.
+
+After publishing the first release with an `.appinstaller`, check on a
+Windows machine with the previous version that *Update…* works from
+GitHub: App Installer has to follow the `releases/latest/download`
+redirect (ADR-0007 §6).
 
 ### Linux: detached GPG signature
 

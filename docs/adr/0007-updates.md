@@ -141,23 +141,33 @@ and the Linux tarball.
 
 ### 4. Windows: App Installer for the MSIX
 
-- `release.yml` writes `DevVault.appinstaller`. Its own `Uri` is the
-  stable feed URL (§6); `MainPackage` points at that tag's
-  `devvault-windows-x64.msix`. It declares **no** `OnLaunch` or
-  background checks, so Windows does not check behind the user's back.
-- The running app, when the setting is on and it was installed through
-  the `.appinstaller`, calls `Package.Current.CheckUpdateAvailabilityAsync()`
-  through a method channel in `windows/runner`. If an update exists, the
-  banner offers *Restart and update*, which calls
-  `PackageManager.AddPackageByAppInstallerFileAsync(feed,
-  ForceTargetAppShutdown)`. When the app was installed from the bare
-  `.msix` or the zip, it falls back to the notify-only check in §2.
+- `tool/release/windows_appinstaller.ps1` writes `DevVault.appinstaller`
+  from the signed MSIX's own `AppxManifest.xml` (name, publisher,
+  version, architecture). Its `Uri` is the stable feed URL (§6);
+  `MainPackage` points at that tag's `devvault-windows-x64.msix`. It
+  declares **no** `UpdateSettings`, so Windows never checks behind the
+  user's back.
+- The check in §2 finds the release, as on every desktop. *Update…*
+  calls `PackageManager.AddPackageByAppInstallerFileAsync(feed,
+  ForceTargetAppShutdown)` through the `devvault/updater` channel
+  (`windows/runner/app_updater.cpp`, with the C++/WinRT call in its own
+  library, `app_installer.cpp`), after `RegisterApplicationRestart` so
+  DevVault starts again. Updating its own package needs no
+  `packageManagement` capability. `isAvailable` is true only when
+  DevVault runs from its MSIX; the zip falls back to *View Release*.
+  (Revised in P6-05: `CheckUpdateAvailabilityAsync` isn't needed, since
+  the app already knows a newer release exists.)
 - Windows checks the MSIX signature and refuses an update whose
   publisher differs from the installed package. **A renewed
   certificate must keep the same subject**, or every installed copy is
-  stranded. This goes in `docs/release.md › Windows`.
+  stranded. This is in `docs/release.md › Windows`.
 - WinSparkle for the zip is rejected: overwriting a running exe and its
   DLLs from inside it is the fragile path, and the MSIX exists for this.
+- **Test (P6-05):** `desktop-checks.yml` installs a signed 0.1.0 MSIX
+  on a Windows runner and lets it press *Update…* by itself against a
+  local `.appinstaller` for 0.1.1 (`DEVVAULT_E2E_INSTALL`,
+  `DEVVAULT_UPDATE_FEED`, compile-time and off in releases), then
+  expects Windows to report 0.1.1 installed.
 
 ### 5. Linux: AppImage update information
 
@@ -181,10 +191,12 @@ the release by `release.yml`, next to the files they describe, so they are
 reviewed with the draft. The stable URL is
 `https://github.com/kmrifat/devvault/releases/latest/download/<file>`,
 which, like the API, ignores drafts and pre-releases: publishing the draft
-is what ships the update. If the P6-05 spike shows that App Installer does
-not follow GitHub's redirect for `releases/latest/download`, the
-`.appinstaller` is published to GitHub Pages by a workflow on
-`release: published` instead, and only for Windows.
+is what ships the update. The Windows test above reads local files, so
+it doesn't show whether App Installer follows GitHub's redirect for
+`releases/latest/download`; the first published release checks that
+(`docs/release.md`). If it doesn't, the `.appinstaller` moves to GitHub
+Pages, published by a workflow on `release: published`, and only
+`appInstallerFeed` in `lib/services/update_installer.dart` changes.
 
 ### 7. Package managers
 
