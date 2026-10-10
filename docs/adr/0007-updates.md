@@ -42,8 +42,10 @@ different one:
 **unset**. After the first unlock on a desktop build, a one-time banner
 asks: "Check GitHub for new versions of DevVault once a day?" with *Check
 daily* and *Not now*. Until the user picks *Check daily* the app makes no
-update request of any kind, including Sparkle's. *Not now* stores `off`,
-and the banner does not return; the setting stays in Settings.
+update request of any kind, including Sparkle's, except when the user
+presses *Check Now* in Settings, which asks once and leaves the setting
+as it is. *Not now* stores `off`, and the banner does not return; the
+setting stays in Settings.
 
 When it is on, the app checks at launch if the last successful check was
 more than 24 hours ago, and on *Check now* in Settings. There is no
@@ -68,7 +70,8 @@ The response is **untrusted data**:
 - The release page is opened at a URL the app builds itself,
   `https://github.com/kmrifat/devvault/releases/tag/<tag>`, never a URL
   taken from the response.
-- The notes are shown as plain text, without links that open anything.
+- The app doesn't show the notes. *View Release* opens the page that has
+  them.
 - Facts only: the app shows the version and `published_at` as GitHub
   returns them, and "Last checked <time>" only after a check succeeded.
   A failed check shows "Couldn't check for updates" with the time; it

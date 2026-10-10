@@ -16,6 +16,7 @@ import '../features/import/drop_import.dart';
 import '../features/import/import_dialog.dart';
 import '../features/search/quick_open.dart';
 import '../features/sync/desktop_sync_status.dart';
+import '../features/updates/update_strip.dart';
 import '../features/vault/desktop_inspector.dart' show itemHistory;
 import '../features/vault/vault_actions.dart';
 import '../features/vault/vault_heading.dart';
@@ -186,6 +187,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                 uri: uri,
                 searchFocus: _searchFocus,
               ),
+              const UpdateStrip(),
               Expanded(child: widget.navigationShell),
               ShellStatusBar(section: section, uri: uri),
             ],
