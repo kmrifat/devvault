@@ -9,7 +9,10 @@ abstract interface class CredentialStore {
 }
 
 /// The OS keychain: Keychain on macOS and iOS, Keystore-backed storage on
-/// Android, Credential Manager on Windows, libsecret on Linux.
+/// Android, libsecret on Linux. On Windows, flutter_secure_storage keeps
+/// the keys in a file in the app support folder encrypted with DPAPI, so
+/// only the same Windows user can read them; it reads Credential Manager
+/// only for keys an older version of the plugin stored there.
 class SystemCredentialStore implements CredentialStore {
   const SystemCredentialStore();
 

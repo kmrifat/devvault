@@ -45,14 +45,16 @@ Platform notes:
 ```sh
 flutter analyze
 flutter test --exclude-tags golden     # unit + widget tests
-flutter test --tags golden             # screenshots (macOS only)
-flutter test --tags golden --update-goldens
+TZ=UTC flutter test --tags golden      # screenshots (macOS only)
+TZ=UTC flutter test --tags golden --update-goldens
 (cd packages/vault_core && dart test)  # each package has its own tests
 ```
 
 Golden screenshots live in [`screenshots/`](screenshots), named after the
 design frame they implement (`D03-…` desktop, `B2-…` mobile). Fonts render
 differently on Linux, so goldens are generated and checked on macOS only.
+They show dates, so run them in UTC as CI does; in another time zone a few
+of them fail.
 
 ## Layout
 
