@@ -2,10 +2,15 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// DevVault talks to one place on the network: the user's own bucket,
-/// through `packages/vault_s3`. Nothing else in the app or its packages may
-/// open a connection. The AI agent bridge (`packages/agent_bridge`, P5)
-/// opens sockets, but only Unix domain sockets on this machine.
+/// The update check: the one file in the app allowed an HTTP client.
+const updateCheck = 'lib/services/updates.dart';
+
+/// DevVault talks to the network in two places: the user's own bucket,
+/// through `packages/vault_s3`, and, on desktop and only once the user
+/// agrees, GitHub's latest-release API, from `lib/services/updates.dart`
+/// (ADR-0007). Nothing else in the app or its packages may open a
+/// connection. The AI agent bridge (`packages/agent_bridge`, P5) opens
+/// sockets, but only Unix domain sockets on this machine.
 void main() {
   final network = RegExp(
     r'''package:(http|dio|web_socket_channel|url_launcher)/|'''
@@ -26,7 +31,7 @@ void main() {
       final lib = root.path == 'lib' ? root : Directory('${root.path}/lib');
       if (!lib.existsSync()) continue;
       for (final file in lib.listSync(recursive: true).whereType<File>()) {
-        if (!file.path.endsWith('.dart')) continue;
+        if (!file.path.endsWith('.dart') || file.path == updateCheck) continue;
         final lines = file.readAsLinesSync();
         for (var i = 0; i < lines.length; i++) {
           if (network.hasMatch(lines[i])) {
@@ -65,9 +70,30 @@ void main() {
     );
   });
 
+  test('the update check asks GitHub for the latest release, nothing else', () {
+    final source = File(updateCheck).readAsStringSync();
+    // One request, a GET, to one URL…
+    expect(
+      RegExp(r'_client\s*\.\s*(\w+)\(').allMatches(source).map((m) => m[1]),
+      unorderedEquals(['get', 'close']),
+    );
+    expect(source, matches(RegExp(r'\.get\(\s*latestUrl,')));
+    // …built from fixed parts: api.github.com and this repository.
+    expect(
+      RegExp(r"Uri\.https\(\s*'([^']+)'").allMatches(source).map((m) => m[1]),
+      unorderedEquals(['github.com', 'api.github.com']),
+    );
+    expect(source, contains("'/repos/\$releaseRepo/releases/latest'"));
+    expect(source, contains("const releaseRepo = 'kmrifat/devvault';"));
+    // No sockets of its own.
+    expect(
+      source,
+      isNot(matches(RegExp(r'\b(HttpClient|RawSocket|Socket|WebSocket)\b'))),
+    );
+  });
+
   test('only vault_s3 depends on an HTTP client', () {
     final pubspecs = [
-      File('pubspec.yaml'),
       for (final dir in Directory('packages').listSync().whereType<Directory>())
         if (!dir.path.endsWith('vault_s3')) File('${dir.path}/pubspec.yaml'),
     ];
@@ -82,5 +108,14 @@ void main() {
         reason: pubspec.path,
       );
     }
+    // The app itself: only for the update check (ADR-0007).
+    final app = File('pubspec.yaml').readAsStringSync();
+    expect(
+      RegExp(
+        r'^\s+(http|dio|web_socket_channel):',
+        multiLine: true,
+      ).allMatches(app).map((m) => m[1]),
+      ['http'],
+    );
   });
 }

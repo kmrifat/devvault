@@ -20,13 +20,14 @@ and exported here under `desktop/`.
 | N01 | Create vault: password, strength, Argon2 note | [png](desktop/N01-create-light.png) | |
 | N02 | Recovery kit: the key, Save PDF / Print / Copy, confirm | [png](desktop/N02-recovery-kit-light.png) | |
 | N03 | Vault window: source list, toolbar, table, inspector, status bar | [png](desktop/N03-vault-light.png) | [png](desktop/N03-vault-dark.png) |
+| N03u | Update strip under the toolbar: the one-time "Check GitHub…?" question, then a newer release (P6-02, ADR-0007). Drawn in code first, not yet in `DevVault.fig` | [png](../../screenshots/N03-update-ask-light.png), [available](../../screenshots/N03-update-available-light.png) | [png](../../screenshots/N03-update-ask.png), [available](../../screenshots/N03-update-available.png) |
 | N03e | Item editor (sheet) | [png](desktop/N03e-item-editor-light.png) | |
 | N04 | Import (sheet) | [png](desktop/N04-import-light.png) | [png](desktop/N04-import-dark.png) |
 | N05 | Conflict (sheet): choose per field, Keep Both | [png](desktop/N05-conflict-light.png) | |
 | N06 | Expiry: grouped table, where each date came from, no-expiry count | [png](desktop/N06-expiry-light.png) | |
 | N07 | Settings window (⌘,): Security | [png](desktop/N07-settings-security-light.png) | [png](desktop/N07-settings-security-dark.png) |
 | N07b | Settings window: Sync (storage form, Pair) | [png](desktop/N07b-settings-sync-light.png) | |
-| N07c | Settings window: General (appearance, reminders) | [png](desktop/N07c-settings-general-light.png) | |
+| N07c | Settings window: General (appearance, reminders, check for updates) | [png](desktop/N07c-settings-general-light.png) | |
 | N07d | Settings window: AI Agents (allow, metadata, Claude Code setup, clients, activity; P5-06). Drawn in code first, not yet in `DevVault.fig` | [png](../../screenshots/N07d-settings-agents-light.png) | [png](../../screenshots/N07d-settings-agents.png) |
 | N08 | Pair a device (sheet) | [png](desktop/N08-pair-device-light.png) | |
 | N09 | AI agent asks for secrets (sheet): reason, items, where the values go (P5-05). Drawn in code first, not yet in `DevVault.fig` | [png](../../screenshots/N09-agent-reveal-light.png) | [png](../../screenshots/N09-agent-command.png) |

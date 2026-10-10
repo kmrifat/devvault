@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../test_overrides.dart';
+import '../update_overrides.dart';
 import 'harness.dart';
 
 void main() {
@@ -21,18 +22,21 @@ void main() {
       (ref) => MemoryBiometricKeyStore(kind: Biometry.touchId),
     ),
   ];
+  // General with update checks on (ADR-0007), as on a release build.
+  final updates = updateOverrides(checks: true);
   for (final (name, route) in [
     ('N07c-settings-general', Routes.settings),
     ('N07-settings-security', Routes.settingsSecurity),
     // Nothing set up yet: R2 preselected.
     ('N07b-settings-sync', Routes.settingsSync),
   ]) {
-    shot(name, route, sample: true, overrides: touchId);
+    final overrides = [...touchId, if (route == Routes.settings) ...updates];
+    shot(name, route, sample: true, overrides: overrides);
     shot(
       '$name-light',
       route,
       sample: true,
-      overrides: touchId,
+      overrides: overrides,
       brightness: Brightness.light,
     );
   }
@@ -87,7 +91,7 @@ void main() {
         '$name-${kit.name}-light',
         route,
         sample: true,
-        overrides: biometrics,
+        overrides: [...biometrics, if (route == Routes.settings) ...updates],
         brightness: Brightness.light,
         kit: kit,
       );

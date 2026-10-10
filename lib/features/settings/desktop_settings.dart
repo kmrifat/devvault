@@ -12,10 +12,13 @@ import 'package:vault_core/vault_core.dart';
 
 import '../../data/app_settings.dart';
 import '../../data/providers.dart';
+import '../../data/updates.dart';
 import '../../data/vault_session.dart';
 import '../../services/biometric_key_store.dart';
+import '../../services/updates.dart' show AppVersion;
 import '../../shared/desktop_ui.dart';
 import 'change_password_dialog.dart';
+import '../updates/update_strip.dart' show updateStatusLines;
 import 'desktop_agents_pane.dart';
 import 'new_recovery_kit_dialog.dart';
 import 'settings_layout.dart';
@@ -283,7 +286,8 @@ class DesktopSettingsRow extends StatelessWidget {
   }
 }
 
-/// General (N07c): appearance and expiry reminders.
+/// General (N07c): appearance and expiry reminders, then updates on
+/// builds that know their version (ADR-0007).
 class _GeneralPane extends ConsumerWidget {
   const _GeneralPane();
 
@@ -291,33 +295,104 @@ class _GeneralPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final running = ref.watch(appVersionProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 20,
+      children: [
+        DesktopSettingsBox(
+          children: [
+            DesktopSettingsRow(
+              title: 'Appearance',
+              trailing: Semantics(
+                label: 'Appearance',
+                child: DesktopSegmented<ThemeMode>(
+                  value: settings.themeMode,
+                  choices: const [
+                    DesktopChoice(ThemeMode.system, 'System'),
+                    DesktopChoice(ThemeMode.light, 'Light'),
+                    DesktopChoice(ThemeMode.dark, 'Dark'),
+                  ],
+                  onChanged: notifier.setThemeMode,
+                ),
+              ),
+            ),
+            DesktopSettingsRow(
+              title: 'Expiry reminders',
+              onTap: () =>
+                  notifier.setExpiryReminders(!settings.expiryReminders),
+              description:
+                  'At most two per item, at 09:00: when it enters its last '
+                  '30 days, and on the day it expires.',
+              trailing: DesktopSwitch(
+                value: settings.expiryReminders,
+                onChanged: notifier.setExpiryReminders,
+                semanticLabel: 'Expiry reminders',
+              ),
+            ),
+          ],
+        ),
+        if (running != null) _UpdatesBox(running: running),
+      ],
+    );
+  }
+}
+
+/// *Check for updates* and what the checks found.
+class _UpdatesBox extends ConsumerWidget {
+  const _UpdatesBox({required this.running});
+
+  final AppVersion running;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(settingsProvider.select((s) => s.updateChecks));
+    final notifier = ref.read(settingsProvider.notifier);
+    final status = ref.watch(updatesProvider);
+    final updates = ref.read(updatesProvider.notifier);
+    final available = status.availableFor(running);
+    final installer = ref.watch(updateInstallerProvider);
+    final lines = updateStatusLines(status, running);
     return DesktopSettingsBox(
       children: [
         DesktopSettingsRow(
-          title: 'Appearance',
-          trailing: Semantics(
-            label: 'Appearance',
-            child: DesktopSegmented<ThemeMode>(
-              value: settings.themeMode,
-              choices: const [
-                DesktopChoice(ThemeMode.system, 'System'),
-                DesktopChoice(ThemeMode.light, 'Light'),
-                DesktopChoice(ThemeMode.dark, 'Dark'),
-              ],
-              onChanged: notifier.setThemeMode,
-            ),
+          title: 'Check for updates',
+          onTap: () => notifier.setUpdateChecks(on != true),
+          description:
+              'Once a day, ask GitHub for DevVault’s latest release. Only '
+              'that request is sent: no version, device or vault.',
+          trailing: DesktopSwitch(
+            value: on == true,
+            onChanged: notifier.setUpdateChecks,
+            semanticLabel: 'Check for updates',
           ),
         ),
         DesktopSettingsRow(
-          title: 'Expiry reminders',
-          onTap: () => notifier.setExpiryReminders(!settings.expiryReminders),
-          description:
-              'At most two per item, at 09:00: when it enters its last 30 '
-              'days, and on the day it expires.',
-          trailing: DesktopSwitch(
-            value: settings.expiryReminders,
-            onChanged: notifier.setExpiryReminders,
-            semanticLabel: 'Expiry reminders',
+          title: 'DevVault $running',
+          description: lines.first,
+          details: lines.skip(1).toList(),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 8,
+            children: [
+              if (available != null)
+                DesktopButton(
+                  label: 'View Release',
+                  onPressed: () =>
+                      ref.read(linkOpenerProvider).open(available.page),
+                ),
+              if (available != null && installer != null)
+                DesktopButton(
+                  label: 'Update…',
+                  kind: DesktopButtonKind.primary,
+                  onPressed: () => installer.install(available),
+                )
+              else
+                DesktopButton(
+                  label: 'Check Now',
+                  onPressed: status.checking ? null : updates.checkNow,
+                ),
+            ],
           ),
         ),
       ],

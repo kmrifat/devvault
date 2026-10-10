@@ -4,6 +4,7 @@ import 'package:agent_bridge/agent_bridge.dart' show socketPathInContainer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vault_core/vault_core.dart';
 
@@ -18,6 +19,7 @@ import 'services/device_id.dart';
 import 'services/incoming_files.dart';
 import 'services/notifications.dart';
 import 'services/share_sheet_saver.dart';
+import 'services/updates.dart';
 import 'services/window.dart';
 
 /// Opens the app at any route, e.g. `--dart-define=START=/vault`.
@@ -57,6 +59,11 @@ Future<void> main() async {
   // Phones export through the share sheet; clear any copy a crash left.
   final phone = AppLayout.current == AppLayout.mobile;
   if (phone) ShareSheetSaver.sweep();
+  // Update checks (ADR-0007) compare against this; phones update through
+  // their stores.
+  final version = phone
+      ? null
+      : AppVersion.tryParse((await PackageInfo.fromPlatform()).version);
   // AI agents (P5) reach the app through a socket in its sandbox
   // container, where `$HOME` points (ADR-0006). macOS only for now.
   final home = Platform.environment['HOME'];
@@ -76,6 +83,7 @@ Future<void> main() async {
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
         agentSocketPathProvider.overrideWithValue(agentSocket),
+        appVersionProvider.overrideWithValue(version),
         if (agentSocket != null)
           agentHelperPathProvider.overrideWithValue(
             // …/DevVault.app/Contents/MacOS/DevVault → Contents/Helpers.
