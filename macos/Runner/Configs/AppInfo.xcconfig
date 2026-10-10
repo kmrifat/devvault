@@ -15,7 +15,8 @@ PRODUCT_COPYRIGHT = Copyright © 2026 Binary Castle. All rights reserved.
 
 // In-place updates with Sparkle (ADR-0007 §3). Each release attaches an
 // appcast signed with the update key; the app checks it with this public
-// half. While SPARKLE_PUBLIC_ED_KEY is empty the app can't update itself
-// and offers View Release instead (docs/release.md › macOS updates).
+// half (made 2026-10-11; the private half is the SPARKLE_ED_PRIVATE_KEY
+// secret, and offline). Without it the app can't update itself and offers
+// View Release (docs/release.md › macOS: in-place updates).
 SPARKLE_FEED_URL = https:/$()/github.com/kmrifat/devvault/releases/latest/download/appcast.xml
-SPARKLE_PUBLIC_ED_KEY =
+SPARKLE_PUBLIC_ED_KEY = o54jybyTc1f/3f1lliDDO8V1t90zPhnZT/oE6VLA5wI=
