@@ -28,22 +28,32 @@ Future<void> exportFile(
   Attachment attachment,
 ) => exportAttachment(context, ref, item, attachment);
 
-/// Opens the form for a new item, placed where [filter] is looking (or in
-/// [app], when given), and selects it once saved.
+/// Opens the form for a new item of [type], placed where [filter] is
+/// looking (or in [app], when given), and selects it once saved.
 Future<void> createItem(
   BuildContext context,
   VaultFilter filter, {
   String? app,
+  ItemType type = ItemType.genericSecret,
 }) async {
   String? place(String? value) => value == VaultFilter.none ? null : value;
   final id = await showItemEditor(
     context,
+    type: type,
     app: app ?? place(filter.app),
     platform: place(filter.platform),
     env: place(filter.env),
   );
   if (id != null && context.mounted) context.go(filter.location(item: id));
 }
+
+/// Opens the form for a new secure note, placed as [createItem] places an
+/// item.
+Future<void> createSecureNote(
+  BuildContext context,
+  VaultFilter filter, {
+  String? app,
+}) => createItem(context, filter, app: app, type: ItemType.secureNote);
 
 /// Opens the form for [item].
 Future<void> editItem(BuildContext context, Item item) =>
@@ -191,48 +201,68 @@ Future<void> moveApp(
   );
 }
 
-/// Asks for a new name for [organization], then renames it: its records
-/// and every app that names it. A name another organization already has
-/// merges the two.
-Future<void> renameOrganization(
+/// Opens [organization] in the organization sheet: a new name renames it
+/// (its records and every app that names it; a name another organization
+/// already has merges the two), and its notes are saved as edited.
+Future<void> editOrganization(
   BuildContext context,
   WidgetRef ref,
   String organization,
 ) async {
-  final name = await showOrganizationSheet(context, organization: organization);
-  if (name == null || name == organization || !context.mounted) return;
+  final session = ref.read(vaultSessionProvider);
+  if (session is! Unlocked) return;
+  final before = organizationNotes(session.index, organization) ?? '';
+  final draft = await showOrganizationSheet(
+    context,
+    organization: organization,
+    notes: before,
+  );
+  if (draft == null || !context.mounted) return;
   if (ref.read(vaultSessionProvider) is! Unlocked) return;
-  await ref
-      .read(vaultSessionProvider.notifier)
-      .renameOrganization(organization, name);
-  if (!context.mounted) return;
+  final notifier = ref.read(vaultSessionProvider.notifier);
+  final renamed = draft.name != organization;
+  if (renamed) await notifier.renameOrganization(organization, draft.name);
+  if (draft.notes.trim() != before.trim()) {
+    await notifier.setOrganizationNotes(draft.name, draft.notes);
+  }
+  if (!context.mounted || (!renamed && draft.notes.trim() == before.trim())) {
+    return;
+  }
   final location = VaultFilter.fromUri(GoRouterState.of(context).uri);
-  if (location.org == organization) {
-    context.go(VaultFilter(org: name).withQuery(location.q).location());
+  if (renamed && location.org == organization) {
+    context.go(VaultFilter(org: draft.name).withQuery(location.q).location());
   }
   showAppToast(
     context,
     BCToastData(
-      title: '“$organization” renamed to “$name”',
+      title: renamed
+          ? '“$organization” renamed to “${draft.name}”'
+          : '“$organization” saved',
       variant: BCToastVariant.success,
     ),
   );
 }
 
-/// Asks for a name, then creates an organization with no apps, ready for
-/// apps to be dragged in, and lists it. A name the vault already has just
-/// lists that organization.
+/// Asks for a name and notes, then creates an organization with no apps,
+/// ready for apps to be dragged in, and lists it. A name the vault already
+/// has just lists that organization (and adds the notes to it when it had
+/// none).
 Future<void> createOrganization(BuildContext context, WidgetRef ref) async {
-  final name = await showOrganizationSheet(context);
-  if (name == null || !context.mounted) return;
+  final draft = await showOrganizationSheet(context);
+  if (draft == null || !context.mounted) return;
   final session = ref.read(vaultSessionProvider);
   if (session is! Unlocked) return;
-  if (!session.index.organizations.contains(name)) {
-    final notifier = ref.read(vaultSessionProvider.notifier);
-    await notifier.saveOrganization(notifier.newOrganization(name));
-    if (!context.mounted) return;
+  final notifier = ref.read(vaultSessionProvider.notifier);
+  if (!session.index.organizations.contains(draft.name)) {
+    await notifier.saveOrganization(
+      notifier.newOrganization(draft.name, notes: draft.notes),
+    );
+  } else if (draft.notes.trim().isNotEmpty &&
+      organizationNotes(session.index, draft.name) == null) {
+    await notifier.setOrganizationNotes(draft.name, draft.notes);
   }
-  context.go(Routes.vault(org: name));
+  if (!context.mounted) return;
+  context.go(Routes.vault(org: draft.name));
 }
 
 /// Asks, then deletes [organization]. Its [appCount] apps and their items

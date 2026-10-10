@@ -37,27 +37,25 @@ import '../import/place_fields.dart'
         SourceTag,
         placeSuggestions,
         typedPlace;
-import '../notes/notes.dart' show DesktopNotesEditor, PhoneNotesField;
+import '../notes/notes.dart'
+    show DesktopNotesEditor, PhoneNotesField, SecureNoteEditor;
 import '../vault/desktop_item_type.dart' show DesktopTypeTile;
 import 'item_draft.dart';
 
-/// Opens the item form: [item] to edit it, or null for a new item placed
-/// in [app], [platform] and [env] (where the user is looking). Resolves to
-/// the saved item's id, or null when cancelled.
+/// Opens the item form: [item] to edit it, or null for a new item of
+/// [type] (a secret unless given) placed in [app], [platform] and [env]
+/// (where the user is looking). Resolves to the saved item's id, or null
+/// when cancelled.
 Future<String?> showItemEditor(
   BuildContext context, {
   Item? item,
+  ItemType type = ItemType.genericSecret,
   String? app,
   String? platform,
   String? env,
 }) {
   final draft = item == null
-      ? ItemDraft.create(
-          ItemType.genericSecret,
-          appId: app,
-          platform: platform,
-          environment: env,
-        )
+      ? ItemDraft.create(type, appId: app, platform: platform, environment: env)
       : ItemDraft.edit(item);
   if (DesktopTheme.maybeOf(context) != null) {
     return showDesktopSheet<String>(
@@ -76,7 +74,9 @@ Future<String?> showItemEditor(
 }
 
 /// The item form: type, name, where it belongs, tags, expiry, fields and
-/// notes. Values read from a file are shown but locked.
+/// notes. Values read from a file are shown but locked. A secure note has
+/// no fields or expiry: its body, in the WYSIWYG note editor, takes their
+/// place.
 class ItemEditor extends ConsumerStatefulWidget {
   const ItemEditor({super.key, required this.draft});
 
@@ -92,6 +92,9 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
   late final _tags = TextEditingController(text: _draft.tags);
   final _tagInput = DesktopTokenController();
   late final _notes = TextEditingController(text: _draft.notes);
+
+  /// A secure note's body, as the note editor last reported it.
+  late String _body = _draft.notes;
   Map<String, String> _errors = const {};
   bool _saving = false;
   String? _saveError;
@@ -111,10 +114,28 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
 
   bool get _desktop => DesktopTheme.maybeOf(context) != null;
 
+  bool get _isNote => _draft.type == ItemType.secureNote;
+
+  /// Changes the new item's type. Notes typed so far go with it: into a
+  /// secure note's body, or back out into the notes field.
+  void _changeType(ItemType type) {
+    final wasNote = _isNote;
+    setState(() => _draft.changeType(type));
+    if (_isNote && !wasNote) _body = _notes.text;
+    if (!_isNote && wasNote) _notes.text = _body;
+  }
+
   Future<void> _save() async {
     _draft
       ..title = _title.text
-      ..notes = _notes.text;
+      ..notes = _isNote ? _body : _notes.text;
+    if (_isNote) {
+      // A secure note is its body: what was typed into fields or an expiry
+      // before the type changed isn't shown, so it isn't saved either.
+      _draft
+        ..fields.clear()
+        ..expiresAt = null;
+    }
     // On a desktop the token field keeps the draft's tags as it goes; a
     // tag still being typed is added here.
     _draft.tags = _desktop
@@ -164,7 +185,12 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        BCDialogTitle(draft.isNew ? 'New item' : 'Edit item'),
+        BCDialogTitle(switch ((draft.isNew, _isNote)) {
+          (true, true) => 'New secure note',
+          (true, false) => 'New item',
+          (false, true) => 'Edit note',
+          (false, false) => 'Edit item',
+        }),
         const SizedBox(height: BCSpacing.lg),
         if (draft.isNew) ...[
           const _Label('Type'),
@@ -178,7 +204,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                   leading: TypeIconTile(type: type, size: 24),
                 ),
             ],
-            onValueChange: (type) => setState(() => draft.changeType(type)),
+            onValueChange: _changeType,
           ),
           const SizedBox(height: BCSpacing.md),
         ],
@@ -250,36 +276,46 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
           ],
         ),
         const SizedBox(height: BCSpacing.md),
-        _Expiry(
-          draft: draft,
-          onChanged: (date) => setState(() => draft.expiresAt = date),
-        ),
-        const SizedBox(height: BCSpacing.lg),
-        const _Label('Fields'),
-        for (final (i, field) in draft.fields.indexed)
-          _FieldEditor(
-            key: ObjectKey(field),
-            field: field,
-            error: _errors['$i'],
-            onRemove: () => setState(() => draft.fields.remove(field)),
-            onChanged: () => setState(() {}),
+        if (_isNote) ...[
+          const _Label('Note'),
+          SecureNoteEditor(
+            key: const ValueKey('secure-note-body'),
+            initialMarkdown: _body,
+            minHeight: 220,
+            onChanged: (markdown) => _body = markdown,
           ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: BCButton(
-            size: BCButtonSize.sm,
-            variant: BCButtonVariant.ghost,
-            onPressed: () => setState(() => draft.fields.add(DraftField())),
-            startContent: const Icon(LucideIcons.plus, size: 15),
-            child: const Text('Add field'),
+        ] else ...[
+          _Expiry(
+            draft: draft,
+            onChanged: (date) => setState(() => draft.expiresAt = date),
           ),
-        ),
-        const SizedBox(height: BCSpacing.md),
-        const _Label('Notes'),
-        PhoneNotesField(
-          controller: _notes,
-          fieldKey: const ValueKey('item-notes'),
-        ),
+          const SizedBox(height: BCSpacing.lg),
+          const _Label('Fields'),
+          for (final (i, field) in draft.fields.indexed)
+            _FieldEditor(
+              key: ObjectKey(field),
+              field: field,
+              error: _errors['$i'],
+              onRemove: () => setState(() => draft.fields.remove(field)),
+              onChanged: () => setState(() {}),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: BCButton(
+              size: BCButtonSize.sm,
+              variant: BCButtonVariant.ghost,
+              onPressed: () => setState(() => draft.fields.add(DraftField())),
+              startContent: const Icon(LucideIcons.plus, size: 15),
+              child: const Text('Add field'),
+            ),
+          ),
+          const SizedBox(height: BCSpacing.md),
+          const _Label('Notes'),
+          PhoneNotesField(
+            controller: _notes,
+            fieldKey: const ValueKey('item-notes'),
+          ),
+        ],
         if (_saveError case final error?) ...[
           const SizedBox(height: BCSpacing.md),
           BCText(
@@ -304,7 +340,9 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
               startContent: _saving
                   ? const BCSpinner(size: BCSpinnerSize.sm)
                   : null,
-              child: Text(draft.isNew ? 'Add item' : 'Save'),
+              child: Text(
+                draft.isNew ? (_isNote ? 'Add note' : 'Add item') : 'Save',
+              ),
             ),
           ],
         ),
@@ -330,8 +368,10 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     final placeWidth = DesktopMetrics.placeFieldWidth(context.desktopKit);
 
     return DesktopSheet(
-      width: 640,
-      title: base == null ? 'New item' : 'Edit “${base.title}”',
+      width: _isNote ? 720 : 640,
+      title: base == null
+          ? (_isNote ? 'New secure note' : 'New item')
+          : 'Edit “${base.title}”',
       leadingAction: _saving
           ? const DesktopProgress(semanticLabel: 'Saving')
           : null,
@@ -341,7 +381,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         DesktopButton(
-          label: draft.isNew ? 'Add item' : 'Save',
+          label: draft.isNew ? (_isNote ? 'Add note' : 'Add item') : 'Save',
           kind: DesktopButtonKind.primary,
           onPressed: _saving ? null : _save,
         ),
@@ -365,8 +405,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                               for (final type in ItemType.values)
                                 DesktopChoice(type, type.label),
                             ],
-                            onChanged: (type) =>
-                                setState(() => draft.changeType(type)),
+                            onChanged: _changeType,
                           ),
                         )
                       // An item keeps its type.
@@ -461,65 +500,77 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                 ),
               ],
             ),
-            _FieldTable(
-              fields: draft.fields,
-              errors: _errors,
-              onRemove: (field) => setState(() => draft.fields.remove(field)),
-              onAdd: () => setState(() => draft.fields.add(DraftField())),
-              onChanged: () => setState(() {}),
-            ),
-            DesktopForm(
-              labelWidth: _labelWidth,
-              children: [
-                DesktopFormRow(
-                  label: 'Expires',
-                  child: switch (draft.expiresAt) {
-                    // Read from the file: shown with its source, not
-                    // editable.
-                    final expiresAt? when draft.expiryFromFile => Row(
-                      spacing: 10,
-                      children: [
-                        Text(DateFormat.yMMMd().format(expiresAt.toLocal())),
-                        const SourceTag('From the file'),
-                      ],
-                    ),
-                    _ => SheetNote(
-                      width: 160,
-                      tone: _errors.containsKey('expiry')
-                          ? NoteTone.problem
-                          : NoteTone.hint,
-                      note:
-                          _errors['expiry'] ??
-                          'Set by you · leave empty for no expiry',
-                      // Picked or typed by the user: a date, kept as
-                      // midnight UTC with the user as its source.
-                      control: DesktopDateField(
-                        key: const ValueKey('item-expiry'),
-                        value: switch (draft.expiresAt?.toUtc()) {
-                          final utc? => DateTime(utc.year, utc.month, utc.day),
-                          null => null,
-                        },
-                        placeholder: 'No expiry date',
-                        calendarLabel: 'Choose expiry date',
-                        onProblem: (problem) => _expiryProblem = problem,
-                        onChanged: (date) => setState(
-                          () => draft.expiresAt = date == null
-                              ? null
-                              : DateTime.utc(date.year, date.month, date.day),
+            if (_isNote)
+              SecureNoteEditor(
+                key: const ValueKey('secure-note-body'),
+                initialMarkdown: _body,
+                onChanged: (markdown) => _body = markdown,
+              )
+            else ...[
+              _FieldTable(
+                fields: draft.fields,
+                errors: _errors,
+                onRemove: (field) => setState(() => draft.fields.remove(field)),
+                onAdd: () => setState(() => draft.fields.add(DraftField())),
+                onChanged: () => setState(() {}),
+              ),
+              DesktopForm(
+                labelWidth: _labelWidth,
+                children: [
+                  DesktopFormRow(
+                    label: 'Expires',
+                    child: switch (draft.expiresAt) {
+                      // Read from the file: shown with its source, not
+                      // editable.
+                      final expiresAt? when draft.expiryFromFile => Row(
+                        spacing: 10,
+                        children: [
+                          Text(DateFormat.yMMMd().format(expiresAt.toLocal())),
+                          const SourceTag('From the file'),
+                        ],
+                      ),
+                      _ => SheetNote(
+                        width: 160,
+                        tone: _errors.containsKey('expiry')
+                            ? NoteTone.problem
+                            : NoteTone.hint,
+                        note:
+                            _errors['expiry'] ??
+                            'Set by you · leave empty for no expiry',
+                        // Picked or typed by the user: a date, kept as
+                        // midnight UTC with the user as its source.
+                        control: DesktopDateField(
+                          key: const ValueKey('item-expiry'),
+                          value: switch (draft.expiresAt?.toUtc()) {
+                            final utc? => DateTime(
+                              utc.year,
+                              utc.month,
+                              utc.day,
+                            ),
+                            null => null,
+                          },
+                          placeholder: 'No expiry date',
+                          calendarLabel: 'Choose expiry date',
+                          onProblem: (problem) => _expiryProblem = problem,
+                          onChanged: (date) => setState(
+                            () => draft.expiresAt = date == null
+                                ? null
+                                : DateTime.utc(date.year, date.month, date.day),
+                          ),
                         ),
                       ),
-                    ),
-                  },
-                ),
-                DesktopFormRow(
-                  label: 'Notes',
-                  child: DesktopNotesEditor(
-                    controller: _notes,
-                    fieldKey: const ValueKey('item-notes'),
+                    },
                   ),
-                ),
-              ],
-            ),
+                  DesktopFormRow(
+                    label: 'Notes',
+                    child: DesktopNotesEditor(
+                      controller: _notes,
+                      fieldKey: const ValueKey('item-notes'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             if (_saveError case final error?)
               SheetNotice(
                 symbol: DesktopSymbol.alert,

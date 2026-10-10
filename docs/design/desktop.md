@@ -52,13 +52,23 @@ and exported here under `desktop/`.
       clicking an item selects it.
     - Every explorer row has a context menu, its commands in groups
       split by separators (shown here as |), as macOS groups a menu's:
-      - organization: New item…, New app… | Rename organization… |
-        Delete organization… (its apps stay, under Personal);
-      - app: New item… | Edit app…, Move to organization…, Remove from
-        *organization* | Delete app…;
+      - organization: New item…, New secure note…, New app… | Edit
+        organization… (its name and Markdown notes) | Delete
+        organization… (its apps stay, under Personal);
+      - app: New item…, New secure note… | Edit app…, Move to
+        organization…, Remove from *organization* | Delete app…;
       - item (also on table rows): Edit item…, Move to app… | Delete
         item…;
-      - the Apps label: New organization…, New app…, New item….
+      - the Apps label: New organization…, New app…, New item…, New
+        secure note….
+    - A selected organization shows, over its items, how many apps it
+      has, Edit organization… and its notes, folded to their first line
+      like an app's.
+    - A secure note (File › New Secure Note, ⇧⌘N) is an item whose body
+      is Markdown. Its sheet swaps the fields, expiry and notes for the
+      WYSIWYG note editor, with Preview / Markdown over it; the inspector
+      shows the note rendered first, with Copy (through the clipboard
+      guard).
     - An organization can be empty (SPEC §6.7): New organization… makes
       one to drag apps into.
     - Drag to rearrange. An item (from the explorer or the table) dropped
