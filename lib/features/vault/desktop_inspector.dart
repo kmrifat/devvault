@@ -17,7 +17,7 @@ import '../../shared/widgets/mono_text.dart';
 import '../../shared/widgets/provenance_label.dart';
 import '../../shared/widgets/secret_row.dart' show SecretRow;
 import '../conflict/conflict_dialog.dart';
-import '../notes/notes.dart' show NoteView;
+import '../notes/notes.dart' show NoteView, copySecureNote;
 import 'desktop_item_type.dart';
 import 'vault_actions.dart';
 
@@ -64,6 +64,7 @@ class DesktopInspector extends ConsumerWidget {
       );
     }
     final now = ref.watch(clockProvider)();
+    final secureNote = item.type == ItemType.secureNote;
 
     // Material for the kits' button ink and the selectable values.
     return Material(
@@ -99,7 +100,11 @@ class DesktopInspector extends ConsumerWidget {
                   onPressed: () => showConflictDialog(context, item),
                 ),
               ),
-            _ExpiryBox(item: item, now: now),
+            // A secure note is its note: no expiry, the note first.
+            if (secureNote)
+              _SecureNote(markdown: item.notes ?? '')
+            else
+              _ExpiryBox(item: item, now: now),
             if (item.fields.isNotEmpty)
               _Section(
                 title: 'Fields',
@@ -125,7 +130,8 @@ class DesktopInspector extends ConsumerWidget {
                   ],
                 ),
               ),
-            if (item.notes case final notes? when notes.trim().isNotEmpty)
+            if (item.notes case final notes?
+                when notes.trim().isNotEmpty && !secureNote)
               _Section(title: 'Notes', child: NoteView(notes)),
             if (item.tags.isNotEmpty)
               _Section(
@@ -139,6 +145,60 @@ class DesktopInspector extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A secure note's body, rendered, with Copy (the Markdown, through the
+/// clipboard guard, as a secret).
+class _SecureNote extends ConsumerWidget {
+  const _SecureNote({required this.markdown});
+
+  final String markdown;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.desktopColors;
+    final empty = markdown.trim().isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 7,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  'Note',
+                  style: TextStyle(
+                    fontSize: DesktopMetrics.secondarySize,
+                    fontWeight: FontWeight.w600,
+                    color: colors.secondaryText,
+                  ),
+                ),
+              ),
+            ),
+            DesktopButton(
+              label: 'Copy',
+              icon: DesktopSymbol.copy,
+              onPressed: empty
+                  ? null
+                  : () => copySecureNote(context, ref, markdown),
+            ),
+          ],
+        ),
+        if (empty)
+          Text(
+            'This note is empty.',
+            style: TextStyle(
+              fontSize: DesktopMetrics.bodySize,
+              color: colors.secondaryText,
+            ),
+          )
+        else
+          NoteView(markdown),
+      ],
     );
   }
 }

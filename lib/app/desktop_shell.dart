@@ -74,6 +74,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
       ?..bind(
         find: _inFront(_searchFocus.requestFocus),
         newItem: _inFront(_newItem),
+        newSecureNote: _inFront(_newSecureNote),
         importFile: _inFront(() => showImportDialog(context)),
         quickOpen: _inFront(_quickOpen),
       );
@@ -103,6 +104,15 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
         : const VaultFilter(),
   );
 
+  /// A new secure note where the user is looking, as [_newItem].
+  void _newSecureNote() => createSecureNote(
+    context,
+    ShellSection.values[widget.navigationShell.currentIndex] ==
+            ShellSection.vault
+        ? VaultFilter.fromUri(widget.uri)
+        : const VaultFilter(),
+  );
+
   bool _onKey(KeyEvent event) {
     if (event is! KeyDownEvent || !mounted) return false;
     // The macOS menu bar owns these keys there.
@@ -111,9 +121,13 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return false;
     final keyboard = HardwareKeyboard.instance;
     if (!(keyboard.isMetaPressed || keyboard.isControlPressed) ||
-        keyboard.isAltPressed ||
-        keyboard.isShiftPressed) {
+        keyboard.isAltPressed) {
       return false;
+    }
+    if (keyboard.isShiftPressed) {
+      if (event.logicalKey != LogicalKeyboardKey.keyN) return false;
+      _newSecureNote();
+      return true;
     }
     if (event.logicalKey == LogicalKeyboardKey.keyF) {
       _searchFocus.requestFocus();

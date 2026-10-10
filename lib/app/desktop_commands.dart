@@ -8,29 +8,33 @@ import 'package:flutter/widgets.dart';
 class DesktopCommands extends ChangeNotifier {
   VoidCallback? _find;
   VoidCallback? _newItem;
+  VoidCallback? _newSecureNote;
   VoidCallback? _importFile;
   VoidCallback? _quickOpen;
 
   VoidCallback? get find => _find;
   VoidCallback? get newItem => _newItem;
+  VoidCallback? get newSecureNote => _newSecureNote;
   VoidCallback? get importFile => _importFile;
   VoidCallback? get quickOpen => _quickOpen;
 
   void bind({
     required VoidCallback find,
     required VoidCallback newItem,
+    VoidCallback? newSecureNote,
     required VoidCallback importFile,
     required VoidCallback quickOpen,
   }) {
     _find = find;
     _newItem = newItem;
+    _newSecureNote = newSecureNote;
     _importFile = importFile;
     _quickOpen = quickOpen;
     _changed();
   }
 
   void unbind() {
-    _find = _newItem = _importFile = _quickOpen = null;
+    _find = _newItem = _newSecureNote = _importFile = _quickOpen = null;
     _changed();
   }
 

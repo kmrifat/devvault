@@ -9,6 +9,7 @@ import 'package:devvault/features/item_editor/item_editor.dart';
 import 'package:devvault/features/vault/vault_heading.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
+import 'package:devvault/shared/desktop/desktop_button.dart';
 import 'package:devvault/shared/desktop/desktop_symbols.dart';
 import 'package:devvault/shared/desktop/desktop_theme.dart';
 
@@ -741,7 +742,8 @@ void main() {
 
       await rightClick(tester, row('Acme Corp'));
       expect(find.text('New app…'), findsOneWidget);
-      expect(find.text('Rename organization…'), findsOneWidget);
+      expect(find.text('Edit organization…'), findsOneWidget);
+      expect(find.text('New secure note…'), findsOneWidget);
       await tester.tap(find.text('New item…'));
       await tester.pumpAndSettle();
       expect(find.byType(ItemEditor), findsOneWidget);
@@ -857,14 +859,29 @@ void main() {
       await tap(tester, row('Acme Corp'));
 
       await rightClick(tester, row('Acme Corp'));
-      await tester.tap(find.text('Rename organization…'));
+      // The menu's entry, not the button over the item table.
+      final inButton = find
+          .descendant(
+            of: find.byType(DesktopButton),
+            matching: find.text('Edit organization…'),
+          )
+          .evaluate()
+          .toSet();
+      await tester.tap(
+        find.byElementPredicate(
+          (e) =>
+              e.widget is Text &&
+              (e.widget as Text).data == 'Edit organization…' &&
+              !inButton.contains(e),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('organization-name')),
         '  Globex ',
       );
       await tester.pump();
-      await tester.tap(find.text('Rename'));
+      await tester.tap(find.text('Save'));
       await settle(
         tester,
         () =>
@@ -964,8 +981,10 @@ void main() {
       final ledgerly = appId(tester, 'Ledgerly');
       await tap(tester, row('Ledgerly'));
 
-      // ↓ goes from New item… to Edit app…, not to the next row.
+      // ↓ goes from New item… through New secure note… to Edit app…, not
+      // to the next row.
       await press(tester, LogicalKeyboardKey.f10, shift: true);
+      await press(tester, LogicalKeyboardKey.arrowDown);
       await press(tester, LogicalKeyboardKey.arrowDown);
       await press(tester, LogicalKeyboardKey.enter);
       expect(find.byType(AppEditor), findsOneWidget);

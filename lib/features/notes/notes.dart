@@ -11,6 +11,7 @@ import '../../shared/desktop_ui.dart'
         DesktopThemeContext;
 import '../../shared/ui.dart';
 import '../../shared/widgets/markdown_note.dart';
+import '../../shared/widgets/note_editor/note_editor.dart';
 
 /// What the note fields say under or beside them.
 const notesPlaceholder = 'Anything worth remembering. Notes aren’t searchable.';
@@ -36,11 +37,17 @@ class NoteView extends ConsumerWidget {
     final desktop = DesktopTheme.maybeOf(context) != null;
     return MarkdownNote(
       notes,
-      style: desktop ? _desktopStyle(context) : _phoneStyle(context),
+      style: NoteView.noteStyleOf(context),
       showLinkOnHover: desktop,
       onLink: (url) => copyNoteLink(context, ref, url),
     );
   }
+
+  /// How notes look in the running layout.
+  static MarkdownNoteStyle noteStyleOf(BuildContext context) =>
+      DesktopTheme.maybeOf(context) != null
+      ? _desktopStyle(context)
+      : _phoneStyle(context);
 
   static MarkdownNoteStyle _desktopStyle(BuildContext context) {
     final colors = context.desktopColors;
@@ -272,4 +279,170 @@ class PhoneNotesCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What the secure note editor says while a note is empty.
+const secureNotePlaceholder =
+    'Write in Markdown: # for a heading, - for a list, ``` for code.';
+
+/// A secure note's body (an item of type Secure Note, SPEC §6.5): the
+/// WYSIWYG [NoteEditor] in a field-like box, with a Preview / Markdown
+/// switch over it. Preview shows the note as it reads while it is typed;
+/// Markdown shows its source.
+class SecureNoteEditor extends ConsumerStatefulWidget {
+  const SecureNoteEditor({
+    super.key,
+    required this.initialMarkdown,
+    required this.onChanged,
+    this.minHeight = 260,
+  });
+
+  final String initialMarkdown;
+  final ValueChanged<String> onChanged;
+  final double minHeight;
+
+  @override
+  ConsumerState<SecureNoteEditor> createState() => _SecureNoteEditorState();
+}
+
+class _SecureNoteEditorState extends ConsumerState<SecureNoteEditor> {
+  bool _markdown = false;
+
+  void _setMode(bool markdown) => setState(() => _markdown = markdown);
+
+  @override
+  Widget build(BuildContext context) {
+    final desktop = DesktopTheme.maybeOf(context) != null;
+    final style = NoteEditorStyle(
+      markdown: NoteView.noteStyleOf(context),
+      cursorColor: desktop
+          ? context.desktopColors.accent
+          : context.bcTheme.accent,
+      selectionColor: desktop
+          ? context.desktopColors.accent.withValues(alpha: 0.25)
+          : context.bcTheme.accent.withValues(alpha: 0.25),
+      placeholderColor: desktop
+          ? context.desktopColors.tertiaryText
+          : context.bcTheme.fieldPlaceholder,
+    );
+    final editor = NoteEditor(
+      initialMarkdown: widget.initialMarkdown,
+      markdownMode: _markdown,
+      style: style,
+      placeholder: secureNotePlaceholder,
+      onChanged: widget.onChanged,
+      onLink: (url) => copyNoteLink(context, ref, url),
+    );
+    return desktop ? _desktop(context, editor) : _phone(context, editor);
+  }
+
+  Widget _desktop(BuildContext context, Widget editor) {
+    final colors = context.desktopColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 6,
+      children: [
+        Row(
+          spacing: DesktopMetrics.formLabelGap,
+          children: [
+            Semantics(
+              container: true,
+              label: 'Note view',
+              child: DesktopSegmented<bool>(
+                value: _markdown,
+                choices: const [
+                  DesktopChoice(false, 'Preview'),
+                  DesktopChoice(true, 'Markdown'),
+                ],
+                onChanged: _setMode,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                'Markdown · not searchable',
+                textAlign: TextAlign.end,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize,
+                  color: colors.secondaryText,
+                ),
+              ),
+            ),
+          ],
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.field,
+            border: Border.all(color: colors.fieldStroke, width: 0.5),
+            borderRadius: const BorderRadius.all(
+              Radius.circular(DesktopMetrics.fieldRadius),
+            ),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: widget.minHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: editor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _phone(BuildContext context, Widget editor) {
+    final bc = context.bcTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: BCSpacing.sm,
+      children: [
+        BCTabs<bool>(
+          value: _markdown,
+          fullWidth: true,
+          onValueChange: _setMode,
+          items: const [
+            BCTabItem(value: false, label: 'Preview'),
+            BCTabItem(value: true, label: 'Markdown'),
+          ],
+        ),
+        DecoratedBox(
+          decoration: ShapeDecoration(
+            color: bc.field,
+            shape: BCShapes.continuous(
+              BCRadius.xl,
+              side: BorderSide(color: bc.fieldBorder),
+            ),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: widget.minHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(BCSpacing.md),
+              child: editor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Copies a secure note's Markdown through the clipboard guard, as a
+/// secret: it comes off the clipboard again after the set time.
+Future<void> copySecureNote(
+  BuildContext context,
+  WidgetRef ref,
+  String markdown,
+) async {
+  final guard = ref.read(clipboardGuardProvider);
+  await guard.copySecret(markdown);
+  if (!context.mounted) return;
+  showAppToast(
+    context,
+    BCToastData(
+      title: 'Note copied',
+      description:
+          'Clears from the clipboard in ${guard.clearAfter.inSeconds} seconds.',
+    ),
+  );
 }

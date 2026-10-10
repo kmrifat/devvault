@@ -11,7 +11,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../conflict/conflict_dialog.dart';
-import '../notes/notes.dart' show NoteView;
+import '../notes/notes.dart' show NoteView, copySecureNote;
 import 'vault_actions.dart';
 
 /// Design frame B3's item detail on a phone: one item's type, place in the
@@ -69,11 +69,15 @@ class ItemDetailPane extends ConsumerWidget {
                 child: const Text('Resolve…'),
               ),
             ),
-          _ExpiryCard(item: item, now: now),
+          if (item.type == ItemType.secureNote)
+            _SecureNoteCard(markdown: item.notes ?? '')
+          else
+            _ExpiryCard(item: item, now: now),
           if (item.fields.isNotEmpty) _Fields(fields: item.fields),
           if (item.attachments.isNotEmpty)
             _Files(item: item, attachments: item.attachments),
-          if (item.notes case final notes? when notes.trim().isNotEmpty)
+          if (item.notes case final notes?
+              when notes.trim().isNotEmpty && item.type != ItemType.secureNote)
             _NotesCard(notes: notes),
           _Meta(item: item, onThisDevice: item.deviceId == thisDevice),
         ],
@@ -587,6 +591,51 @@ class _Files extends ConsumerWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A secure note's body, rendered, with Copy (through the clipboard
+/// guard, as a secret).
+class _SecureNoteCard extends ConsumerWidget {
+  const _SecureNoteCard({required this.markdown});
+
+  final String markdown;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final empty = markdown.trim().isEmpty;
+    return _Surface(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 6,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: BCText(
+                  'Note',
+                  type: BCTextType.bodySm,
+                  color: BCTextColor.muted,
+                ),
+              ),
+              BCButton(
+                size: BCButtonSize.sm,
+                variant: BCButtonVariant.ghost,
+                isDisabled: empty,
+                onPressed: () => copySecureNote(context, ref, markdown),
+                startContent: const Icon(LucideIcons.copy, size: 15),
+                child: const Text('Copy'),
+              ),
+            ],
+          ),
+          if (empty)
+            const BCText('This note is empty.', color: BCTextColor.muted)
+          else
+            NoteView(markdown),
         ],
       ),
     );
