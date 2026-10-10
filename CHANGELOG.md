@@ -138,8 +138,8 @@ SHA-256. Importing a newer file over an item keeps the item and its tags.
   the update's EdDSA signature and the Developer ID before installing.
   Builds made before the update key exists offer *View Release* only.
 - **Windows (MSIX):** *Update…* hands the release to Windows, which
-  checks the package signature and publisher, installs it and starts
-  DevVault again. The zip offers *View Release*.
+  checks the package signature and publisher, closes DevVault and
+  installs it. The zip offers *View Release*.
 - **Linux:** the AppImage carries update information for AppImageUpdate,
   Gear Lever and AppImageLauncher; the app itself offers *View Release*.
 

@@ -130,7 +130,9 @@ With a signed MSIX, **Release** also writes `DevVault.appinstaller`
 DevVault's *Update…* hands
 `releases/latest/download/DevVault.appinstaller` to Windows, which
 downloads the MSIX it names, checks its signature and publisher, closes
-DevVault, installs and starts it again. The MSIX version is pubspec's
+DevVault and installs it. DevVault asks Windows to start it again
+afterwards; on the CI runner it was not restarted, so check this on a
+desktop with the first published release. The MSIX version is pubspec's
 `major.minor.patch.0`, so every release needs a new version, not just a
 new build number. **Renew the certificate with the same subject**:
 Windows refuses an update from another publisher, so a new subject

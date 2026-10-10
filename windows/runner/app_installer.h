@@ -13,8 +13,9 @@
 bool IsRunningPackaged();
 
 // Installs the package that the .appinstaller file at |app_installer_uri|
-// describes. Windows checks its signature and publisher, closes DevVault
-// and starts it again (RegisterApplicationRestart). Runs on a worker
+// describes. Windows checks its signature and publisher and closes
+// DevVault; RegisterApplicationRestart asks it to start DevVault again
+// (not seen on CI's runner, docs/acceptance/p6.md). Runs on a worker
 // thread; when it ends without closing DevVault (a failure), posts
 // |message| to |window| with the HRESULT as wParam.
 void InstallFromAppInstaller(const std::wstring& app_installer_uri,
