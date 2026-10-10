@@ -19,6 +19,7 @@ import 'services/device_id.dart';
 import 'services/incoming_files.dart';
 import 'services/notifications.dart';
 import 'services/share_sheet_saver.dart';
+import 'services/update_installer.dart';
 import 'services/updates.dart';
 import 'services/window.dart';
 
@@ -64,6 +65,8 @@ Future<void> main() async {
   final version = phone
       ? null
       : AppVersion.tryParse((await PackageInfo.fromPlatform()).version);
+  // Sparkle on macOS installs in place; elsewhere, View Release.
+  final installer = phone ? null : await ChannelUpdateInstaller.load();
   // AI agents (P5) reach the app through a socket in its sandbox
   // container, where `$HOME` points (ADR-0006). macOS only for now.
   final home = Platform.environment['HOME'];
@@ -84,6 +87,7 @@ Future<void> main() async {
         alertSchedulerProvider.overrideWithValue(alerts),
         agentSocketPathProvider.overrideWithValue(agentSocket),
         appVersionProvider.overrideWithValue(version),
+        updateInstallerProvider.overrideWithValue(installer),
         if (agentSocket != null)
           agentHelperPathProvider.overrideWithValue(
             // …/DevVault.app/Contents/MacOS/DevVault → Contents/Helpers.

@@ -60,10 +60,16 @@ class FakeLinks implements LinkOpener {
 }
 
 class FakeInstaller implements UpdateInstaller {
+  FakeInstaller({this.failure});
+
+  final UpdateCheckFailed? failure;
   final installed = <Release>[];
 
   @override
-  Future<void> install(Release release) async => installed.add(release);
+  Future<void> install(Release release) async {
+    if (failure case final f?) throw f;
+    installed.add(release);
+  }
 }
 
 final newer = Release(
@@ -444,6 +450,26 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Update…'));
       expect(installer.installed, [newer]);
+    });
+
+    testWidgets('an updater that can’t start says so', (tester) async {
+      final installer = FakeInstaller(
+        failure: const UpdateCheckFailed('This build can’t update itself.'),
+      );
+      await pumpUnlockedApp(
+        tester,
+        location: Routes.vaultRoot,
+        layout: AppLayout.desktop,
+        overrides: overrides(FakeReleases(newer), installer: installer),
+      );
+      await tester.tap(find.text('Check Daily'));
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Update…'));
+      await tester.pump();
+      expect(find.text('Couldn’t start the update'), findsOneWidget);
+      expect(find.text('This build can’t update itself.'), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 5));
     });
 
     testWidgets('Settings › General: the switch, Check Now and the facts', (

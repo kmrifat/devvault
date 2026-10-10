@@ -2,6 +2,9 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  /// Sparkle, behind the `devvault/updater` channel (P6-04).
+  private var updater: AppUpdater?
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     self.contentViewController = flutterViewController
@@ -14,6 +17,7 @@ class MainFlutterWindow: NSWindow {
     self.center()
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    updater = AppUpdater(messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }

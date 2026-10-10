@@ -40,6 +40,26 @@ List<String> updateStatusLines(UpdateStatus status, AppVersion running) {
   ];
 }
 
+/// Hands [release] to the OS's updater; says so in a toast if it can't
+/// start. From there the updater shows its own window.
+Future<void> startUpdate(
+  BuildContext context,
+  UpdateInstaller installer,
+  Release release,
+) async {
+  try {
+    await installer.install(release);
+  } on UpdateCheckFailed catch (e) {
+    if (!context.mounted) return;
+    showDesktopToast(
+      context,
+      title: 'Couldn’t start the update',
+      message: e.reason,
+      kind: DesktopToastKind.danger,
+    );
+  }
+}
+
 /// Under the toolbar of the desktop window (N03): first the one-time
 /// question whether to check for updates, then, when a newer release is
 /// out, a line saying so. Nothing on phones or where the version is
@@ -99,7 +119,7 @@ class UpdateStrip extends ConsumerWidget {
           DesktopButton(
             label: 'Update…',
             kind: DesktopButtonKind.primary,
-            onPressed: () => installer.install(release),
+            onPressed: () => startUpdate(context, installer, release),
           ),
       ],
     );

@@ -15,15 +15,26 @@ set -euo pipefail
 
 app="build/macos/Build/Products/Release/DevVault.app"
 dmg="DevVault-macos.dmg"
-entitlements="macos/Runner/Release.entitlements"
 keychain="$RUNNER_TEMP/devvault-signing.keychain-db"
 keychain_password="$(openssl rand -base64 24)"
+entitlements="$RUNNER_TEMP/devvault-release.entitlements"
 
 cleanup() {
   security delete-keychain "$keychain" >/dev/null 2>&1 || true
-  rm -f "$RUNNER_TEMP/devvault-cert.p12"
+  rm -f "$RUNNER_TEMP/devvault-cert.p12" "$entitlements"
 }
 trap cleanup EXIT
+
+# The sandbox entitlements with Xcode's variables filled in: the Sparkle
+# mach-lookup exceptions name the bundle id (ADR-0007 §3).
+bundle_id=com.binarycastle.devvault
+sed "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$bundle_id/g" \
+  macos/Runner/Release.entitlements > "$entitlements"
+if grep -qF -- "\$(" "$entitlements"; then
+  echo "Unexpanded variable in the entitlements:" >&2
+  grep -F -- "\$(" "$entitlements" >&2
+  exit 1
+fi
 
 # A throwaway keychain holding only the signing identity.
 security create-keychain -p "$keychain_password" "$keychain"
@@ -55,7 +66,15 @@ sign() {
     --sign "$identity" "$@"
 }
 
-# Inside out: every framework and dylib (Flutter, plugins, libsodium from
+# Inside out. Sparkle's own helpers first, as its docs list them, never
+# with --deep: the installer and downloader XPC services (the downloader
+# keeps its entitlements), Autoupdate and Updater.app.
+sparkle="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
+sign "$sparkle/XPCServices/Installer.xpc"
+sign --preserve-metadata=entitlements "$sparkle/XPCServices/Downloader.xpc"
+sign "$sparkle/Autoupdate"
+sign "$sparkle/Updater.app"
+# Then every framework and dylib (Flutter, plugins, Sparkle, libsodium from
 # native assets), the agent helper, then the app itself with its sandbox
 # entitlements.
 while IFS= read -r -d '' nested; do
