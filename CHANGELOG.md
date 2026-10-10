@@ -64,7 +64,12 @@ SHA-256. Importing a newer file over an item keeps the item and its tags.
 - Organizations, apps, platforms and environments, shown on the desktop as
   an Organization › App › Item explorer. Every row has a context menu, and
   items and apps can be dragged to a new place, with Undo.
-- Markdown notes on items and on apps.
+- Markdown notes on items, apps and organizations.
+- **Secure notes:** Markdown documents in the vault, in an app or in none.
+  The editor shows the note as it reads: typing `# ` makes a heading,
+  `- ` a list, ```` ``` ```` a code block, and the marks disappear. A
+  Markdown mode shows the source. Notes are encrypted like every item and
+  never searchable; Copy clears from the clipboard like a secret.
 - Search over titles and metadata. Secret values are never indexed.
 
 ### Expiry

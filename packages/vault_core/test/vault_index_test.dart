@@ -263,6 +263,39 @@ void main() {
       expect(idx.filter(query: 'quarterly'), isEmpty);
     });
 
+    test('organization notes are never searchable', () async {
+      await vault.putOrganization(
+        vault.newOrganization(name: 'Globex', notes: 'Pays **net 30**'),
+      );
+      final globex = await orgApp('Portal', organization: 'Globex');
+      await item('Portal key', ItemType.genericSecret, app: globex);
+      final idx = await index();
+      expect(idx.filter(query: 'globex').map((i) => i.title), ['Portal key']);
+      expect(idx.filter(query: 'net 30'), isEmpty);
+      expect(
+        idx.orgGroups
+            .firstWhere((g) => g.organization == 'Globex')
+            .records
+            .single
+            .notes,
+        'Pays **net 30**',
+      );
+    });
+
+    test("a secure note's title is searchable, its body never", () async {
+      await item(
+        'Billing runbook',
+        ItemType.secureNote,
+        notes: 'Page **oncall-zebra** first',
+      );
+      final idx = await index();
+      expect(idx.filter(query: 'runbook').map((i) => i.title), [
+        'Billing runbook',
+      ]);
+      expect(idx.filter(query: 'oncall-zebra'), isEmpty);
+      expect(idx.filter(query: 'zebra'), isEmpty);
+    });
+
     test('lists organizations and groups the tree by them', () async {
       final billing = await orgApp('Billing API', organization: 'Acme Corp');
       final web = await orgApp('Web', organization: 'acme labs');

@@ -17,7 +17,8 @@
           "filename": "AuthKey_7X2K9QH4LM.p8",
           "sha256": "516af90063c5c39e193833c304585f7cee900ec4d1a55aea661c84e879e6ce8c"
         }
-      ]
+      ],
+      "notes": null
     },
     "a9efa222-787e-4e1d-9b44-5ed40b992278": {
       "type": "generic_secret",
@@ -25,7 +26,15 @@
       "fields": {
         "value": "https://abc@o1.ingest.sentry.io/1"
       },
-      "attachments": []
+      "attachments": [],
+      "notes": null
+    },
+    "9d0e4438-622b-4f66-8252-1d88461965a0": {
+      "type": "secure_note",
+      "title": "Billing runbook",
+      "fields": {},
+      "attachments": [],
+      "notes": "# Billing runbook\n\n1. Page the on-call: `#billing-oncall`.\n2. <kbd>Ctrl</kbd>+<kbd>C</kbd> the failing job id.\n\n> Café — 日本 🔑"
     }
   },
   "apps": {
@@ -69,6 +78,12 @@
   },
   "organizations": {
     "183b9efa-02f8-4f21-ae67-f3a6f28acd4a": "Globex"
+  },
+  "organization_records": {
+    "183b9efa-02f8-4f21-ae67-f3a6f28acd4a": {
+      "name": "Globex",
+      "notes": "**Globex** pays net 30.\n\n- Invoices: billing@globex.example\n- Contract: [MSA](https://globex.example/msa)"
+    }
   },
   "tombstones": [
     "2e3b73da-cb72-43ff-8d2a-5d02e47b4cac"

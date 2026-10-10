@@ -123,6 +123,11 @@ class AppMenus extends ConsumerWidget {
           onSelected: whenUnlocked(commands.newItem),
         ),
         DesktopMenuItem(
+          'New Secure Note',
+          shortcut: key(LogicalKeyboardKey.keyN, shift: true),
+          onSelected: whenUnlocked(commands.newSecureNote),
+        ),
+        DesktopMenuItem(
           'Import…',
           shortcut: key(LogicalKeyboardKey.keyI),
           onSelected: whenUnlocked(commands.importFile),

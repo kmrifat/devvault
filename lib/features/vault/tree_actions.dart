@@ -22,6 +22,7 @@ List<DesktopMenuAction> itemMenu(
     'Delete item…',
     () => deleteItem(context, ref, item),
     destructive: true,
+    startsGroup: true,
   ),
 ];
 

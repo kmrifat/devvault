@@ -98,10 +98,19 @@ class _VaultListPaneState extends ConsumerState<VaultListPane> {
     ];
     final quarantine = filter.view == VaultView.quarantine;
     final app = _selectedApp(filter, index);
+    final organization = _selectedOrganization(filter);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (organization != null)
+          _OrganizationDetails(
+            organization: organization,
+            notes: organizationNotes(index, organization),
+            appCount: index.apps.values
+                .where((a) => a.organization == organization)
+                .length,
+          ),
         if (app != null)
           _AppDetails(
             app: app,
@@ -268,6 +277,80 @@ AppRecord? _selectedApp(VaultFilter filter, VaultIndex index) =>
     ? index.apps[filter.app]
     : null;
 
+/// The organization the sidebar selected, when it selected just an
+/// organization (not Personal).
+String? _selectedOrganization(VaultFilter filter) =>
+    filter.app == null &&
+        filter.platform == null &&
+        filter.env == null &&
+        filter.tag == null &&
+        filter.view == null &&
+        filter.org != VaultFilter.none
+    ? filter.org
+    : null;
+
+/// The selected organization: how many apps it has, Edit organization…,
+/// and its notes, when it has any, folded out under them.
+class _OrganizationDetails extends ConsumerWidget {
+  const _OrganizationDetails({
+    required this.organization,
+    required this.notes,
+    required this.appCount,
+  });
+
+  final String organization;
+  final String? notes;
+  final int appCount;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.desktopColors;
+    final notes = this.notes;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: colors.innerSeparator, width: 0.5),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 6,
+          children: [
+            Row(
+              spacing: 8,
+              children: [
+                Expanded(
+                  child: Text(
+                    switch (appCount) {
+                      0 => 'No apps yet: drag apps here to move them in',
+                      1 => '1 app',
+                      _ => '$appCount apps',
+                    },
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: DesktopMetrics.secondarySize,
+                      color: colors.secondaryText,
+                    ),
+                  ),
+                ),
+                DesktopButton(
+                  label: 'Edit organization…',
+                  onPressed: () => editOrganization(context, ref, organization),
+                ),
+              ],
+            ),
+            if (notes != null)
+              _NotesFold(key: ValueKey('org:$organization'), notes: notes),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The selected app's organization and kind, when set, over its
 /// identifiers (bundle IDs, package names, domains, URLs, repositories …),
 /// with Edit app… and, under ⋯, Delete app…. The app's notes, when it has
@@ -305,7 +388,7 @@ class _AppDetails extends ConsumerWidget {
           children: [
             _detailsRow(context, ref, about, ids, style),
             if (app.notes case final notes?)
-              _AppNotes(key: ValueKey(app.id), notes: notes),
+              _NotesFold(key: ValueKey(app.id), notes: notes),
           ],
         ),
       ),
@@ -366,18 +449,19 @@ class _AppDetails extends ConsumerWidget {
   }
 }
 
-/// An app's notes over the item table: folded to their first line, or
+/// An app's or organization's notes over the item table: folded to their
+/// first line, or
 /// shown in full (scrolling past a few lines), rendered as Markdown.
-class _AppNotes extends StatefulWidget {
-  const _AppNotes({super.key, required this.notes});
+class _NotesFold extends StatefulWidget {
+  const _NotesFold({super.key, required this.notes});
 
   final String notes;
 
   @override
-  State<_AppNotes> createState() => _AppNotesState();
+  State<_NotesFold> createState() => _NotesFoldState();
 }
 
-class _AppNotesState extends State<_AppNotes> {
+class _NotesFoldState extends State<_NotesFold> {
   bool _open = false;
 
   @override

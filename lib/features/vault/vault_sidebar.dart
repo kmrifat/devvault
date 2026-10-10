@@ -29,7 +29,7 @@ enum ShellSection { vault, expiry, settings }
 ///
 /// The explorer works like a file explorer ([ExplorerTree]): Organization
 /// › App › Item, every row with a context menu (New item…, Edit app…,
-/// Move to…, Rename organization…, Delete …), and everything can be
+/// Move to…, Edit organization…, Delete …), and everything can be
 /// rearranged by dragging: an item (here or from the list) onto an app,
 /// "No app" or another item moves it to that app, and an app onto an
 /// organization (or "Personal") moves it there. Clicking an organization
@@ -211,6 +211,10 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                         'New item…',
                         () => createItem(context, const VaultFilter()),
                       ),
+                      DesktopMenuAction(
+                        'New secure note…',
+                        () => createSecureNote(context, const VaultFilter()),
+                      ),
                     ],
                     action: DesktopIconButton(
                       symbol: DesktopSymbol.add,
@@ -324,9 +328,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         open: group.apps.isEmpty ? null : open,
         setOpen: setOpen,
         activate: show,
-        rename: org == null
-            ? null
-            : () => renameOrganization(context, ref, org),
+        rename: org == null ? null : () => editOrganization(context, ref, org),
         delete: org == null
             ? null
             : () => deleteOrganization(
@@ -359,14 +361,24 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                     app: onlyApp?.id,
                   ),
                 ),
+              if (group.apps.isNotEmpty)
+                DesktopMenuAction(
+                  'New secure note…',
+                  () => createSecureNote(
+                    context,
+                    VaultFilter(org: orgKey),
+                    app: onlyApp?.id,
+                  ),
+                ),
               DesktopMenuAction(
                 'New app…',
                 () => createApp(context, organization: org),
               ),
               if (org != null) ...[
                 DesktopMenuAction(
-                  'Rename organization…',
-                  () => renameOrganization(context, ref, org),
+                  'Edit organization…',
+                  () => editOrganization(context, ref, org),
+                  startsGroup: true,
                 ),
                 DesktopMenuAction(
                   'Delete organization…',
@@ -377,6 +389,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                     appCount: group.apps.length,
                   ),
                   destructive: true,
+                  startsGroup: true,
                 ),
               ],
             ],
@@ -446,7 +459,15 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               'New item…',
               () => createItem(context, VaultFilter(app: app.id)),
             ),
-            DesktopMenuAction('Edit app…', () => editApp(context, app)),
+            DesktopMenuAction(
+              'New secure note…',
+              () => createSecureNote(context, VaultFilter(app: app.id)),
+            ),
+            DesktopMenuAction(
+              'Edit app…',
+              () => editApp(context, app),
+              startsGroup: true,
+            ),
             DesktopMenuAction(
               'Move to organization…',
               () => moveAppTo(context, ref, app),
@@ -460,6 +481,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               'Delete app…',
               () => deleteApp(context, ref, app, itemCount: node.items.length),
               destructive: true,
+              startsGroup: true,
             ),
           ],
           tree: true,
@@ -527,6 +549,10 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               DesktopMenuAction(
                 'New item…',
                 () => createItem(context, const VaultFilter(app: app)),
+              ),
+              DesktopMenuAction(
+                'New secure note…',
+                () => createSecureNote(context, const VaultFilter(app: app)),
               ),
             ],
             tree: true,

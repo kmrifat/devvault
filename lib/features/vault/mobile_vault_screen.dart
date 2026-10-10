@@ -105,6 +105,13 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
     final personal = apps.any((a) => a.organization == null);
     // One app chosen: its notes, if it has any, over its items.
     final appNotes = index.apps[filter.app]?.notes;
+    // An organization chosen: its notes.
+    final orgNotes =
+        filter.app == null &&
+            filter.org != null &&
+            filter.org != VaultFilter.none
+        ? organizationNotes(index, filter.org!)
+        : null;
 
     final syncing = ref.watch(syncControllerProvider) is! SyncOff;
 
@@ -217,6 +224,10 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
               if (appNotes != null) ...[
                 const SizedBox(height: 16),
                 PhoneNotesCard(notes: appNotes, title: 'App notes'),
+              ],
+              if (orgNotes != null) ...[
+                const SizedBox(height: 16),
+                PhoneNotesCard(notes: orgNotes, title: 'Organization notes'),
               ],
             ],
           ),

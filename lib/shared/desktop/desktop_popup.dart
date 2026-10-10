@@ -187,15 +187,23 @@ class _MacosPopupState<T> extends State<_MacosPopup<T>> {
         return MenuAnchor(
           controller: _menu,
           style: MacosMenuStyle.panel(colors),
+          clipBehavior: Clip.antiAlias,
           menuChildren: [
-            for (final c in widget.choices)
-              MacosMenuStyle.item(
-                context,
-                label: c.label,
-                width: constraints.hasBoundedWidth ? constraints.maxWidth : 160,
-                checked: c.value == widget.value,
-                onPressed: () => onChanged?.call(c.value),
-              ),
+            MacosMenuStyle.surface(
+              context,
+              children: [
+                for (final c in widget.choices)
+                  MacosMenuStyle.item(
+                    context,
+                    label: c.label,
+                    width: constraints.hasBoundedWidth
+                        ? constraints.maxWidth
+                        : 160,
+                    checked: c.value == widget.value,
+                    onPressed: () => onChanged?.call(c.value),
+                  ),
+              ],
+            ),
           ],
           child: Semantics(
             button: true,

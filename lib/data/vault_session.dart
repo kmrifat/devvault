@@ -348,8 +348,8 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
   });
 
   /// A new, unsaved organization (fresh id, this device).
-  OrganizationRecord newOrganization(String name) =>
-      _vault.newOrganization(name: name);
+  OrganizationRecord newOrganization(String name, {String? notes}) =>
+      _vault.newOrganization(name: name, notes: notes);
 
   /// Saves [org] and refreshes the index. Returns it as stored.
   Future<OrganizationRecord> saveOrganization(OrganizationRecord org) =>
@@ -357,6 +357,36 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
         final saved = await _vault.putOrganization(org);
         await reload();
         return saved;
+      });
+
+  /// Sets the notes of the organization [name] ('' clears them), as
+  /// [organizationNotes] reads them: on its oldest record, made when it has
+  /// none. Other records with the name have their notes cleared, since
+  /// they were shown as part of this one. Throws [StateError] before
+  /// writing anything when a record has a newer schema.
+  Future<void> setOrganizationNotes(String name, String notes) =>
+      exclusive(() async {
+        final records = _recordsOf(_index, name);
+        if (records.any((org) => org.isReadOnly)) {
+          throw StateError('An organization record is read-only');
+        }
+        if (records.isEmpty) {
+          if (notes.trim().isEmpty) return;
+          await _vault.putOrganization(
+            _vault.newOrganization(name: name, notes: notes),
+          );
+        } else {
+          final [first, ...others] = records;
+          if (first.notes != notes.trim()) {
+            await _vault.putOrganization(first.copyWith(notes: notes));
+          }
+          for (final other in others) {
+            if (other.notes != null) {
+              await _vault.putOrganization(other.copyWith(notes: ''));
+            }
+          }
+        }
+        await reload();
       });
 
   /// Renames the organization [from] to [to] (SPEC §6.7): every record
@@ -468,6 +498,27 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     final contents = await vault.loadAll();
     state = Unlocked(vault, VaultIndex(contents));
   }
+}
+
+/// The records of the organization [name], oldest first (then by id).
+List<OrganizationRecord> _recordsOf(VaultIndex index, String name) =>
+    [
+      for (final org in index.organizationRecords.values)
+        if (org.name == name) org,
+    ]..sort((a, b) {
+      final byAge = a.createdAt.compareTo(b.createdAt);
+      return byAge != 0 ? byAge : a.id.compareTo(b.id);
+    });
+
+/// The notes of the organization [name]: those of its records (records
+/// with the same name are one organization, SPEC §6.7, each keeping its
+/// own note), oldest first, a blank line between. Null when none has any.
+String? organizationNotes(VaultIndex index, String name) {
+  final notes = [
+    for (final org in _recordsOf(index, name))
+      if (org.notes case final notes? when notes.trim().isNotEmpty) notes,
+  ];
+  return notes.isEmpty ? null : notes.join('\n\n');
 }
 
 final vaultSessionProvider =

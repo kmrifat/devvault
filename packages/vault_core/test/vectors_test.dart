@@ -63,6 +63,28 @@ void main() {
     }
   });
 
+  test('organization records normalize to their committed canonical bytes', () {
+    final vectors = jsonDecode(
+      File('${committed.path}/vectors.json').readAsStringSync(),
+    ) as Map<String, Object?>;
+    final cases = vectors['organization_records']! as List<Object?>;
+    expect(cases, isNotEmpty);
+    for (final c in cases.cast<Map<String, Object?>>()) {
+      final org = OrganizationRecord.fromJson(c['record']);
+      final canonical = c['canonical']! as String;
+      expect(
+        utf8.decode(encodeRecord(org)),
+        canonical,
+        reason: '${c['about']}',
+      );
+      final again = decodeRecord(
+        ObjectType.organization,
+        utf8.encode(canonical),
+      );
+      expect(utf8.decode(encodeRecord(again)), canonical);
+    }
+  });
+
   test('the committed mini-vault opens and holds what it should', () async {
     final expected = jsonDecode(
       File('${committed.path}/mini-vault.json').readAsStringSync(),
@@ -98,6 +120,11 @@ void main() {
       final item = contents.items[id]!;
       expect(item.title, want['title']);
       expect(item.typeName, want['type']);
+      expect(item.notes, want['notes']);
+      expect(
+        item.attachments,
+        hasLength((want['attachments']! as List).length),
+      );
       for (final a in item.attachments) {
         final bytes = await vault.readAttachment(a);
         expect(bytes, isNotEmpty);
@@ -124,6 +151,21 @@ void main() {
     expect({
       for (final o in contents.organizations.values) o.id: o.name,
     }, organizations);
+    final orgRecords =
+        expected['organization_records']! as Map<String, Object?>;
+    expect(orgRecords.keys.toSet(), organizations.keys.toSet());
+    for (final MapEntry(key: id, value: want as Map) in orgRecords.entries) {
+      final org = contents.organizations[id]!;
+      expect(org.name, want['name']);
+      expect(org.notes, want['notes']);
+    }
+    // A secure note: its body is its notes, with no attachment (SPEC §6.5).
+    final note = contents.items.values.singleWhere(
+      (i) => i.type == ItemType.secureNote,
+    );
+    expect(note.notes, isNotEmpty);
+    expect(note.attachments, isEmpty);
+    expect(contents.apps[note.appId]?.name, 'Billing API');
     // Globex has no apps; Acme Corp exists through an app alone. Both are
     // organizations (SPEC §6.7).
     final index = VaultIndex(contents);

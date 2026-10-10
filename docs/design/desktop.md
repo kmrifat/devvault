@@ -50,14 +50,25 @@ and exported here under `desktop/`.
       icon and title, with its platform symbol and environment dot at
       the trailing edge. Clicking an organization or app lists its items;
       clicking an item selects it.
-    - Every explorer row has a context menu:
-      - organization: New item…, New app…, Rename organization…, Delete
+    - Every explorer row has a context menu, its commands in groups
+      split by separators (shown here as |), as macOS groups a menu's:
+      - organization: New item…, New secure note…, New app… | Edit
+        organization… (its name and Markdown notes) | Delete
         organization… (its apps stay, under Personal);
-      - app: New item…, Edit app…, Move to organization…, Remove from
-        *organization*, Delete app…;
-      - item (also on table rows): Edit item…, Move to app…, Delete
+      - app: New item…, New secure note… | Edit app…, Move to
+        organization…, Remove from *organization* | Delete app…;
+      - item (also on table rows): Edit item…, Move to app… | Delete
         item…;
-      - the Apps label: New organization…, New app…, New item….
+      - the Apps label: New organization…, New app…, New item…, New
+        secure note….
+    - A selected organization shows, over its items, how many apps it
+      has, Edit organization… and its notes, folded to their first line
+      like an app's.
+    - A secure note (File › New Secure Note, ⇧⌘N) is an item whose body
+      is Markdown. Its sheet swaps the fields, expiry and notes for the
+      WYSIWYG note editor, with Preview / Markdown over it; the inspector
+      shows the note rendered first, with Copy (through the clipboard
+      guard).
     - An organization can be empty (SPEC §6.7): New organization… makes
       one to drag apps into.
     - Drag to rearrange. An item (from the explorer or the table) dropped
@@ -236,7 +247,15 @@ through `package:devvault/shared/desktop_ui.dart`:
   takes the keyboard (`DesktopMenuFocus`): opened from the keyboard its
   first command is highlighted, after a click nothing is until ↓ or ↑;
   Return or Space runs a command and Escape closes it, giving the
-  keyboard back where it was. `DesktopScopeBar`: recessed scope buttons that narrow a
+  keyboard back where it was. A `DesktopMenuAction` that `startsGroup`
+  sits below a separator. On macOS both menus, like the pop-ups, combo
+  boxes and date field (`MacosMenuStyle`), are drawn after the system's:
+  a translucent panel that blurs the window behind it, 12 pt corners, a
+  hairline border and soft shadow, 24 pt rows that fill with the accent,
+  hairline separators. On Windows they are Fluent's own flyout menus. On
+  Linux (`YaruMenuStyle`) they follow GNOME's popover menus in Yaru's
+  colours: a 12 pt panel with a 6 pt inset, 32 pt rows that light up as
+  rounded pills, separators inside the inset. `DesktopScopeBar`: recessed scope buttons that narrow a
   list (the table's All / Expiring / Files / Secrets); a segmented control
   is for settings.
 - `DesktopLockWindow` for the lock screens (unlock, create, recovery kit,

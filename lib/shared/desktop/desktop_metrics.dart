@@ -23,6 +23,26 @@ abstract final class DesktopMetrics {
   static const double menuRadius = 6;
   static const double menuItemRadius = 4;
 
+  /// macOS menus (context, pull-down, pop-up, combo box), as the system
+  /// draws them: the panel's corner radius and its highlighted row's,
+  /// concentric across the panel's 5 pt inset; a row's height; and the
+  /// room a separator between two groups of rows takes.
+  static const double menuPanelRadius = 12;
+  static const double menuRowRadius = 7;
+  static const double menuRowHeight = 24;
+  static const double menuSeparatorHeight = 11;
+
+  /// Linux command menus, as GNOME's popover menus are: the panel's corner
+  /// radius, inset and least width; a row's height, label inset and
+  /// highlight radius; and the room a separator takes.
+  static const double yaruMenuRadius = 12;
+  static const double yaruMenuPadding = 6;
+  static const double yaruMenuMinWidth = 180;
+  static const double yaruMenuRowHeight = 32;
+  static const double yaruMenuRowInset = 12;
+  static const double yaruMenuRowRadius = 6;
+  static const double yaruMenuSeparatorHeight = 13;
+
   /// The widest a menu grows for a long choice (unless its field is wider);
   /// longer labels end in an ellipsis.
   static const double menuMaxWidth = 400;

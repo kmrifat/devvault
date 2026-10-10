@@ -26,6 +26,7 @@ extension DesktopItemType on Item {
     ItemType.sshKey => 'SSH key',
     ItemType.genericFile => 'File',
     ItemType.genericSecret => 'Secret',
+    ItemType.secureNote => 'Note',
     null => typeName,
   };
 }
@@ -43,6 +44,7 @@ extension DesktopType on ItemType? {
     ItemType.oauthClient => DesktopSymbol.typeOAuthClient,
     ItemType.sshKey => DesktopSymbol.typeSshKey,
     ItemType.genericSecret => DesktopSymbol.typeSecret,
+    ItemType.secureNote => DesktopSymbol.document,
     ItemType.genericFile || null => DesktopSymbol.typeFile,
   };
 
@@ -57,6 +59,7 @@ extension DesktopType on ItemType? {
     ItemType.appleCertificate || ItemType.sshKey => colors.text,
     ItemType.genericFile ||
     ItemType.genericSecret ||
+    ItemType.secureNote ||
     null => colors.secondaryText,
   };
 }

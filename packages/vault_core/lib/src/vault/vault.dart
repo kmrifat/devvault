@@ -454,11 +454,12 @@ class Vault {
 
   /// A new organization, stamped but not yet saved; pass it to
   /// [putOrganization].
-  OrganizationRecord newOrganization({required String name}) {
+  OrganizationRecord newOrganization({required String name, String? notes}) {
     final now = _now();
     return OrganizationRecord(
       id: newId(),
       name: name,
+      notes: notes,
       createdAt: now,
       updatedAt: now,
       rev: _clock,
