@@ -7,7 +7,10 @@ name: Desktop checks
 # - the AppImage starts and stays up;
 # - the MSIX installs and DevVault starts from it. The MSIX is signed with a
 #   throwaway certificate made in the run, because Windows installs only a
-#   signed MSIX; the release certificate is never used here.
+#   signed MSIX; the release certificate is never used here;
+# - Update… updates the MSIX in place (P6-05): DevVault 0.1.0, installed
+#   from its MSIX, hands an .appinstaller file for 0.1.1 to Windows, which
+#   replaces it.
 # Each job uploads a screenshot of the running app.
 
 on:
@@ -16,6 +19,7 @@ on:
       - .github/workflows/desktop-checks.yml
       - integration_test/keyring_test.dart
       - lib/services/credential_store.dart
+      - lib/services/update_installer.dart
       - tool/release/**
       - linux/**
       - windows/**
@@ -26,6 +30,7 @@ on:
       - .github/workflows/desktop-checks.yml
       - integration_test/keyring_test.dart
       - lib/services/credential_store.dart
+      - lib/services/update_installer.dart
       - tool/release/**
       - linux/**
       - windows/**
@@ -102,7 +107,7 @@ jobs:
   windows:
     name: Windows (protected storage, MSIX)
     runs-on: windows-latest
-    timeout-minutes: 50
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -138,6 +143,10 @@ jobs:
           $env:WINDOWS_CERT_PASSWORD = $password
           Remove-Item $pfx
           ./tool/release/windows_msix.ps1
+          # The update test below signs two more packages with it.
+          "SIGN_WINDOWS=true" >> $env:GITHUB_ENV
+          "WINDOWS_CERT_PFX_BASE64=$env:WINDOWS_CERT_PFX_BASE64" >> $env:GITHUB_ENV
+          "WINDOWS_CERT_PASSWORD=$password" >> $env:GITHUB_ENV
       - name: The MSIX installs and DevVault starts
         shell: pwsh
         run: |
@@ -162,6 +171,62 @@ jobs:
           Write-Host "Running from $($proc[0].Path)"
           $proc | Stop-Process
           Remove-AppxPackage -Package $pkg.PackageFullName
+      # P6-05: two packages from this commit, 0.1.0 and 0.1.1, and an
+      # .appinstaller file for 0.1.1 in a local folder. 0.1.0 is built to
+      # press Update… by itself at start (DEVVAULT_E2E_INSTALL) against that
+      # file (DEVVAULT_UPDATE_FEED), through the same channel and native
+      # code as the button.
+      - name: Update test packages
+        shell: pwsh
+        run: |
+          Remove-Item devvault-windows-x64.msix -ErrorAction SilentlyContinue
+          $feed = Join-Path $env:RUNNER_TEMP 'feed'
+          New-Item -ItemType Directory -Force $feed | Out-Null
+          $feedUri = ([Uri](Join-Path $feed 'DevVault.appinstaller')).AbsoluteUri
+          $packageUri = ([Uri](Join-Path $feed 'devvault-windows-x64.msix')).AbsoluteUri
+          "UPDATE_FEED=$feed" >> $env:GITHUB_ENV
+
+          (Get-Content pubspec.yaml) -replace '^version: .*', 'version: 0.1.0+1' | Set-Content pubspec.yaml
+          flutter build windows --release `
+            --dart-define=DEVVAULT_E2E_INSTALL=true `
+            --dart-define=DEVVAULT_UPDATE_FEED=$feedUri
+          if ($LASTEXITCODE -ne 0) { throw 'build 0.1.0 failed' }
+          ./tool/release/windows_msix.ps1
+          Move-Item devvault-windows-x64.msix devvault-old.msix
+
+          (Get-Content pubspec.yaml) -replace '^version: .*', 'version: 0.1.1+2' | Set-Content pubspec.yaml
+          flutter build windows --release
+          if ($LASTEXITCODE -ne 0) { throw 'build 0.1.1 failed' }
+          ./tool/release/windows_msix.ps1
+          Move-Item devvault-windows-x64.msix (Join-Path $feed 'devvault-windows-x64.msix')
+          ./tool/release/windows_appinstaller.ps1 `
+            -Msix (Join-Path $feed 'devvault-windows-x64.msix') `
+            -FeedUri $feedUri -PackageUri $packageUri `
+            -Out (Join-Path $feed 'DevVault.appinstaller')
+          Get-Content (Join-Path $feed 'DevVault.appinstaller')
+          git checkout -- pubspec.yaml
+      - name: Update… replaces 0.1.0 with 0.1.1
+        shell: pwsh
+        run: |
+          Add-AppxPackage -Path devvault-old.msix
+          $pkg = Get-AppxPackage -Name BinaryCastle.DevVault
+          if ("$($pkg.Version)" -ne '0.1.0.0') { throw "Installed $($pkg.Version), expected 0.1.0.0" }
+          $appId = (Get-AppxPackageManifest $pkg).Package.Applications.Application.Id
+          Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!$appId"
+          $version = $null
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 3
+            $version = "$((Get-AppxPackage -Name BinaryCastle.DevVault).Version)"
+            if ($version -eq '0.1.1.0') { break }
+          }
+          Get-AppxLog -All | Select-Object -Last 15 | Format-Table -AutoSize -Wrap | Out-String -Width 200 | Write-Host
+          if ($version -ne '0.1.1.0') { throw "Still $version after 3 minutes" }
+          Write-Host "Updated in place to $version"
+          Start-Sleep -Seconds 10
+          $proc = Get-Process -Name devvault -ErrorAction SilentlyContinue
+          if ($proc) { Write-Host "Running again: $($proc[0].Path)" } else { Write-Host 'Not restarted (RegisterApplicationRestart)' }
+          $proc | Stop-Process -ErrorAction SilentlyContinue
+          Remove-AppxPackage -Package (Get-AppxPackage -Name BinaryCastle.DevVault).PackageFullName
       - uses: actions/upload-artifact@v4
         if: always()
         with:
