@@ -94,7 +94,9 @@ void main() {
 
       await tester.enterText(find.byType(EditableText), recoveryKey);
       await tester.pump();
-      // Two lines of text, nothing scrolled out of sight.
+      // Within the field's three lines, nothing scrolled out of sight. Two
+      // or three: a line may only break at a dash before a letter (no break
+      // between a hyphen and a digit), so it depends on the random key.
       final editable = tester
           .state<EditableTextState>(find.byType(EditableText))
           .renderEditable;
@@ -104,7 +106,7 @@ void main() {
         ))
           box.top,
       };
-      expect(lines, hasLength(2));
+      expect(lines.length, inInclusiveRange(2, 3));
       final scroll = tester.state<ScrollableState>(
         find.descendant(
           of: find.byType(EditableText),
