@@ -79,6 +79,12 @@ of them fail.
   to its slot by associated data.
 - The storage provider sees encrypted objects with random names. It can see
   how many there are and how big they are, not what's in them.
+- Updates (desktop, [ADR-0007](docs/adr/0007-updates.md)): the app asks
+  GitHub for the latest release only after you agree, sending nothing but
+  `User-Agent: DevVault`. An update installs only with a valid signature:
+  Sparkle's EdDSA key and the Developer ID on macOS, the package
+  signature and publisher on Windows. The update keys live in CI secrets
+  and offline, never in the repository.
 - Not protected: malware on an unlocked device. Dart can't reliably wipe
   memory, so DevVault limits exposure with auto-lock and clipboard clearing
   instead of claiming otherwise.

@@ -151,8 +151,9 @@ and the Linux tarball.
   calls `PackageManager.AddPackageByAppInstallerFileAsync(feed,
   ForceTargetAppShutdown)` through the `devvault/updater` channel
   (`windows/runner/app_updater.cpp`, with the C++/WinRT call in its own
-  library, `app_installer.cpp`), after `RegisterApplicationRestart` so
-  DevVault starts again. Updating its own package needs no
+  library, `app_installer.cpp`), after `RegisterApplicationRestart`,
+  which asks Windows to start DevVault again (on the CI runner it did
+  not; `docs/acceptance/p6.md` row 7). Updating its own package needs no
   `packageManagement` capability. `isAvailable` is true only when
   DevVault runs from its MSIX; the zip falls back to *View Release*.
   (Revised in P6-05: `CheckUpdateAvailabilityAsync` isn't needed, since

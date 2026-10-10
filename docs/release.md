@@ -20,8 +20,14 @@ attached to the GitHub Release.
    ```
 3. Wait for **Release** to finish, open the draft release, check that no
    file ends in `-unsigned`, run through `docs/acceptance/v1.md`, paste the
-   version's section of `CHANGELOG.md` into the notes, publish.
-4. Set the release date in `CHANGELOG.md` in a follow-up PR.
+   version's section of `CHANGELOG.md` into the notes. Check the update
+   feeds (ADR-0007): `appcast.xml` and `DevVault.appinstaller` name this
+   version, and `devvault-linux-x64.AppImage.zsync` is there. Publishing
+   is what ships the update to every installed copy that checks, so
+   publish last.
+4. **Publish** runs by itself: the Homebrew cask and the winget pull
+   request (§ Package managers).
+5. Set the release date in `CHANGELOG.md` in a follow-up PR.
 
 The workflow can also be run by hand (**Actions › Release › Run
 workflow**); without a tag it uploads the files as run artifacts only.
@@ -124,7 +130,9 @@ With a signed MSIX, **Release** also writes `DevVault.appinstaller`
 DevVault's *Update…* hands
 `releases/latest/download/DevVault.appinstaller` to Windows, which
 downloads the MSIX it names, checks its signature and publisher, closes
-DevVault, installs and starts it again. The MSIX version is pubspec's
+DevVault and installs it. DevVault asks Windows to start it again
+afterwards; on the CI runner it was not restarted, so check this on a
+desktop with the first published release. The MSIX version is pubspec's
 `major.minor.patch.0`, so every release needs a new version, not just a
 new build number. **Renew the certificate with the same subject**:
 Windows refuses an update from another publisher, so a new subject
