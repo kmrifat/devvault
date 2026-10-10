@@ -57,8 +57,11 @@ command -v zsyncmake >/dev/null || {
 ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$tool" \
   --updateinformation "$update_info" "$appdir" "$name"
 
-# Check what the AppImage says about where its updates come from.
-embedded="$(APPIMAGE_EXTRACT_AND_RUN=1 "./$name" --appimage-updateinformation)"
+# Check what the AppImage says about where its updates come from: the
+# .upd_info ELF section, read without running it (with no FUSE, the
+# runtime would start the app instead of answering).
+objcopy -O binary --only-section=.upd_info "$name" "$tmp/upd_info"
+embedded="$(tr -d '\0' < "$tmp/upd_info")"
 if [ "$embedded" != "$update_info" ]; then
   echo "Update information is '$embedded', expected '$update_info'" >&2
   exit 1

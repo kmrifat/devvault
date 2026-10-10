@@ -108,8 +108,8 @@ The AppImage embeds update information (ADR-0007 §5):
 `gh-releases-zsync|kmrifat|devvault|latest|devvault-linux-x64.AppImage.zsync`.
 AppImageUpdate, Gear Lever and AppImageLauncher read it, fetch the
 latest **published** release's `.zsync` and download only the changed
-blocks. The script checks the embedded string with
-`--appimage-updateinformation` and fails without the `.zsync`
+blocks. The script reads the embedded string back from the AppImage's
+`.upd_info` section and fails if it differs or there is no `.zsync`
 (`zsyncmake`, from the `zsync` package). Publishing the draft is what
 makes a new AppImage visible to those tools.
 
