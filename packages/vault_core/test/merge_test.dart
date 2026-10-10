@@ -335,6 +335,33 @@ void main() {
       );
     });
 
+    test('notes: the changed side wins; on a clash the local note stays', () {
+      final base = org(a, 'Acme').copyWith(notes: 'Base');
+      final remote = base.copyWith(notes: '**Remote**', rev: b.tick());
+      final renamed = base.copyWith(name: 'Acme Corp', rev: a.tick());
+      final merged = mergeOrganizations(
+        base: base,
+        local: renamed,
+        remote: remote,
+      );
+      expect(merged.name, 'Acme Corp');
+      expect(merged.notes, '**Remote**');
+
+      final local = base.copyWith(notes: '_Local_', rev: a.tick());
+      expect(
+        mergeOrganizations(base: base, local: local, remote: remote).notes,
+        '_Local_',
+      );
+      expect(mergeOrganizations(local: local, remote: remote).notes, '_Local_');
+
+      final cleared = base.copyWith(notes: '', rev: a.tick());
+      final unchanged = base.copyWith(name: 'A', rev: b.tick());
+      expect(
+        mergeOrganizations(base: base, local: cleared, remote: unchanged).notes,
+        isNull,
+      );
+    });
+
     test('one side unchanged since the base: the other is taken whole', () {
       final base = org(a, 'Acme');
       final remote = OrganizationRecord.fromJson({

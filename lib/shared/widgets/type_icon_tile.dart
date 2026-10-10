@@ -25,6 +25,7 @@ class TypeIconTile extends StatelessWidget {
     ItemType.sshKey => LucideIcons.squareTerminal,
     ItemType.genericFile => LucideIcons.fileText,
     ItemType.genericSecret => LucideIcons.asterisk,
+    ItemType.secureNote => LucideIcons.notebookText,
   };
 
   @override
@@ -41,7 +42,8 @@ class TypeIconTile extends StatelessWidget {
       ItemType.oauthClient => (app.tealSoft, app.teal),
       ItemType.sshKey => (bc.defaultColor, bc.foreground),
       ItemType.genericFile ||
-      ItemType.genericSecret => (bc.defaultColor, bc.muted),
+      ItemType.genericSecret ||
+      ItemType.secureNote => (bc.defaultColor, bc.muted),
     };
 
     return Semantics(

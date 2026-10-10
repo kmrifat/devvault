@@ -258,8 +258,8 @@ AppRecord mergeApps({
 }
 
 /// Merges two concurrent versions of an organization like [mergeApps]: the
-/// name a side changed since [base] wins, and on a clash the local one
-/// stays.
+/// name or notes a side changed since [base] win, and on a clash the local
+/// value stays.
 OrganizationRecord mergeOrganizations({
   OrganizationRecord? base,
   required OrganizationRecord local,
@@ -268,12 +268,16 @@ OrganizationRecord mergeOrganizations({
   if (local.rev == remote.rev) return local;
   if (base != null && local.rev == base.rev) return remote;
   if (base != null && remote.rev == base.rev) return local;
-  final name = local.name == remote.name || base?.name != local.name
-      ? local.name
-      : remote.name;
+  T pick<T>(T? b, T l, T r) {
+    if (l == r) return l;
+    if (base != null && b == l) return r;
+    return l;
+  }
+
   return OrganizationRecord(
     id: local.id,
-    name: name,
+    name: pick(base?.name, local.name, remote.name),
+    notes: pick(base?.notes, local.notes, remote.notes),
     createdAt: local.createdAt.isBefore(remote.createdAt)
         ? local.createdAt
         : remote.createdAt,
