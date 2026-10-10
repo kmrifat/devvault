@@ -44,6 +44,16 @@ void main() {
     );
   });
 
+  test('builds carry the public half of the update key', () {
+    // Releases made without it could never update themselves.
+    expect(
+      read('macos/Runner/Configs/AppInfo.xcconfig'),
+      contains(
+        'SPARKLE_PUBLIC_ED_KEY = o54jybyTc1f/3f1lliDDO8V1t90zPhnZT/oE6VLA5wI=',
+      ),
+    );
+  });
+
   test('the sandbox lets the installer launcher in', () {
     for (final path in [
       'macos/Runner/Release.entitlements',
