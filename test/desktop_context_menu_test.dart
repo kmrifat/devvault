@@ -276,8 +276,14 @@ void main() {
         expect(second, lessThan(top(find.text('Delete app…'))));
       });
 
-      if (kit == DesktopKit.macos) {
-        testWidgets('its rows are the system menu\'s 24 pt', (tester) async {
+      // Fluent's flyout sizes its own rows.
+      final rowHeight = switch (kit) {
+        DesktopKit.macos => DesktopMetrics.menuRowHeight,
+        DesktopKit.yaru => DesktopMetrics.yaruMenuRowHeight,
+        DesktopKit.fluent => null,
+      };
+      if (rowHeight != null) {
+        testWidgets('its rows are the system menu\'s height', (tester) async {
           await pumpDesktop(
             tester,
             kit,
@@ -296,7 +302,7 @@ void main() {
             of: find.text('New item…'),
             matching: find.byType(MenuItemButton),
           );
-          expect(tester.getSize(row).height, DesktopMetrics.menuRowHeight);
+          expect(tester.getSize(row).height, rowHeight);
         });
       }
 

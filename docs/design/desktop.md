@@ -242,7 +242,10 @@ through `package:devvault/shared/desktop_ui.dart`:
   boxes and date field (`MacosMenuStyle`), are drawn after the system's:
   a translucent panel that blurs the window behind it, 12 pt corners, a
   hairline border and soft shadow, 24 pt rows that fill with the accent,
-  hairline separators. `DesktopScopeBar`: recessed scope buttons that narrow a
+  hairline separators. On Windows they are Fluent's own flyout menus. On
+  Linux (`YaruMenuStyle`) they follow GNOME's popover menus in Yaru's
+  colours: a 12 pt panel with a 6 pt inset, 32 pt rows that light up as
+  rounded pills, separators inside the inset. `DesktopScopeBar`: recessed scope buttons that narrow a
   list (the table's All / Expiring / Files / Secrets); a segmented control
   is for settings.
 - `DesktopLockWindow` for the lock screens (unlock, create, recovery kit,

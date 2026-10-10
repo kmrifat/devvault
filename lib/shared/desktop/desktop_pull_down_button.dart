@@ -6,6 +6,7 @@ import 'desktop_macos_menu.dart';
 import 'desktop_menu_focus.dart';
 import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
+import 'desktop_yaru_menu.dart';
 
 /// One command in a [DesktopPullDownButton]'s or a `DesktopContextMenu`'s
 /// menu.
@@ -40,7 +41,7 @@ bool separatorBefore(List<DesktopMenuAction> actions, int i) =>
 /// - macOS: a `PushButton` with the menu in the macOS menu style (the
 ///   macos_ui pull-down draws a caret the design doesn't have).
 /// - Windows: Fluent `DropDownButton` with a menu flyout.
-/// - Linux: Material's `PopupMenuButton` in the Yaru theme.
+/// - Linux: an icon button with the Linux command menu ([YaruMenuStyle]).
 class DesktopPullDownButton extends StatelessWidget {
   const DesktopPullDownButton({
     super.key,
@@ -83,28 +84,15 @@ class DesktopPullDownButton extends StatelessWidget {
           child: fl.Button(onPressed: onOpen, child: icon),
         ),
       ),
-      DesktopKit.yaru => PopupMenuButton<int>(
-        tooltip: label,
-        // The tooltip isn't a label; the icon's is.
+      DesktopKit.yaru => _YaruPullDown(
+        label: label,
+        actions: actions,
         icon: Icon(
           symbol.of(kit),
           size: 14,
           color: colors.text,
           semanticLabel: label,
         ),
-        onSelected: (i) => actions[i].onSelected(),
-        itemBuilder: (context) => [
-          for (final (i, a) in actions.indexed) ...[
-            if (separatorBefore(actions, i)) const PopupMenuDivider(),
-            PopupMenuItem(
-              value: i,
-              child: Text(
-                a.label,
-                style: a.destructive ? TextStyle(color: colors.danger) : null,
-              ),
-            ),
-          ],
-        ],
       ),
     };
   }
@@ -183,6 +171,63 @@ class _MacosPullDownState extends State<_MacosPullDown> {
             child: widget.icon,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _YaruPullDown extends StatefulWidget {
+  const _YaruPullDown({
+    required this.label,
+    required this.actions,
+    required this.icon,
+  });
+
+  final String label;
+  final List<DesktopMenuAction> actions;
+  final Widget icon;
+
+  @override
+  State<_YaruPullDown> createState() => _YaruPullDownState();
+}
+
+class _YaruPullDownState extends State<_YaruPullDown> {
+  /// Opened with the pointer, the menu holds the keyboard with nothing
+  /// highlighted until ↓ or ↑.
+  final _focus = DesktopMenuFocus('Pull-down');
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = widget.actions;
+    return MenuAnchor(
+      style: YaruMenuStyle.panel(context),
+      clipBehavior: Clip.antiAlias,
+      onOpen: () => _focus.opened(count: actions.length, fromKeyboard: false),
+      onClose: _focus.closed,
+      menuChildren: [
+        _focus.holder(),
+        for (final (i, a) in actions.indexed) ...[
+          if (separatorBefore(actions, i)) YaruMenuStyle.separator(),
+          YaruMenuStyle.item(
+            context,
+            label: a.label,
+            onPressed: a.onSelected,
+            destructive: a.destructive,
+            focusNode: _focus.item(i),
+          ),
+        ],
+      ],
+      // The tooltip isn't a label; the icon's is.
+      builder: (context, menu, _) => IconButton(
+        tooltip: widget.label,
+        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+        icon: widget.icon,
       ),
     );
   }

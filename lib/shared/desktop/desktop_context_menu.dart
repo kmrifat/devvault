@@ -7,6 +7,7 @@ import 'desktop_macos_menu.dart';
 import 'desktop_menu_focus.dart';
 import 'desktop_pull_down_button.dart';
 import 'desktop_theme.dart';
+import 'desktop_yaru_menu.dart';
 
 /// Opens a menu of [actions] where [child] is right-clicked (or
 /// long-pressed on a touch screen): a sidebar row's "New item…", "Edit app…" …
@@ -16,7 +17,7 @@ import 'desktop_theme.dart';
 /// Commands that [DesktopMenuAction.startsGroup] sit below a separator, as
 /// the system's menus group theirs.
 /// - Windows: a Fluent `MenuFlyout` at the pointer.
-/// - Linux: Material's menu in the Yaru theme.
+/// - Linux: a GNOME-style menu in the Yaru theme ([YaruMenuStyle]).
 ///
 /// Each action is also a custom semantics action on [child], so assistive
 /// tech reaches the commands without a pointer. With a
@@ -135,8 +136,10 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
     }
     return MenuAnchor(
       controller: _menu,
-      style: macos ? MacosMenuStyle.panel(colors) : null,
-      clipBehavior: macos ? Clip.antiAlias : Clip.hardEdge,
+      style: macos
+          ? MacosMenuStyle.panel(colors)
+          : YaruMenuStyle.panel(context),
+      clipBehavior: Clip.antiAlias,
       consumeOutsideTap: true,
       onClose: _focus.closed,
       menuChildren: macos
@@ -163,16 +166,13 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
           : [
               _focus.holder(),
               for (final (i, a) in actions.indexed) ...[
-                if (separatorBefore(actions, i)) const Divider(),
-                MenuItemButton(
+                if (separatorBefore(actions, i)) YaruMenuStyle.separator(),
+                YaruMenuStyle.item(
+                  context,
+                  label: a.label,
                   onPressed: a.onSelected,
+                  destructive: a.destructive,
                   focusNode: _focus.item(i),
-                  child: Text(
-                    a.label,
-                    style: a.destructive
-                        ? TextStyle(color: colors.danger)
-                        : null,
-                  ),
                 ),
               ],
             ],
