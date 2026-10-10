@@ -202,3 +202,38 @@ from `ANDROID_KEYSTORE_PATH` and the variables above, or from
 `android/key.properties` on a developer's machine (`storeFile`,
 `storePassword`, `keyAlias`, `keyPassword`; git-ignored). Without either it
 keeps the debug key, and the workflow names the bundle `-unsigned`.
+
+## Package managers (P6-06)
+
+`.github/workflows/publish.yml` runs when a release is **published** (not
+for drafts or pre-releases), and by hand with a tag. Each job skips with
+a notice until its secret exists.
+
+| Secret | What |
+|---|---|
+| `HOMEBREW_TAP_TOKEN` | A fine-grained token with *Contents: read and write* on `kmrifat/homebrew-tap` only. |
+| `WINGET_TOKEN` | A classic token with `public_repo`, for the account that opens pull requests on `microsoft/winget-pkgs`. `wingetcreate` takes it on the command line; GitHub masks it in the log. |
+
+**Homebrew.** Create the public repository `kmrifat/homebrew-tap` once.
+The job downloads the release's DMG, writes `Casks/devvault.rb` with
+`tool/release/homebrew_cask.sh` (with `auto_updates true` when the
+release has an `appcast.xml`) and pushes it. Users install with
+`brew install --cask kmrifat/tap/devvault`. The cask has no `zap`
+stanza: the app's container holds the vaults. It can move to
+`homebrew/cask` once DevVault meets its notability rules.
+
+**winget.** `wingetcreate update` only updates a package that exists, so
+the first version goes in by hand, on Windows, after its release is
+published:
+
+```powershell
+wingetcreate new https://github.com/kmrifat/devvault/releases/download/v1.0.0/devvault-windows-x64.msix
+```
+
+Use the identifier `BinaryCastle.DevVault` and publisher `Binary
+Castle`; winget also asks for the license, which has to match the
+repository's `LICENSE` file (there is none yet). Then submit. Once Microsoft merges it, every
+published release opens the update pull request by itself
+(`wingetcreate` 1.12.13.0, pinned and checked against its SHA-256).
+Users install with `winget install BinaryCastle.DevVault`.
+

@@ -205,10 +205,13 @@ user's control, which fits an open-source app better than anything we
 run. They are listed in order of effort:
 
 - **Homebrew cask** in our tap (`kmrifat/homebrew-tap`) until the cask
-  qualifies for `homebrew/cask`. `auto_updates true`, because Sparkle
-  updates the app.
+  qualifies for `homebrew/cask`. `auto_updates true` when the release
+  has an appcast, because Sparkle then updates the app. No `zap`
+  stanza: the app's container holds the vaults.
 - **winget**: a manifest for the MSIX, submitted to `microsoft/winget-pkgs`
-  by `wingetcreate` on `release: published`.
+  by `wingetcreate update` on `release: published`. The first version is
+  submitted by hand, because `wingetcreate` only updates a package that
+  exists.
 - **Flathub** (later): builds from source in Flathub's infrastructure; the
   keyring goes through the Secret portal. It is a separate project because
   of the build (libsodium, Flutter in flatpak-builder) and the sandbox.
