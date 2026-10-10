@@ -42,8 +42,10 @@ different one:
 **unset**. After the first unlock on a desktop build, a one-time banner
 asks: "Check GitHub for new versions of DevVault once a day?" with *Check
 daily* and *Not now*. Until the user picks *Check daily* the app makes no
-update request of any kind, including Sparkle's. *Not now* stores `off`,
-and the banner does not return; the setting stays in Settings.
+update request of any kind, including Sparkle's, except when the user
+presses *Check Now* in Settings, which asks once and leaves the setting
+as it is. *Not now* stores `off`, and the banner does not return; the
+setting stays in Settings.
 
 When it is on, the app checks at launch if the last successful check was
 more than 24 hours ago, and on *Check now* in Settings. There is no
@@ -68,7 +70,8 @@ The response is **untrusted data**:
 - The release page is opened at a URL the app builds itself,
   `https://github.com/kmrifat/devvault/releases/tag/<tag>`, never a URL
   taken from the response.
-- The notes are shown as plain text, without links that open anything.
+- The app doesn't show the notes. *View Release* opens the page that has
+  them.
 - Facts only: the app shows the version and `published_at` as GitHub
   returns them, and "Last checked <time>" only after a check succeeded.
   A failed check shows "Couldn't check for updates" with the time; it
@@ -81,17 +84,23 @@ and the Linux tarball.
 
 ### 3. macOS: Sparkle 2
 
-- Sparkle 2 (the current release, pinned), driven by the setting above:
-  `automaticallyChecksForUpdates` follows it, and `SUEnableAutomaticChecks`
-  is `NO` in `Info.plist` so Sparkle never shows its own permission prompt.
-  On macOS Sparkle **replaces** the check in §2 (both read the same
-  release; one network request is enough).
+- **Sparkle only installs.** The check in §2 finds the release on every
+  desktop, macOS included. Sparkle starts only when the user presses
+  *Update…*: it then fetches the appcast, shows its own window and
+  installs. `SUEnableAutomaticChecks`, `SUAllowsAutomaticUpdates` and
+  `SUAutomaticallyUpdate` are all `NO`, so Sparkle never checks, asks or
+  downloads on its own, and the setting in §1 governs every request.
+  (Revised in P6-04: the first draft let Sparkle replace the check, which
+  made macOS behave differently from the other desktops for no gain.)
 - Sparkle checks two signatures before installing: the **EdDSA (Ed25519)**
   signature in the appcast, and that the new app is signed by the same
   Developer ID team as the running one. The public key is
-  `SUPublicEDKey` in `Info.plist`; the private key is the CI secret
+  `SPARKLE_PUBLIC_ED_KEY` in `macos/Runner/Configs/AppInfo.xcconfig`,
+  which becomes `SUPublicEDKey`; the private key is the CI secret
   `SPARKLE_ED_PRIVATE_KEY` and a copy kept offline. It is never on a
-  developer machine's disk otherwise.
+  developer machine's disk otherwise. While the public key is empty the
+  build reports that it can't update itself, and the app offers *View
+  Release* instead.
 - **Sandbox:** the app is sandboxed (ADR-0006, `Release.entitlements`).
   Sparkle's installer then runs through its XPC launcher service:
   `SUEnableInstallerLauncherService = YES`, plus the
@@ -99,18 +108,36 @@ and the Linux tarball.
   `$(PRODUCT_BUNDLE_IDENTIFIER)-spks` and `-spki`. Downloads use the
   app's existing `network.client`.
 - **Signing:** `macos_sign_notarize.sh` signs Sparkle's nested code
-  (`Autoupdate`, `Updater.app`, the XPC services) inside-out with the
-  Developer ID and the hardened runtime before the app, as it already
-  does for `devvault-mcp`. No `--deep`.
-- **Integration:** the `auto_updater` plugin if it can be configured for
-  the sandboxed launcher; otherwise a small method channel in
-  `macos/Runner` that calls `SPUStandardUpdaterController`. P6-04
-  decides, and either way all of it sits behind one `Updater` interface
-  in `lib/services/updater.dart`.
+  (`Installer.xpc`, `Downloader.xpc` keeping its entitlements,
+  `Autoupdate`, `Updater.app`) with the Developer ID and the hardened
+  runtime before the framework and the app. No `--deep`. It also fills
+  `$(PRODUCT_BUNDLE_IDENTIFIER)` into the entitlements it signs with,
+  as Xcode does.
+- **Integration:** a method channel, `devvault/updater`
+  (`macos/Runner/AppUpdater.swift`), with `isAvailable` and `install`;
+  `install` calls `SPUStandardUpdaterController.checkForUpdates`. The
+  `auto_updater` plugin was not used: it schedules checks of its own,
+  which §1 forbids, and only this one call is needed. On the Dart side
+  it is `ChannelUpdateInstaller`, the `UpdateInstaller` of
+  `lib/services/updates.dart`.
+- **Version:** Sparkle 2.9.6 from CocoaPods, the newest release on
+  CocoaPods trunk (2.10.0 was published to Swift Package Manager only).
+  `macos_appcast.sh` uses the same version's `sign_update`, checked
+  against its SHA-256; `test/tool/sparkle_config_test.dart` keeps the two
+  equal. Moving to Swift Package Manager is a separate change.
 - The update archive is the notarized DMG that the release already
-  builds. `release.yml` runs `sign_update` on it and writes `appcast.xml`
-  (one item: version, `published_at`, length, `sparkle:edSignature`,
-  minimum macOS 12, and a link to the release page for notes).
+  builds. `tool/release/macos_appcast.sh` signs it with `sign_update`
+  (the key on stdin) and writes `appcast.xml`: one item with the build
+  number as `sparkle:version` (Sparkle compares `CFBundleVersion`, so it
+  must grow with every release), the version, the length, the
+  `edSignature` and minimum macOS 12. No release notes link: Sparkle's
+  window would load the GitHub page in a web view.
+- **Spike result (P6-04).** A sandboxed Release build of 0.1.0 (ad-hoc
+  signed, App Sandbox on, macOS 27) with a throwaway key and a local
+  appcast found 0.2.0, downloaded it, checked the signature, installed it
+  through the launcher service and relaunched as 0.2.0. With the appcast
+  signed by another key it stopped with Sparkle error 4005 ("improperly
+  signed") and stayed on 0.1.0.
 
 ### 4. Windows: App Installer for the MSIX
 

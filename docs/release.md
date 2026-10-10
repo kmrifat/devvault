@@ -32,7 +32,7 @@ Each tag gives these desktop files:
 
 | Platform | Files |
 |---|---|
-| macOS | `DevVault-macos.dmg` (notarized) |
+| macOS | `DevVault-macos.dmg` (notarized), `appcast.xml` (when `SPARKLE_ED_PRIVATE_KEY` is set) |
 | Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix` |
 | Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature, and `devvault-linux-x64.AppImage.zsync` |
 
@@ -69,6 +69,37 @@ the hardened runtime and `macos/Runner/Release.entitlements` (sandbox,
 network client, user-selected files), wraps it in a DMG, signs that,
 notarizes it with `notarytool`, staples the ticket and checks it with
 `spctl`. The keychain and the decoded certificate are deleted afterwards.
+
+### macOS: in-place updates (Sparkle)
+
+| Secret | What |
+|---|---|
+| `SPARKLE_ED_PRIVATE_KEY` | The private half of the update key, base64 (see below). Keep a copy offline: a lost key can only be replaced through Sparkle's key rotation, which needs an update signed by the same Developer ID team. |
+
+Make the key once, on a trusted Mac, with the tools of the Sparkle
+version in `macos/Podfile` (2.9.6):
+
+```bash
+./bin/generate_keys            # stores the key in the login keychain, prints the public key
+./bin/generate_keys -x sparkle_private_key   # exports the private key to a file
+```
+
+Put the printed public key in `SPARKLE_PUBLIC_ED_KEY` in
+`macos/Runner/Configs/AppInfo.xcconfig` (in a PR), paste the exported
+file's contents into the secret, then delete the file and the keychain
+item once the offline copy is safe. Until the public key is set, builds
+can't update themselves and the app offers *View Release*.
+
+With the secret set and a notarized DMG, **Release** runs
+`tool/release/macos_appcast.sh`: it signs the DMG with `sign_update` and
+writes `appcast.xml`, which goes on the release next to the DMG. The app
+reads it from `releases/latest/download/appcast.xml`, so a draft is
+invisible until it is published. Sparkle compares the **build number**
+(`+N` in `pubspec.yaml`, `CFBundleVersion`): bump it for every release,
+and tag `v<version>` to match `pubspec.yaml`, or the step fails.
+
+Before publishing, check that `appcast.xml` names this version and that
+the DMG's length matches the file on the release.
 
 ### Windows: Authenticode
 

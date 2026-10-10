@@ -19,6 +19,8 @@ import '../services/incoming_files.dart';
 import '../services/link_opener.dart';
 import '../services/notifications.dart';
 import '../services/recovery_kit.dart';
+import '../services/updates.dart';
+import 'updates.dart' show UpdateStatusFile;
 
 // Every service the app depends on, in one place. Values that need I/O are
 // loaded in main() before the first frame and handed in with overrides, so
@@ -131,6 +133,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setKeepRunningWhenClosed(bool on) =>
       update(state.copyWith(keepRunningWhenClosed: on));
+
+  void setUpdateChecks(bool on) => update(state.copyWith(updateChecks: on));
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
@@ -229,4 +233,24 @@ final agentClientsFileProvider = Provider<AgentClientsFile>(
 /// How long an agent's request waits for the user (PROTOCOL.md §5).
 final agentTimeoutProvider = Provider<Duration>(
   (ref) => const Duration(seconds: 120),
+);
+
+/// The running app's version, for update checks (ADR-0007). main() sets
+/// it on desktop; null (phones, tests) means no update checks at all.
+final appVersionProvider = Provider<AppVersion?>((ref) => null);
+
+/// Where update checks ask for the latest release: GitHub.
+final releaseSourceProvider = Provider<ReleaseSource>((ref) {
+  final source = GitHubReleaseSource();
+  ref.onDispose(source.close);
+  return source;
+});
+
+/// Installs a release in place, where this build has an updater for its
+/// install format (P6-04, P6-05); null links to the release page instead.
+final updateInstallerProvider = Provider<UpdateInstaller?>((ref) => null);
+
+/// What the last update checks found, next to the settings.
+final updateStatusFileProvider = Provider<UpdateStatusFile>(
+  (ref) => UpdateStatusFile(ref.watch(appSupportDirProvider)),
 );

@@ -14,6 +14,7 @@ class AppSettings {
     this.agentsEnabled = false,
     this.agentMetadataWithoutAsking = true,
     this.keepRunningWhenClosed = true,
+    this.updateChecks,
   });
 
   static const defaultAutoLock = Duration(minutes: 5);
@@ -59,6 +60,11 @@ class AppSettings {
   /// hides DevVault instead of quitting, so agents can still reach it.
   final bool keepRunningWhenClosed;
 
+  /// Whether the app asks GitHub once a day for a newer release (desktop,
+  /// ADR-0007). Null until the user answers; until they say yes the app
+  /// makes no update request it wasn't asked for.
+  final bool? updateChecks;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     Duration? Function()? autoLockAfter,
@@ -67,6 +73,7 @@ class AppSettings {
     bool? agentsEnabled,
     bool? agentMetadataWithoutAsking,
     bool? keepRunningWhenClosed,
+    bool? updateChecks,
   }) => AppSettings(
     themeMode: themeMode ?? this.themeMode,
     autoLockAfter: autoLockAfter == null ? this.autoLockAfter : autoLockAfter(),
@@ -76,6 +83,7 @@ class AppSettings {
     agentMetadataWithoutAsking:
         agentMetadataWithoutAsking ?? this.agentMetadataWithoutAsking,
     keepRunningWhenClosed: keepRunningWhenClosed ?? this.keepRunningWhenClosed,
+    updateChecks: updateChecks ?? this.updateChecks,
   );
 
   Map<String, Object?> toJson() => {
@@ -86,6 +94,7 @@ class AppSettings {
     'agents_enabled': agentsEnabled,
     'agent_metadata_without_asking': agentMetadataWithoutAsking,
     'keep_running_when_closed': keepRunningWhenClosed,
+    if (updateChecks != null) 'update_checks': updateChecks,
   };
 
   /// Reads what it recognises and keeps the default for the rest, so a
@@ -114,6 +123,10 @@ class AppSettings {
       agentMetadataWithoutAsking:
           json['agent_metadata_without_asking'] != false,
       keepRunningWhenClosed: json['keep_running_when_closed'] != false,
+      updateChecks: switch (json['update_checks']) {
+        final bool on => on,
+        _ => null,
+      },
     );
   }
 
@@ -152,7 +165,8 @@ class AppSettings {
       other.expiryReminders == expiryReminders &&
       other.agentsEnabled == agentsEnabled &&
       other.agentMetadataWithoutAsking == agentMetadataWithoutAsking &&
-      other.keepRunningWhenClosed == keepRunningWhenClosed;
+      other.keepRunningWhenClosed == keepRunningWhenClosed &&
+      other.updateChecks == updateChecks;
 
   @override
   int get hashCode => Object.hash(
@@ -163,5 +177,6 @@ class AppSettings {
     agentsEnabled,
     agentMetadataWithoutAsking,
     keepRunningWhenClosed,
+    updateChecks,
   );
 }
