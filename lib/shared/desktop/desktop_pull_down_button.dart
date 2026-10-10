@@ -2,18 +2,20 @@ import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/material.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
 
+import 'desktop_macos_menu.dart';
 import 'desktop_menu_focus.dart';
-import 'desktop_metrics.dart';
 import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
 
-/// One command in a [DesktopPullDownButton]'s menu.
+/// One command in a [DesktopPullDownButton]'s or a `DesktopContextMenu`'s
+/// menu.
 @immutable
 class DesktopMenuAction {
   const DesktopMenuAction(
     this.label,
     this.onSelected, {
     this.destructive = false,
+    this.startsGroup = false,
   });
 
   final String label;
@@ -21,7 +23,15 @@ class DesktopMenuAction {
 
   /// Deletes something: drawn in the danger colour.
   final bool destructive;
+
+  /// Begins a new group of commands: a separator above it, unless it is
+  /// the menu's first.
+  final bool startsGroup;
 }
+
+/// Whether a separator goes above [actions]' command [i].
+bool separatorBefore(List<DesktopMenuAction> actions, int i) =>
+    i > 0 && actions[i].startsGroup;
 
 /// A pull-down button: an icon push button (⋯ by default) that drops a
 /// menu of commands, such as the inspector's "Replace file…" and "Delete
@@ -56,7 +66,8 @@ class DesktopPullDownButton extends StatelessWidget {
       ),
       DesktopKit.fluent => fl.DropDownButton(
         items: [
-          for (final a in actions)
+          for (final (i, a) in actions.indexed) ...[
+            if (separatorBefore(actions, i)) const fl.MenuFlyoutSeparator(),
             fl.MenuFlyoutItem(
               text: Text(
                 a.label,
@@ -64,6 +75,7 @@ class DesktopPullDownButton extends StatelessWidget {
               ),
               onPressed: a.onSelected,
             ),
+          ],
         ],
         // Fluent's tooltip also names the button for screen readers.
         buttonBuilder: (context, onOpen) => fl.Tooltip(
@@ -82,7 +94,8 @@ class DesktopPullDownButton extends StatelessWidget {
         ),
         onSelected: (i) => actions[i].onSelected(),
         itemBuilder: (context) => [
-          for (final (i, a) in actions.indexed)
+          for (final (i, a) in actions.indexed) ...[
+            if (separatorBefore(actions, i)) const PopupMenuDivider(),
             PopupMenuItem(
               value: i,
               child: Text(
@@ -90,13 +103,13 @@ class DesktopPullDownButton extends StatelessWidget {
                 style: a.destructive ? TextStyle(color: colors.danger) : null,
               ),
             ),
+          ],
         ],
       ),
     };
   }
 }
 
-const double _menuPadding = 5;
 const double _menuMinWidth = 160;
 
 class _MacosPullDown extends StatefulWidget {
@@ -129,67 +142,31 @@ class _MacosPullDownState extends State<_MacosPullDown> {
   Widget build(BuildContext context) {
     final label = widget.label;
     final actions = widget.actions;
-    final colors = context.desktopColors;
-    bool highlighted(Set<WidgetState> states) =>
-        states.contains(WidgetState.hovered) ||
-        states.contains(WidgetState.focused);
     return MenuAnchor(
       alignmentOffset: const Offset(0, 4),
-      style: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(colors.menu),
-        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        elevation: const WidgetStatePropertyAll(8),
-        padding: const WidgetStatePropertyAll(EdgeInsets.all(_menuPadding)),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(
-            side: BorderSide(color: colors.groupBoxStroke, width: 0.5),
-            borderRadius: const BorderRadius.all(
-              Radius.circular(DesktopMetrics.menuRadius),
-            ),
-          ),
-        ),
-      ),
+      style: MacosMenuStyle.panel(context.desktopColors),
+      clipBehavior: Clip.antiAlias,
       onOpen: () => _focus.opened(count: actions.length, fromKeyboard: false),
       onClose: _focus.closed,
       menuChildren: [
-        _focus.holder(),
-        for (final (i, a) in actions.indexed)
-          MenuItemButton(
-            onPressed: a.onSelected,
-            focusNode: _focus.item(i),
-            style: ButtonStyle(
-              minimumSize: const WidgetStatePropertyAll(
-                Size(_menuMinWidth, DesktopMetrics.controlHeight),
+        MacosMenuStyle.surface(
+          context,
+          children: [
+            _focus.holder(),
+            for (final (i, a) in actions.indexed) ...[
+              if (separatorBefore(actions, i))
+                MacosMenuStyle.separator(context),
+              MacosMenuStyle.item(
+                context,
+                label: a.label,
+                width: _menuMinWidth,
+                onPressed: a.onSelected,
+                destructive: a.destructive,
+                focusNode: _focus.item(i),
               ),
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 10),
-              ),
-              shape: const WidgetStatePropertyAll(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(DesktopMetrics.menuItemRadius),
-                  ),
-                ),
-              ),
-              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-              backgroundColor: WidgetStateProperty.resolveWith(
-                (states) =>
-                    highlighted(states) ? colors.accent : Colors.transparent,
-              ),
-              foregroundColor: WidgetStateProperty.resolveWith(
-                (states) => highlighted(states)
-                    ? colors.onAccent
-                    : a.destructive
-                    ? colors.danger
-                    : colors.text,
-              ),
-              textStyle: WidgetStatePropertyAll(
-                DefaultTextStyle.of(context).style
-                    .copyWith(fontSize: DesktopMetrics.bodySize),
-              ),
-            ),
-            child: Text(a.label),
-          ),
+            ],
+          ],
+        ),
       ],
       builder: (context, menu, _) => mac.MacosTooltip(
         message: label,

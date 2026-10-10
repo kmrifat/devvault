@@ -12,6 +12,9 @@ import 'desktop_theme.dart';
 /// long-pressed on a touch screen): a sidebar row's "New item…", "Edit app…" …
 ///
 /// - macOS: DevVault's macOS menu ([MacosMenuStyle]) at the pointer.
+///
+/// Commands that [DesktopMenuAction.startsGroup] sit below a separator, as
+/// the system's menus group theirs.
 /// - Windows: a Fluent `MenuFlyout` at the pointer.
 /// - Linux: Material's menu in the Yaru theme.
 ///
@@ -35,6 +38,9 @@ class DesktopContextMenu extends StatefulWidget {
   @override
   State<DesktopContextMenu> createState() => DesktopContextMenuState();
 }
+
+/// The narrowest a macOS context menu is, as the system's are.
+const double _macosMinWidth = 180;
 
 class DesktopContextMenuState extends State<DesktopContextMenu> {
   final _menu = MenuController();
@@ -73,7 +79,9 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
               builder: (context) => _focus.holder(
                 child: fl.MenuFlyout(
                   items: [
-                    for (final (i, a) in actions.indexed)
+                    for (final (i, a) in actions.indexed) ...[
+                      if (separatorBefore(actions, i))
+                        const fl.MenuFlyoutSeparator(),
                       fl.MenuFlyoutItem(
                         focusNode: _focus.item(i),
                         text: Text(
@@ -84,6 +92,7 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
                         ),
                         onPressed: a.onSelected,
                       ),
+                    ],
                   ],
                 ),
               ),
@@ -127,30 +136,46 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
     return MenuAnchor(
       controller: _menu,
       style: macos ? MacosMenuStyle.panel(colors) : null,
+      clipBehavior: macos ? Clip.antiAlias : Clip.hardEdge,
       consumeOutsideTap: true,
       onClose: _focus.closed,
-      menuChildren: [
-        _focus.holder(),
-        for (final (i, a) in actions.indexed)
-          if (macos)
-            MacosMenuStyle.item(
-              context,
-              label: a.label,
-              width: 200,
-              onPressed: a.onSelected,
-              destructive: a.destructive,
-              focusNode: _focus.item(i),
-            )
-          else
-            MenuItemButton(
-              onPressed: a.onSelected,
-              focusNode: _focus.item(i),
-              child: Text(
-                a.label,
-                style: a.destructive ? TextStyle(color: colors.danger) : null,
+      menuChildren: macos
+          ? [
+              MacosMenuStyle.surface(
+                context,
+                children: [
+                  _focus.holder(),
+                  for (final (i, a) in actions.indexed) ...[
+                    if (separatorBefore(actions, i))
+                      MacosMenuStyle.separator(context),
+                    MacosMenuStyle.item(
+                      context,
+                      label: a.label,
+                      width: _macosMinWidth,
+                      onPressed: a.onSelected,
+                      destructive: a.destructive,
+                      focusNode: _focus.item(i),
+                    ),
+                  ],
+                ],
               ),
-            ),
-      ],
+            ]
+          : [
+              _focus.holder(),
+              for (final (i, a) in actions.indexed) ...[
+                if (separatorBefore(actions, i)) const Divider(),
+                MenuItemButton(
+                  onPressed: a.onSelected,
+                  focusNode: _focus.item(i),
+                  child: Text(
+                    a.label,
+                    style: a.destructive
+                        ? TextStyle(color: colors.danger)
+                        : null,
+                  ),
+                ),
+              ],
+            ],
       child: target,
     );
   }

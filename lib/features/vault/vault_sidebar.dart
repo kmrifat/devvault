@@ -367,6 +367,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                 DesktopMenuAction(
                   'Rename organization…',
                   () => renameOrganization(context, ref, org),
+                  startsGroup: true,
                 ),
                 DesktopMenuAction(
                   'Delete organization…',
@@ -377,6 +378,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                     appCount: group.apps.length,
                   ),
                   destructive: true,
+                  startsGroup: true,
                 ),
               ],
             ],
@@ -446,7 +448,11 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               'New item…',
               () => createItem(context, VaultFilter(app: app.id)),
             ),
-            DesktopMenuAction('Edit app…', () => editApp(context, app)),
+            DesktopMenuAction(
+              'Edit app…',
+              () => editApp(context, app),
+              startsGroup: true,
+            ),
             DesktopMenuAction(
               'Move to organization…',
               () => moveAppTo(context, ref, app),
@@ -460,6 +466,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               'Delete app…',
               () => deleteApp(context, ref, app, itemCount: node.items.length),
               destructive: true,
+              startsGroup: true,
             ),
           ],
           tree: true,

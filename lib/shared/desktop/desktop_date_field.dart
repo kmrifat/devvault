@@ -249,20 +249,16 @@ class _DesktopDateFieldState extends State<DesktopDateField> {
       DesktopKit.fluent => fl.FlyoutTarget(controller: _flyout, child: field),
       DesktopKit.macos => _Popover(
         controller: _menu,
+        // The macOS menu look, shared with the pop-ups and combo boxes.
         panel: (child) {
-          // The macOS menu look, shared with the pop-ups and combo boxes.
           final style = MacosMenuStyle.panel(colors);
           return Material(
-            color: style.backgroundColor?.resolve(const {}),
-            elevation: style.elevation?.resolve(const {}) ?? 8,
-            shape: style.shape?.resolve(const {}),
+            color: Colors.transparent,
+            shadowColor: colors.shadow,
+            elevation: style.elevation?.resolve(const {}) ?? 12,
+            shape: MacosMenuStyle.shape(colors),
             clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding:
-                  style.padding?.resolve(const {}) ??
-                  const EdgeInsets.all(MacosMenuStyle.padding),
-              child: child,
-            ),
+            child: MacosMenuStyle.backdrop(context, child: child),
           );
         },
         content: SizedBox(
@@ -276,11 +272,7 @@ class _DesktopDateFieldState extends State<DesktopDateField> {
                 onPick: _pickAndClose,
               ),
               if (_current != null) ...[
-                Divider(
-                  height: 9,
-                  thickness: 0.5,
-                  color: colors.innerSeparator,
-                ),
+                MacosMenuStyle.separator(context),
                 MacosMenuStyle.item(
                   context,
                   label: widget.clearLabel,
