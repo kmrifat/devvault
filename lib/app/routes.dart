@@ -14,6 +14,10 @@ abstract final class Routes {
   static const joinVault = '/create/join';
   static const recover = '/recover';
 
+  /// The password and the recovery key are both lost: erase this device's
+  /// vault and create a new one (P1-25).
+  static const startOver = '/recover/start-over';
+
   // Shell branches (sidebar on desktop, bottom nav on mobile)
   static const vaultRoot = '/vault';
   static const expiry = '/expiry';

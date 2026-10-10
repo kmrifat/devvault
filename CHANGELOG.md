@@ -33,6 +33,10 @@ Check a download against `SHA256SUMS` on the release page.
   text, print or copy. A new kit (Settings › Security) asks for the master
   password first.
 - **Recovery:** unlock with the recovery key and set a new master password.
+- **Start over:** with the master password and the recovery key both
+  lost, nothing can open the vault. The recovery screen can erase it from
+  the device (after you type ERASE) so you can create a new one. A copy in
+  your bucket is left as it is.
 - **Key rotation:** Settings › Security replaces the vault key and
   re-encrypts everything; other devices adopt the new key at their next
   sync.

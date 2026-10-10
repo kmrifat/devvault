@@ -73,6 +73,39 @@ void main() {
     interact: (tester) =>
         tester.enterText(find.byType(EditableText), lastTestRecoveryKey!),
   );
+
+  // Start over (P1-25): ERASE typed, so the destructive button is live.
+  Future<void> typeErase(WidgetTester tester) =>
+      tester.enterText(find.byType(EditableText), 'ERASE');
+  shot(
+    'N00-start-over',
+    Routes.startOver,
+    vault: TestVault.locked,
+    interact: typeErase,
+  );
+  shot(
+    'N00-start-over-light',
+    Routes.startOver,
+    vault: TestVault.locked,
+    brightness: Brightness.light,
+  );
+  for (final kit in otherKits) {
+    shot(
+      'N00-start-over-${kit.name}-light',
+      Routes.startOver,
+      vault: TestVault.locked,
+      brightness: Brightness.light,
+      interact: typeErase,
+      kit: kit,
+    );
+  }
+  shot(
+    'B1-start-over',
+    Routes.startOver,
+    device: ShotDevice.mobile,
+    vault: TestVault.locked,
+    interact: typeErase,
+  );
 }
 
 /// Face ID is on and the user dismissed the automatic prompt: the screen
