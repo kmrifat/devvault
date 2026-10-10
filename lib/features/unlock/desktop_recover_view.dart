@@ -20,6 +20,7 @@ class DesktopRecoverView extends StatelessWidget {
     required this.onUnlockWithKey,
     required this.onSetPassword,
     required this.onBack,
+    required this.onStartOver,
   });
 
   /// The key worked: choose the new password.
@@ -36,6 +37,9 @@ class DesktopRecoverView extends StatelessWidget {
   final VoidCallback onUnlockWithKey;
   final VoidCallback onSetPassword;
   final VoidCallback onBack;
+
+  /// The recovery key is lost too: erase the vault and start over.
+  final VoidCallback onStartOver;
 
   @override
   Widget build(BuildContext context) =>
@@ -90,6 +94,26 @@ class DesktopRecoverView extends StatelessWidget {
         ),
         if (keyError case final error?)
           DesktopFieldMessage(error, indent: _labelWidth),
+        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: _labelWidth),
+          child: Row(
+            spacing: 2,
+            children: [
+              Text(
+                'Lost the recovery key too?',
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize + 1,
+                  color: context.desktopColors.secondaryText,
+                ),
+              ),
+              DesktopLink(
+                label: 'Start over…',
+                onPressed: busy ? null : onStartOver,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

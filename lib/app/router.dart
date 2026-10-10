@@ -12,6 +12,7 @@ import '../features/settings/settings_layout.dart' show SettingsPane;
 import '../features/settings/settings_screen.dart';
 import '../features/settings/sync_settings_screen.dart';
 import '../features/unlock/recover_screen.dart';
+import '../features/unlock/start_over_screen.dart';
 import '../features/unlock/unlock_screen.dart';
 import '../features/vault/desktop_inspector.dart';
 import '../features/vault/item_screen.dart';
@@ -92,6 +93,7 @@ GoRouter buildRouter({
       page(Routes.createRecoveryKit, (_) => const RecoveryKitScreen()),
       page(Routes.joinVault, (_) => const JoinVaultScreen()),
       page(Routes.recover, (_) => const RecoverScreen()),
+      page(Routes.startOver, (_) => const StartOverScreen()),
       page(Routes.pair, (_) => const PairScreen(), fullscreenDialog: true),
 
       // Item screen: pushed on mobile, a selection in the detail pane on

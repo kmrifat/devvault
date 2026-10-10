@@ -130,6 +130,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
         onUnlockWithKey: _unlockWithKey,
         onSetPassword: _setPassword,
         onBack: () => context.go(Routes.unlock),
+        onStartOver: () => context.go(Routes.startOver),
       );
     }
 
@@ -198,6 +199,13 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
           child: BCLinkButton(
             onPressed: () => context.go(Routes.unlock),
             child: const Text('Back to unlock'),
+          ),
+        ),
+        const SizedBox(height: BCSpacing.sm),
+        Center(
+          child: BCLinkButton(
+            onPressed: _busy ? null : () => context.go(Routes.startOver),
+            child: const Text('Lost the recovery key too? Start over…'),
           ),
         ),
       ],

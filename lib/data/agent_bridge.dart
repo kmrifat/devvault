@@ -281,6 +281,14 @@ class AgentBridgeNotifier extends Notifier<AgentBridgeState> {
     await _saveClients();
   }
 
+  /// Forgets every paired client: the vault they were let into was erased
+  /// (start over), so the next one asks again.
+  Future<void> revokeAll() async {
+    for (final client in state.clients.toList()) {
+      await revoke(client);
+    }
+  }
+
   void _setServing(bool on) {
     _serverChange = _serverChange.then((_) async {
       final path = ref.read(agentSocketPathProvider);

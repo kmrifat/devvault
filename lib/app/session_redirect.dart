@@ -4,8 +4,8 @@ import 'routes.dart';
 /// Where the router sends the user for the current [session].
 ///
 /// - No vault: only *create*, or *join* one from a bucket.
-/// - Locked: only *unlock* and *recover*; anything else bounces to unlock
-///   and comes back afterwards (`?from=`).
+/// - Locked: only *unlock*, *recover* and *start over*; anything else
+///   bounces to unlock and comes back afterwards (`?from=`).
 /// - Unlocked with a new recovery key not yet confirmed: only the recovery
 ///   kit (D02), so the key is never skipped.
 /// - Unlocked with the recovery key: only *recover*, until a new master
@@ -28,7 +28,11 @@ String? sessionRedirect(
           : Routes.create;
 
     case Locked():
-      if (path == Routes.unlock || path == Routes.recover) return null;
+      if (path == Routes.unlock ||
+          path == Routes.recover ||
+          path == Routes.startOver) {
+        return null;
+      }
       if (_isEntry(path)) return Routes.unlock;
       return Uri(
         path: Routes.unlock,
@@ -56,6 +60,7 @@ String? sessionRedirect(
 bool _isEntry(String path) =>
     path == Routes.unlock ||
     path == Routes.recover ||
+    path == Routes.startOver ||
     path == Routes.create ||
     path == Routes.joinVault ||
     path == Routes.createRecoveryKit;

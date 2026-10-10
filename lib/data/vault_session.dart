@@ -50,8 +50,8 @@ final class Unlocked extends VaultSession {
 
 /// Finds the vault on this device: the first folder under [vaultsDir],
 /// named after its vault id, that holds a `vault.json`. Working folders
-/// next to it (`.sync`, `.adopting`) are skipped. One vault per device in
-/// v1.
+/// next to it (`.sync`, `.adopting`, `.erasing`) are skipped. One vault per
+/// device in v1.
 VaultStore? findVault(Directory vaultsDir) {
   if (!vaultsDir.existsSync()) return null;
   final folders =
@@ -421,6 +421,43 @@ class VaultSessionNotifier extends Notifier<VaultSession> {
     current.vault.lock();
     state = Locked(current.vault.store, current.vault.header);
   }
+
+  /// Deletes the locked vault from this device, for when neither the
+  /// master password nor the recovery key is left and nothing can open it.
+  /// Goes with it: its working folders (`.sync`, which holds the storage
+  /// settings, and `.adopting`) and the key behind biometrics. Afterwards
+  /// there is no vault, so the app goes to create. Nothing in a bucket is
+  /// touched; [StartOver] clears what the rest of the app kept for it.
+  ///
+  /// The folder is renamed out of [findVault]'s sight first, so a crash
+  /// half way through never leaves a vault that is partly there.
+  Future<void> eraseLocked() async {
+    final store = _lockedStore;
+    final root = store.root;
+    final vaultId = root.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+    final doomed = Directory('${root.path}.erasing');
+    if (doomed.existsSync()) await doomed.delete(recursive: true);
+    await root.rename(doomed.path);
+    try {
+      try {
+        await _forgetBiometricKey(vaultId);
+      } on Object {
+        // The vault it opened is gone; nothing can use it.
+      }
+      for (final folder in [doomed, ...workFolders(root)]) {
+        if (folder.existsSync()) await folder.delete(recursive: true);
+      }
+    } finally {
+      state = const NoVault();
+    }
+  }
+
+  /// The folders kept next to the vault at [root] while it syncs or adopts
+  /// a rotated key.
+  static List<Directory> workFolders(Directory root) => [
+    Directory('${root.path}.sync'),
+    Directory('${root.path}.adopting'),
+  ];
 
   VaultStore get _lockedStore => switch (state) {
     Locked(:final store) => store,

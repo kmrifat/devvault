@@ -189,6 +189,7 @@ Format: **ID · title** (estimate). **D:** dependencies. **AC:** acceptance crit
 - **P1-03 · D02 Recovery kit** (1d). Grouped key in mono; copy via the clipboard guard and Save .txt. The user must confirm before continuing, and the key is shown only once.
 - **P1-04 · D00 Unlock** (0.5d). Inline error, backoff after 5 failures, a recovery link.
 - **P1-05 · Recovery unlock + reset** (0.5d). AC: the recovery key alone can set a new password (end-to-end widget test).
+- **P1-25 · Start over** (0.5d). Added after the first signed build: with the master password and the recovery key both lost, nothing can open the vault, so the recovery screen offers *Start over…*. It erases this device's vault and what the device kept for it (sync settings and storage keys, the biometric key, pending reminders and their ledger, paired AI agents) once the user types ERASE, and goes to create. The bucket is left alone: its copy sits under the old vault id, so a new vault can use the same bucket and another device that still unlocks the old one keeps working. AC: widget tests on desktop and phone check each of those is gone; goldens `N00-start-over`, `B1-start-over`.
 - **P1-06 · D03 Sidebar** (1d). `BCNavDrawer`: All, Expiring, Expired, Conflicts, the App→Platform→Env tree with counts, Tags, and Quarantine (only if non-empty).
 - **P1-07 · D03 Item list** (1d). `BCListGroup` rows with `TypeIconTile`; the expiry chip appears only when an expiry exists; sort; arrow-key navigation; `BCEmptyState`; smooth scrolling with 1k rows.
 - **P1-08 · D03 Detail pane** (1.5d).

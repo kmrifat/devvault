@@ -48,11 +48,13 @@ void main() {
       expect(go(const NoVault(), Routes.create), isNull);
       expect(go(const NoVault(), Routes.vault()), Routes.create);
       expect(go(const NoVault(), Routes.unlock), Routes.create);
+      expect(go(const NoVault(), Routes.startOver), Routes.create);
     });
 
     test('locked keeps unlock and recover, bounces the rest back later', () {
       expect(go(locked, Routes.unlock), isNull);
       expect(go(locked, Routes.recover), isNull);
+      expect(go(locked, Routes.startOver), isNull);
       expect(go(locked, Routes.expiry), '/unlock?from=%2Fexpiry');
       expect(
         go(locked, '/vault?item=abc'),
@@ -65,6 +67,7 @@ void main() {
       expect(go(unlocked, '/unlock?from=%2Fexpiry'), Routes.expiry);
       expect(go(unlocked, Routes.unlock), Routes.vault());
       expect(go(unlocked, Routes.create), Routes.vault());
+      expect(go(unlocked, Routes.startOver), Routes.vault());
       expect(go(unlocked, Routes.settings), isNull);
     });
 

@@ -13,6 +13,9 @@ enum DesktopLockMark {
 
   /// A life buoy on the warning tint (recovery kit, recovery key).
   recoveryKey,
+
+  /// A bin on the danger tint (start over, which erases the vault).
+  erase,
 }
 
 /// A lock screen (design frames N00–N02): unlock, create a vault, the
@@ -190,6 +193,11 @@ class _MarkTile extends StatelessWidget {
         colors.warningBadge,
         colors.onWarningBadge,
         LucideIcons.lifeBuoy,
+      ),
+      DesktopLockMark.erase => (
+        colors.dangerBadge,
+        colors.onDangerBadge,
+        LucideIcons.trash2,
       ),
     };
     return ExcludeSemantics(
