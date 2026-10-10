@@ -18,7 +18,7 @@ import '../../services/biometric_key_store.dart';
 import '../../services/updates.dart' show AppVersion;
 import '../../shared/desktop_ui.dart';
 import 'change_password_dialog.dart';
-import '../updates/update_strip.dart' show updateStatusLines;
+import '../updates/update_strip.dart' show startUpdate, updateStatusLines;
 import 'desktop_agents_pane.dart';
 import 'new_recovery_kit_dialog.dart';
 import 'settings_layout.dart';
@@ -385,7 +385,7 @@ class _UpdatesBox extends ConsumerWidget {
                 DesktopButton(
                   label: 'Update…',
                   kind: DesktopButtonKind.primary,
-                  onPressed: () => installer.install(available),
+                  onPressed: () => startUpdate(context, installer, available),
                 )
               else
                 DesktopButton(
