@@ -16,12 +16,12 @@ the file or from you, never from a guess.
 | Platform | Minimum | Download |
 |---|---|---|
 | macOS | 12 | `DevVault-macos.dmg`, notarized |
-| Windows | 10 | `devvault-windows-x64.msix`, or the signed `devvault-windows-x64.zip` |
 | Linux (x64) | GTK 3 and libsecret on the host | `devvault-linux-x64.AppImage` or `.tar.gz`, each with a `.asc` GPG signature |
-| iOS | 15 | TestFlight |
-| Android | 7.0 (API 24) | Google Play internal testing |
 
-Check a download against `SHA256SUMS` on the release page.
+Check a download against `SHA256SUMS` on the release page. Windows, iOS
+and Android follow in a 1.0.x release: Windows once its code signing is
+set up, the phones once TestFlight, Google Play and the device checks
+are done.
 
 ### The vault
 
@@ -40,9 +40,8 @@ Check a download against `SHA256SUMS` on the release page.
 - **Key rotation:** Settings › Security replaces the vault key and
   re-encrypts everything; other devices adopt the new key at their next
   sync.
-- **Auto-lock and clipboard:** the vault locks after the idle time you set
-  and when a phone goes to the background. Copied secrets are cleared
-  after the time you set, and marked sensitive where the OS supports it.
+- **Auto-lock and clipboard:** the vault locks after the idle time you
+  set. Copied secrets are cleared after the time you set.
 
 ### Credential files
 
@@ -89,29 +88,23 @@ SHA-256. Importing a newer file over an item keeps the item and its tags.
 - Changes from several devices merge. When two devices change the same
   item, DevVault shows both versions field by field; you pick each field
   or keep both. Nothing is resolved without your choice.
-- Storage keys stay in the OS keychain (Keychain, Android Keystore, DPAPI
-  on Windows, libsecret on Linux). Without a keyring on Linux, they last
-  until DevVault quits, and Settings says so.
-- **Adding a device:** scan the desktop's QR code (or paste it) and type
-  the 8-character code shown next to it. The code expires after
-  10 minutes. The QR holds the storage settings, never the vault key, so
-  the master password is still needed.
+- Storage keys stay in the OS keychain (Keychain on macOS, libsecret on
+  Linux). Without a keyring on Linux, they last until DevVault quits, and
+  Settings says so.
+- **Adding a device:** paste the pairing text another device shows with
+  its QR code, and type the 8-character code shown next to it. The code
+  expires after 10 minutes. The pairing text holds the storage settings,
+  never the vault key, so the master password is still needed.
 
 ### On the desktop
 
-- Native controls on each OS: macOS controls on a Mac, Fluent on Windows
-  and Yaru on Linux. There is a menu bar, keyboard shortcuts (⌘ on a Mac,
+- Native controls on each OS: macOS controls on a Mac and Yaru on
+  Linux. There is a menu bar, keyboard shortcuts (⌘ on a Mac,
   Ctrl elsewhere), and toasts in each OS's own style.
 - The explorer works from the keyboard: arrow keys, Return, type-ahead,
   and Shift-F10 or the menu key for the context menu.
-
-### On phones
-
-- Face ID, Touch ID or the fingerprint sensor unlocks, with a key that the
-  OS invalidates when the enrolled biometrics change.
-- The app-switcher snapshot is blurred, and Android blocks screenshots.
-- Credential files can be opened in DevVault from other apps; a file
-  that arrives while the vault is locked waits for unlock.
+- Touch ID unlocks on a Mac, with a key that macOS invalidates when the
+  enrolled fingerprints change.
 
 ### AI agents (macOS)
 
@@ -137,14 +130,12 @@ SHA-256. Importing a newer file over an item keeps the item and its tags.
 - **macOS:** *Update…* installs it in place with Sparkle, which checks
   the update's EdDSA signature and the Developer ID before installing.
   Builds made before the update key exists offer *View Release* only.
-- **Windows (MSIX):** *Update…* hands the release to Windows, which
-  checks the package signature and publisher, closes DevVault and
-  installs it. The zip offers *View Release*.
 - **Linux:** the AppImage carries update information for AppImageUpdate,
   Gear Lever and AppImageLauncher; the app itself offers *View Release*.
 
 ### Not in 1.0.0
 
+- Windows, iOS and Android builds (see Platforms).
 - AI agents on Windows and Linux (planned).
 - Settings in its own macOS window (waits for Flutter's multi-window
   support).

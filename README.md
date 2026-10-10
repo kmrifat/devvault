@@ -91,4 +91,8 @@ of them fail.
 
 Details: `docs/format/SPEC.md` (P0) and [`docs/adr/`](docs/adr).
 
+## License
+
+Apache License 2.0, see [`LICENSE`](LICENSE).
+
 [bc_ui]: https://pub.dev/packages/bc_ui

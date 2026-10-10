@@ -286,6 +286,30 @@ jobs:
           pattern: devvault-*
           path: dist
           merge-multiple: true
+      # Only signed files go on the release. A platform without its signing
+      # secrets (Windows, until it has a certificate) is left off and named
+      # in the draft's notes.
+      - name: Leave out unsigned files
+        working-directory: dist
+        run: |
+          : > ../left-out.md
+          shopt -s nullglob
+          unsigned=(*-unsigned*)
+          if (( ${#unsigned[@]} )); then
+            mkdir -p ../unsigned
+            mv -- "${unsigned[@]}" ../unsigned/
+            {
+              echo
+              echo "Not attached, built without signing secrets:"
+              printf -- '- %s\n' "${unsigned[@]}"
+            } > ../left-out.md
+            echo "::warning::Left out (unsigned): ${unsigned[*]}"
+          fi
+          files=(*)
+          if (( ${#files[@]} == 0 )); then
+            echo "No signed files to release." >&2
+            exit 1
+          fi
       - name: Checksums
         working-directory: dist
         run: sha256sum -- * > SHA256SUMS && cat SHA256SUMS
@@ -296,4 +320,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
             --title "DevVault ${GITHUB_REF_NAME#v}" \
-            --notes "Draft: check docs/acceptance/v1.md before publishing. Files ending in -unsigned were built without signing secrets."
+            --notes "Draft: check docs/acceptance/v1.md before publishing.$(cat left-out.md)"
