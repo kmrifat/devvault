@@ -198,20 +198,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: bc.surface,
-                      shape: BCShapes.continuous(BCRadius.xxxl),
-                    ),
-                    child: SizedBox.square(
-                      dimension: 80,
-                      child: Icon(
-                        LucideIcons.vault,
-                        size: 36,
-                        color: bc.accent,
-                      ),
-                    ),
-                  ),
+                  const AppMark(size: 80),
                   const SizedBox(height: BCSpacing.md),
                   const BCText(
                     'Unlock your vault',

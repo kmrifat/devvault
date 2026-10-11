@@ -13,6 +13,25 @@ abstract final class AppTheme {
   /// 2.8–3.7:1 there (P4-08).
   static const Color accentLight = Color(0xFF035DB0);
 
+  /// The app mark's tile (the app icon, `AppMark`): rose lit from the top
+  /// left, deepening toward the bottom right. The same in light and dark,
+  /// like the icon in the Dock.
+  static const LinearGradient brandGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFF43F5E), Color(0xFFE11D48), Color(0xFFBE123C)],
+    stops: [0, 0.45, 1],
+  );
+
+  /// Android's adaptive icon background: the middle of [brandGradient].
+  static const Color brand = Color(0xFFE11D48);
+
+  /// The app mark's lock badge.
+  static const Color brandInk = Color(0xFF111827);
+
+  /// The app mark's files and lock.
+  static const Color brandGlyph = Color(0xFFFFFFFF);
+
   static const BCThemeOverrides _overrides = BCThemeOverrides(accent: accent);
 
   static ThemeData light() {

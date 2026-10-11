@@ -13,6 +13,7 @@ import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/widgets/app_badge.dart';
+import '../../shared/widgets/app_mark.dart';
 import 'desktop_item_type.dart';
 import 'explorer_tree.dart';
 import 'tree_actions.dart';
@@ -913,22 +914,7 @@ class _VaultHeader extends StatelessWidget {
       child: Row(
         spacing: 10,
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.accent,
-              borderRadius: const BorderRadius.all(
-                Radius.circular(DesktopMetrics.menuRadius),
-              ),
-            ),
-            child: SizedBox.square(
-              dimension: 28,
-              child: DesktopIcon(
-                DesktopSymbol.lock,
-                size: 15,
-                color: colors.onAccent,
-              ),
-            ),
-          ),
+          const AppMark(size: 28),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

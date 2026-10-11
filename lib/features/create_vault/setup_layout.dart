@@ -85,16 +85,7 @@ class _StepsRail extends StatelessWidget {
           Row(
             spacing: BCSpacing.sm + 2,
             children: [
-              DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: bc.accentSoft,
-                  shape: BCShapes.continuous(BCRadius.xl),
-                ),
-                child: SizedBox.square(
-                  dimension: 36,
-                  child: Icon(LucideIcons.vault, size: 18, color: bc.accent),
-                ),
-              ),
+              const AppMark(size: 36),
               const BCText('DevVault', type: BCTextType.h5),
             ],
           ),
