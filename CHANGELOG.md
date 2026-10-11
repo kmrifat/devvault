@@ -1,10 +1,9 @@
 # Changelog
 
-## 1.0.0 (not released yet)
+## 1.0.0 (2026-10-11)
 
-The first release. Paste this section into the draft GitHub release
-(docs/release.md › Cutting a release) and set the date when it is
-published.
+The first release: [v1.0.0](https://github.com/kmrifat/devvault/releases/tag/v1.0.0),
+macOS and Linux.
 
 DevVault keeps developer credential files in a local, end-to-end encrypted
 vault, and syncs it through an S3-compatible bucket you own. There is no
@@ -129,7 +128,6 @@ SHA-256. Importing a newer file over an item keeps the item and its tags.
   page.
 - **macOS:** *Update…* installs it in place with Sparkle, which checks
   the update's EdDSA signature and the Developer ID before installing.
-  Builds made before the update key exists offer *View Release* only.
 - **Linux:** the AppImage carries update information for AppImageUpdate,
   Gear Lever and AppImageLauncher; the app itself offers *View Release*.
 
