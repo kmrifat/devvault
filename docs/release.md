@@ -149,7 +149,7 @@ redirect (ADR-0007 §6).
 
 | Secret | What |
 |---|---|
-| `LINUX_GPG_PRIVATE_KEY` | An armored private key (`gpg --armor --export-secret-keys <id>`). Publish its public key in the README so users can verify. |
+| `LINUX_GPG_PRIVATE_KEY` | An armored private key (`gpg --armor --export-secret-keys <id>`). Its public key is `docs/devvault-release-key.asc` (fingerprint `E2A2 476A 18AE A270 822E 39AB 62A5 E5C3 C708 ECB5`, made 2026-10-10, expires 2029-10-09), linked from the README. |
 | `LINUX_GPG_PASSPHRASE` | Its passphrase. |
 
 The tarball and the AppImage each get a `.asc` signature

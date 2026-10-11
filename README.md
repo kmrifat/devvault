@@ -91,6 +91,26 @@ of them fail.
 
 Details: `docs/format/SPEC.md` (P0) and [`docs/adr/`](docs/adr).
 
+## Verifying a download
+
+Every release has `SHA256SUMS`. The Linux files also have a detached GPG
+signature (`.asc`), made with the release key in
+[`docs/devvault-release-key.asc`](docs/devvault-release-key.asc):
+
+```
+Binary Castle (DevVault releases) <devvault@binarycastle.net>
+E2A2 476A 18AE A270 822E  39AB 62A5 E5C3 C708 ECB5
+```
+
+```sh
+gpg --import docs/devvault-release-key.asc
+gpg --verify devvault-linux-x64.AppImage.asc devvault-linux-x64.AppImage
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+The macOS DMG is signed with Apple's Developer ID and notarized; macOS
+checks it when you open it.
+
 ## License
 
 Apache License 2.0, see [`LICENSE`](LICENSE).
