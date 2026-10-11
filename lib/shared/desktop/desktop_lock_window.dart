@@ -2,13 +2,13 @@ import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../widgets/app_mark.dart';
 import 'desktop_metrics.dart';
 import 'desktop_theme.dart';
 
 /// The tile at the top of a lock screen.
 enum DesktopLockMark {
-  /// The app's own mark: the vault glyph in white on the accent, as on the
-  /// app icon (unlock, create, join).
+  /// The app's own mark, as on the app icon (unlock, create, join).
   app,
 
   /// A life buoy on the warning tint (recovery kit, recovery key).
@@ -184,11 +184,7 @@ class _MarkTile extends StatelessWidget {
     final colors = context.desktopColors;
     final size = large ? 64.0 : 48.0;
     final (fill, glyph, icon) = switch (mark) {
-      DesktopLockMark.app => (
-        colors.accent,
-        colors.onAccent,
-        LucideIcons.vault,
-      ),
+      DesktopLockMark.app => (null, null, null),
       DesktopLockMark.recoveryKey => (
         colors.warningBadge,
         colors.onWarningBadge,
@@ -200,6 +196,7 @@ class _MarkTile extends StatelessWidget {
         LucideIcons.trash2,
       ),
     };
+    if (fill == null) return AppMark(size: size);
     return ExcludeSemantics(
       child: DecoratedBox(
         decoration: ShapeDecoration(

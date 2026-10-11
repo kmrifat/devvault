@@ -87,18 +87,16 @@ flutter:
           weight: 500
 
 # App icons for every platform (P4-08), from the sources rendered by
-# test/tool/app_icon_test.dart. Regenerate with:
-#   DEVVAULT_RENDER_ICON=1 flutter test test/tool/app_icon_test.dart
-#   dart run flutter_launcher_icons
+# test/tool/app_icon_test.dart. Regenerate with tool/app_icon.sh.
 flutter_launcher_icons:
   image_path: assets/icon/app_icon.png
   android: true
-  adaptive_icon_background: "#0485F7"
+  adaptive_icon_background: "#E11D48"
   adaptive_icon_foreground: assets/icon/app_icon_foreground.png
   adaptive_icon_foreground_inset: 0
   ios: true
   remove_alpha_ios: true
-  background_color_ios: "#0485F7"
+  background_color_ios: "#E11D48"
   macos:
     generate: true
     image_path: assets/icon/app_icon_macos.png
