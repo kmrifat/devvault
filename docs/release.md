@@ -44,6 +44,20 @@ Each tag gives these desktop files:
 | Windows | `devvault-windows-x64.zip` (signed exe and DLLs), `devvault-windows-x64.msix`, `DevVault.appinstaller` (signed builds) |
 | Linux | `devvault-linux-x64.tar.gz`, `devvault-linux-x64.AppImage`, each with a `.asc` signature, and `devvault-linux-x64.AppImage.zsync` |
 
+### The macOS disk image
+
+`DevVault-macos.dmg` opens on a window with the app, an Applications link
+and an arrow between them, so installing is a drag.
+`tool/release/macos_dmg.sh` builds it for both the signed and unsigned
+paths with [dmgbuild](https://github.com/dmgbuild/dmgbuild) (pinned, in
+its own virtualenv), which writes the window layout without scripting
+Finder. The layout is `tool/release/dmg_settings.py`; the background is
+`assets/dmg/background.png` and `@2x`, rendered by
+`test/tool/dmg_background_test.dart` (`DEVVAULT_RENDER_DMG=1`). Move an
+icon in one and move it in the other. Keep the background's content in
+its top 330 points: Finder's path and status bars, when someone has them
+on for every window, cover the bottom whatever the settings say.
+
 ## The agent helper (P5-09)
 
 The macOS build compiles `devvault-mcp` (`packages/devvault_mcp`) and embeds

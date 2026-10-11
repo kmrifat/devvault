@@ -88,9 +88,9 @@ sign --entitlements macos/Runner/Helper.entitlements \
 sign --entitlements "$entitlements" "$app"
 codesign --verify --deep --strict --verbose=2 "$app"
 
-# The DMG is what users download; notarizing it covers the app inside.
-rm -f "$dmg"
-hdiutil create -volname DevVault -srcfolder "$app" -ov -format UDZO "$dmg"
+# The DMG is what users download (the drag-to-Applications window);
+# notarizing it covers the app inside.
+tool/release/macos_dmg.sh "$app" "$dmg"
 sign "$dmg"
 xcrun notarytool submit "$dmg" \
   --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
