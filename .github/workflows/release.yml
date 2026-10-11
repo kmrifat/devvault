@@ -99,9 +99,9 @@ jobs:
       - name: Unsigned DMG (macOS)
         if: matrix.target == 'macos' && env.SIGN_MACOS != 'true'
         run: |
-          hdiutil create -volname DevVault \
-            -srcfolder build/macos/Build/Products/Release/DevVault.app \
-            -ov -format UDZO DevVault-macos-unsigned.dmg
+          tool/release/macos_dmg.sh \
+            build/macos/Build/Products/Release/DevVault.app \
+            DevVault-macos-unsigned.dmg
 
       # Windows: Authenticode-signed exe and DLLs, zipped.
       - name: Sign (Windows)

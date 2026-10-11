@@ -7,6 +7,8 @@
   that stays legible.
 - The same mark in the app: the unlock screen, the create-vault header
   and the sidebar's vault header.
+- The macOS disk image opens on a window with DevVault, an Applications
+  link and an arrow between them: drag the app across to install it.
 
 ## 1.0.0 (2026-10-11)
 
