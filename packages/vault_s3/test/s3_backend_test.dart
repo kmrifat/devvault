@@ -380,6 +380,7 @@ void main() {
   // MinIO in CI (see .github/workflows/s3.yml):
   //   S3_TEST_ENDPOINT=http://127.0.0.1:9000 S3_TEST_BUCKET=devvault
   //   S3_TEST_ACCESS_KEY=… S3_TEST_SECRET_KEY=… [S3_TEST_REGION=us-east-1]
+  //   [S3_TEST_TIMEOUT_MINUTES=5]
   final env = Platform.environment;
   final endpoint = env['S3_TEST_ENDPOINT'];
   test(
@@ -416,7 +417,14 @@ void main() {
       }
     },
     skip: endpoint == null ? 'S3_TEST_ENDPOINT not set' : false,
-    timeout: const Timeout(Duration(minutes: 5)),
+    // 1,005 writes one at a time, then their cleanup: minutes on a local
+    // MinIO, a quarter of an hour or more across the internet (R2), so a
+    // remote run sets S3_TEST_TIMEOUT_MINUTES.
+    timeout: Timeout(
+      Duration(
+        minutes: int.tryParse(env['S3_TEST_TIMEOUT_MINUTES'] ?? '') ?? 5,
+      ),
+    ),
   );
 }
 
