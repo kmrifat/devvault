@@ -40,7 +40,7 @@ not a claim that the feature is missing.
 | Provider | Create if absent | Update if unchanged | Delete if unchanged | How verified |
 |---|---|---|---|---|
 | MinIO `RELEASE.2025-09-07T16-13-09Z` | ✅ enforced | ✅ enforced | ❌ ignored (deletes anyway) | CI (`.github/workflows/s3.yml`) and locally; the conformance suite plus the probe |
-| Cloudflare R2 (default in the app) | not yet probed | not yet probed | not yet probed | P2-14 acceptance run |
+| Cloudflare R2 (default in the app) | ✅ enforced | ✅ enforced | ❌ ignored (deletes anyway) | The owner's bucket, 2026-10-11: the conformance suite plus the probe (`S3_TEST_TIMEOUT_MINUTES=30`), and the P2-14 acceptance run |
 | AWS S3 | not yet probed | not yet probed | not yet probed | P2-14 acceptance run |
 | Backblaze B2 (S3 API) | not yet probed | not yet probed | not yet probed | — |
 
