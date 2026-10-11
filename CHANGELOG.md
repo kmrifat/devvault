@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 (not released yet)
 
 - New app icon on every platform: a stack of credential files sealed by a
   lock, white on rose. The 16 and 32 px macOS sizes use a simpler mark
   that stays legible.
+- The same mark in the app: the unlock screen, the create-vault header
+  and the sidebar's vault header.
 
 ## 1.0.0 (2026-10-11)
 
