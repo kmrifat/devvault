@@ -1,5 +1,60 @@
 # Changelog
 
+## Unreleased
+
+What developers trying 1.0.1 told us, and a walk through every desktop
+screen.
+
+### Sidebar
+
+- Each organization is a section of its own, over its apps, instead of a
+  row under a heading that said "Apps". Items in no app sit under
+  Personal.
+- Easier to start: New app at the foot of the sidebar; + on an
+  organization (a new app there) and on an app (a new item in it) when the
+  pointer is over them; an empty vault explains apps and organizations and
+  offers both.
+- Rows are bigger (28 pt, 16 pt icons, 12 pt chevrons). Item rows drop the
+  platform symbol, which was the same phone for iOS and Android, and name
+  the environment only where two items in an app share a name.
+
+### Menus, toolbar and icons
+
+- On macOS, context menus and the ⋯ buttons are the system's own menus,
+  with an icon beside each command. The old drawn menu was so transparent
+  it was hard to read.
+- The toolbar's Import and New are labelled buttons; New offers Item,
+  Secure note, App and Organization.
+- Icon buttons are drawn at their real size (they were all 12 pt), and
+  nothing clickable is smaller than 24 × 24 pt.
+- With nothing selected, the inspector offers Import a file… and New
+  item….
+
+### Readability
+
+- Password fields type the system's dot (●), and hidden values show eight
+  clear dots instead of tiny bullets.
+- Fields read from a file say "From file" instead of showing a coloured
+  dot; the item table names each item's platform and environment.
+- A disabled default button is grey, not pale blue.
+
+### Consistency
+
+- Platforms and environments read the same everywhere ("Android",
+  "Production"); anything you typed yourself shows as you typed it.
+- The unlock screen names the vault by the first eight characters of its
+  ID. Settings has its own toolbar, and Security lists the vault's ID,
+  location and encryption as rows.
+- The item editor's fields are one height, and the import sheet's
+  controls one width.
+
+### App colours
+
+- Pick an app's badge colour in the app editor. The vault stores the
+  colour's name (format: an optional `color` on app records, SPEC §6.2);
+  apps without one keep the colour they had, and older versions keep the
+  field as it is.
+
 ## 1.0.1 (2026-10-11)
 
 [v1.0.1](https://github.com/kmrifat/devvault/releases/tag/v1.0.1), macOS and Linux.
