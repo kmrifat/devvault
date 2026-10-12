@@ -85,7 +85,7 @@ void main() {
   /// New Kit… through to the new key; returns it.
   Future<String> makeNewKey(WidgetTester tester, AppLayout layout) async {
     final desktop = layout == AppLayout.desktop;
-    final newKit = find.text(desktop ? 'New Kit…' : 'New kit…');
+    final newKit = find.text(desktop ? 'New Kit…' : 'New recovery kit');
     await tester.ensureVisible(newKit);
     await tester.tap(newKit);
     await tester.pumpAndSettle();

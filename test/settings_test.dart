@@ -8,6 +8,7 @@ import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/settings/change_password_dialog.dart';
 import 'package:devvault/services/folder_revealer.dart';
 import 'package:devvault/shared/desktop_ui.dart' show DesktopFormRow;
+import 'package:devvault/shared/widgets/app_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -155,6 +156,28 @@ void main() {
         );
       }
       expect(AppSettings.load(supportDir), settings(tester));
+    });
+
+    testWidgets('phone: the vault card, and Lock locks', (tester) async {
+      tester.view
+        ..physicalSize = const Size(390 * 3, 2400 * 3)
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpUnlockedApp(
+        tester,
+        location: Routes.settings,
+        vault: TestVault.sample,
+        layout: AppLayout.mobile,
+      );
+      final count = (appContainer(
+        tester,
+      ).read(vaultSessionProvider) as Unlocked).index.all.length;
+      expect(find.text('$count items · this device'), findsOneWidget);
+      expect(find.byType(AppMark), findsOneWidget);
+
+      await tester.tap(find.text('Lock'));
+      await tester.pumpAndSettle();
+      expect(appContainer(tester).read(vaultSessionProvider), isA<Locked>());
     });
 
     testWidgets('shows the vault id and folder', (tester) async {

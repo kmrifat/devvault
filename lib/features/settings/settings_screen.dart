@@ -1,17 +1,24 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart'
+    show
+        LiquidGlassAlert,
+        LiquidGlassAlertAction,
+        LiquidGlassAlertStyle,
+        LiquidGlassToggle;
 import 'package:vault_core/vault_core.dart';
 
 import '../../app/routes.dart';
 import '../../data/app_settings.dart';
 import '../../data/providers.dart';
+import '../../data/sync_controller.dart';
 import '../../data/sync_setup.dart';
 import '../../data/vault_session.dart';
 import '../../services/biometric_key_store.dart';
 import '../../services/folder_revealer.dart';
 import '../../shared/desktop/desktop_theme.dart' show DesktopTheme;
 import '../../shared/ui.dart';
+import '../sync/sync_status_chip.dart';
 import 'change_password_dialog.dart';
 import 'desktop_settings.dart';
 import 'new_recovery_kit_dialog.dart';
@@ -45,55 +52,136 @@ class SettingsScreen extends ConsumerWidget {
     if (DesktopTheme.maybeOf(context) != null) {
       return DesktopSettingsPage(pane: pane);
     }
+    return const _PhoneSettings();
+  }
+}
+
+/// Settings on a phone (design frames I7, I8): the vault, General,
+/// Security, Sync and this vault's facts, in bc_ui list groups. On iPhone
+/// the switches are UIKit's, a choice opens UIKit's action sheet, and the
+/// title is large until it scrolls under UIKit's bar, which holds Lock.
+class _PhoneSettings extends ConsumerStatefulWidget {
+  const _PhoneSettings();
+
+  @override
+  ConsumerState<_PhoneSettings> createState() => _PhoneSettingsState();
+}
+
+class _PhoneSettingsState extends ConsumerState<_PhoneSettings>
+    with LargeTitleScroll {
+  @override
+  Widget build(BuildContext context) {
     final bc = context.bcTheme;
+    final apps = context.appColors;
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final session = ref.watch(vaultSessionProvider);
     final vault = session is Unlocked ? session.vault : null;
     final revealer = ref.watch(folderRevealerProvider);
     final syncSetup = ref.watch(syncSetupProvider);
-
-    // On iPhone the title is in UIKit's header; the safe area below it then
-    // includes the header (extendBodyBehindAppBar).
     final native = ref.watch(nativeBarsProvider);
+    void lock() => ref.read(vaultSessionProvider.notifier).lock();
+
+    Widget toggle(bool value, ValueChanged<bool> onChanged) => native
+        ? LiquidGlassToggle(
+            value: value,
+            onChanged: onChanged,
+            color: bc.accent,
+            height: 32,
+          )
+        : BCSwitch(isSelected: value, onSelectedChange: onChanged);
+
+    Widget chevron() =>
+        Icon(LucideIcons.chevronRight, size: 18, color: bc.muted);
+
     return Scaffold(
       backgroundColor: bc.background,
       extendBodyBehindAppBar: native,
-      appBar: native ? const NativePhoneHeader(title: 'Settings') : null,
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: SettingsLayout.padding(context),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+      appBar: native
+          ? NativePhoneHeader(
+              title: titleInBar ? 'Settings' : '',
+              actions: [
+                if (vault != null)
+                  NativeHeaderAction(
+                    id: 'lock',
+                    symbol: 'lock',
+                    label: 'Lock',
+                    onPressed: lock,
+                  ),
+              ],
+            )
+          : null,
+      body: SingleChildScrollView(
+        controller: titleScroll,
+        padding: EdgeInsets.fromLTRB(
+          0,
+          native
+              ? MediaQuery.paddingOf(context).top + NativePhoneHeader.barHeight
+              : MediaQuery.paddingOf(context).top + 16,
+          0,
+          120,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (native)
+              const PhoneLargeTitle('Settings')
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: BCText('Settings', type: BCTextType.h2),
+                    ),
+                    if (vault != null)
+                      BCButton(
+                        // 48 px: the touch-target minimum.
+                        size: BCButtonSize.md,
+                        variant: BCButtonVariant.secondary,
+                        onPressed: lock,
+                        startContent: const Icon(LucideIcons.lock, size: 15),
+                        child: const Text('Lock'),
+                      ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!native) const BCText('Settings', type: BCTextType.h2),
+                  if (session is Unlocked) ...[
+                    const SizedBox(height: 16),
+                    _VaultCard(count: session.index.all.length),
+                  ],
                   const _Section('General'),
                   BCListGroup(
                     children: [
-                      _pickerItem(
-                        context,
-                        prefix: const Icon(LucideIcons.sunMoon),
-                        title: 'Appearance',
-                        picker: _Picker<ThemeMode>(
-                          label: 'Appearance',
-                          value: settings.themeMode,
-                          options: {
-                            for (final mode in ThemeMode.values)
-                              mode: _themeLabel(mode),
-                          },
-                          onChanged: notifier.setThemeMode,
+                      _ChoiceRow<ThemeMode>(
+                        native: native,
+                        icon: _RowIcon(
+                          LucideIcons.sunMoon,
+                          bc.defaultColor,
+                          bc.foreground,
                         ),
+                        title: 'Appearance',
+                        value: settings.themeMode,
+                        options: {
+                          for (final mode in ThemeMode.values)
+                            mode: SettingsScreen._themeLabel(mode),
+                        },
+                        onChanged: notifier.setThemeMode,
                       ),
                       // The whole row toggles, and reads as one switch: a
                       // big enough target on a phone, and named.
                       MergeSemantics(
                         child: BCListGroupItem(
-                          prefix: const Icon(LucideIcons.bellRing),
+                          prefix: _RowIcon(
+                            LucideIcons.bellRing,
+                            bc.warningSoft,
+                            bc.warningSoftForeground,
+                          ),
                           title: 'Expiry reminders',
                           description:
                               'At most two per item, at 09:00: when it enters '
@@ -101,9 +189,9 @@ class SettingsScreen extends ConsumerWidget {
                           onPressed: () => notifier.setExpiryReminders(
                             !settings.expiryReminders,
                           ),
-                          suffix: BCSwitch(
-                            isSelected: settings.expiryReminders,
-                            onSelectedChange: notifier.setExpiryReminders,
+                          suffix: toggle(
+                            settings.expiryReminders,
+                            notifier.setExpiryReminders,
                           ),
                         ),
                       ),
@@ -112,84 +200,84 @@ class SettingsScreen extends ConsumerWidget {
                   const _Section('Security'),
                   BCListGroup(
                     children: [
-                      if (vault != null) ..._BiometricRow.rows(context, ref),
-                      _pickerItem(
-                        context,
-                        prefix: const Icon(LucideIcons.timer),
+                      if (vault != null)
+                        ..._BiometricRow.rows(context, ref, toggle: toggle),
+                      _ChoiceRow<Duration?>(
+                        native: native,
+                        icon: _RowIcon(
+                          LucideIcons.timer,
+                          bc.accentSoft,
+                          bc.accentSoftForeground,
+                        ),
                         title: 'Lock after',
                         description: ref.watch(lockInBackgroundProvider)
                             ? 'Without input, and as soon as DevVault goes to '
                                   'the background.'
-                            : 'Without input. '
-                                  '${defaultTargetPlatform == TargetPlatform.macOS ? '⌘L' : 'Ctrl+L'} '
-                                  'locks right away.',
-                        picker: _Picker<Duration?>(
-                          label: 'Lock after',
-                          value: settings.autoLockAfter,
-                          options: {
-                            for (final after in AppSettings.autoLockChoices)
-                              after: autoLockLabel(after),
-                          },
-                          onChanged: notifier.setAutoLock,
-                        ),
+                            : 'Without input.',
+                        value: settings.autoLockAfter,
+                        options: {
+                          for (final after in AppSettings.autoLockChoices)
+                            after: SettingsScreen.autoLockLabel(after),
+                        },
+                        onChanged: notifier.setAutoLock,
                       ),
-                      _pickerItem(
-                        context,
-                        prefix: const Icon(LucideIcons.clipboardX),
+                      _ChoiceRow<Duration>(
+                        native: native,
+                        icon: _RowIcon(
+                          LucideIcons.clipboardX,
+                          bc.accentSoft,
+                          bc.accentSoftForeground,
+                        ),
                         title: 'Clear copied secrets after',
                         description: 'Only if nothing else was copied since.',
-                        picker: _Picker<Duration>(
-                          label: 'Clear copied secrets after',
-                          value: settings.clipboardClearAfter,
-                          options: {
-                            for (final after in AppSettings.clipboardChoices)
-                              after: '${after.inSeconds} seconds',
-                          },
-                          onChanged: notifier.setClipboardClear,
-                        ),
+                        value: settings.clipboardClearAfter,
+                        options: {
+                          for (final after in AppSettings.clipboardChoices)
+                            after: '${after.inSeconds} seconds',
+                        },
+                        onChanged: notifier.setClipboardClear,
                       ),
                       BCListGroupItem(
-                        prefix: const Icon(LucideIcons.keyRound),
+                        prefix: _RowIcon(
+                          LucideIcons.keyRound,
+                          bc.defaultColor,
+                          bc.foreground,
+                        ),
                         title: 'Master password',
                         description:
                             'Changing it rewrites only vault.json; items '
                             'stay as they are.',
-                        suffix: BCButton(
-                          size: SettingsLayout.buttonSize(context),
-                          variant: BCButtonVariant.secondary,
-                          isDisabled: vault == null,
-                          onPressed: () => showChangePasswordDialog(context),
-                          child: const Text('Change…'),
-                        ),
+                        suffix: chevron(),
+                        isDisabled: vault == null,
+                        onPressed: () => showChangePasswordDialog(context),
                       ),
                       BCListGroupItem(
-                        prefix: const Icon(LucideIcons.lifeBuoy),
-                        title: 'Recovery kit',
+                        prefix: _RowIcon(
+                          LucideIcons.lifeBuoy,
+                          bc.defaultColor,
+                          bc.foreground,
+                        ),
+                        title: 'New recovery kit',
                         description:
                             'Lost it? Make a new key as a PDF, printout or '
                             'text file. The old key stops working.',
-                        suffix: BCButton(
-                          size: SettingsLayout.buttonSize(context),
-                          variant: BCButtonVariant.secondary,
-                          isDisabled: vault == null,
-                          onPressed: () => showNewRecoveryKitDialog(context),
-                          child: const Text('New kit…'),
-                        ),
+                        suffix: chevron(),
+                        isDisabled: vault == null,
+                        onPressed: () => showNewRecoveryKitDialog(context),
                       ),
                       BCListGroupItem(
-                        prefix: const Icon(LucideIcons.refreshCcwDot),
-                        title: 'Vault key',
-                        description:
-                            'Suspect a leak? Rotate it: everything is '
-                            're-encrypted under a new key, with a new '
-                            'recovery key.',
-                        suffix: BCButton(
-                          size: SettingsLayout.buttonSize(context),
-                          variant: BCButtonVariant.secondary,
-                          isDisabled: vault == null,
-                          onPressed: () => showRotateVaultKeyDialog(context),
-                          child: const Text('Rotate…'),
+                        prefix: _RowIcon(
+                          LucideIcons.refreshCcwDot,
+                          bc.defaultColor,
+                          bc.foreground,
                         ),
+                        title: 'Rotate vault key',
+                        description:
+                            'Suspect a leak? Everything is re-encrypted under '
+                            'a new key, with a new recovery key.',
+                        suffix: chevron(),
+                        isDisabled: vault == null,
+                        onPressed: () => showRotateVaultKeyDialog(context),
                       ),
                     ],
                   ),
@@ -197,7 +285,11 @@ class SettingsScreen extends ConsumerWidget {
                   BCListGroup(
                     children: [
                       BCListGroupItem(
-                        prefix: const Icon(LucideIcons.cloud),
+                        prefix: _RowIcon(
+                          LucideIcons.cloud,
+                          apps.tealSoft,
+                          apps.teal,
+                        ),
                         title: 'Sync storage',
                         description: switch (syncSetup) {
                           null =>
@@ -206,25 +298,21 @@ class SettingsScreen extends ConsumerWidget {
                             '${s.settings.provider.label} · '
                                 '${s.settings.bucket}',
                         },
-                        suffix: Icon(
-                          LucideIcons.chevronRight,
-                          size: 16,
-                          color: bc.muted,
-                        ),
+                        suffix: chevron(),
                         onPressed: () => context.go(Routes.settingsSync),
                       ),
                       if (syncSetup != null)
                         BCListGroupItem(
-                          prefix: const Icon(LucideIcons.qrCode),
+                          prefix: _RowIcon(
+                            LucideIcons.qrCode,
+                            apps.tealSoft,
+                            apps.teal,
+                          ),
                           title: 'Pair a device',
                           description:
                               'Show a QR code another device scans to join '
                               'this vault. It still needs the master password.',
-                          suffix: Icon(
-                            LucideIcons.chevronRight,
-                            size: 16,
-                            color: bc.muted,
-                          ),
+                          suffix: chevron(),
                           onPressed: () => context.push(Routes.pair),
                         ),
                     ],
@@ -236,7 +324,154 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The vault at the top of Settings (design frame I7): the app mark, how
+/// many items it holds on this device, and the sync status.
+class _VaultCard extends ConsumerWidget {
+  const _VaultCard({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final syncing = ref.watch(syncControllerProvider) is! SyncOff;
+    return BCCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        spacing: 14,
+        children: [
+          const AppMark(size: 48),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 2,
+              children: [
+                const BCText('DevVault', weight: BCTextWeight.semibold),
+                BCText(
+                  '${count == 1 ? '1 item' : '$count items'} · this device',
+                  type: BCTextType.bodySm,
+                  color: BCTextColor.muted,
+                ),
+              ],
+            ),
           ),
+          if (syncing) const SyncStatusChip(),
+        ],
+      ),
+    );
+  }
+}
+
+/// A settings row's icon on a tinted tile.
+class _RowIcon extends StatelessWidget {
+  const _RowIcon(this.icon, this.background, this.foreground);
+
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: background,
+        shape: BCShapes.continuous(BCRadius.lg),
+      ),
+      child: SizedBox.square(
+        dimension: 32,
+        child: Icon(icon, size: 17, color: foreground),
+      ),
+    );
+  }
+}
+
+/// A setting with a few choices. On iPhone the row shows the current one
+/// and opens UIKit's action sheet of the choices; elsewhere a bc_ui select
+/// sits under the row's text.
+///
+/// Not a pull-down `UIMenu`: `native_liquid_glass` supports one menu
+/// trigger per screen, and Settings has three.
+class _ChoiceRow<T> extends StatelessWidget {
+  const _ChoiceRow({
+    required this.native,
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.description,
+  });
+
+  final bool native;
+  final Widget icon;
+  final String title;
+  final String? description;
+  final T value;
+  final Map<T, String> options;
+  final ValueChanged<T> onChanged;
+
+  Future<void> _choose(BuildContext context) async {
+    final keys = options.keys.toList();
+    final id = await LiquidGlassAlert.show(
+      context: context,
+      // UIKit's action sheet shows no checkmark, so the title says which
+      // choice is set.
+      title: '$title: ${options[value]}',
+      message: description,
+      style: LiquidGlassAlertStyle.actionSheet,
+      actions: [
+        for (final (i, key) in keys.indexed)
+          LiquidGlassAlertAction(id: '$i', title: options[key]!),
+        const LiquidGlassAlertAction(
+          id: 'cancel',
+          title: 'Cancel',
+          isCancel: true,
+        ),
+      ],
+    );
+    final index = int.tryParse(id ?? '');
+    if (index != null) onChanged(keys[index]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    if (!native) {
+      return _pickerItem(
+        context,
+        prefix: icon,
+        title: title,
+        description: description,
+        picker: _Picker<T>(
+          label: title,
+          value: value,
+          options: options,
+          onChanged: onChanged,
+        ),
+      );
+    }
+    return Semantics(
+      button: true,
+      label: '$title, ${options[value]}',
+      excludeSemantics: true,
+      child: BCListGroupItem(
+        prefix: icon,
+        title: title,
+        description: description,
+        onPressed: () => _choose(context),
+        suffix: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            BCText(options[value]!, color: BCTextColor.muted),
+            Icon(LucideIcons.chevronsUpDown, size: 15, color: bc.muted),
+          ],
         ),
       ),
     );
@@ -246,13 +481,17 @@ class SettingsScreen extends ConsumerWidget {
 /// "Unlock with Face ID" (SPEC §9.1): shown only where the device offers
 /// biometrics.
 abstract final class _BiometricRow {
-  static List<Widget> rows(BuildContext context, WidgetRef ref) {
+  static List<Widget> rows(
+    BuildContext context,
+    WidgetRef ref, {
+    required Widget Function(bool value, ValueChanged<bool> onChanged) toggle,
+  }) {
     final status = ref.watch(biometricUnlockProvider).value;
     final biometry = status?.biometry;
     if (biometry == null) return const [];
     final session = ref.read(vaultSessionProvider.notifier);
 
-    Future<void> toggle(bool on) async {
+    Future<void> setBiometric(bool on) async {
       try {
         if (!on) return await session.disableBiometricUnlock();
         await session.enableBiometricUnlock(
@@ -273,18 +512,21 @@ abstract final class _BiometricRow {
       }
     }
 
+    final bc = context.bcTheme;
     return [
       BCListGroupItem(
-        prefix: Icon(
+        prefix: _RowIcon(
           biometry == Biometry.faceId
               ? LucideIcons.scanFace
               : LucideIcons.fingerprint,
+          bc.successSoft,
+          bc.successSoftForeground,
         ),
         title: 'Unlock with ${biometry.label}',
         description:
             'The vault key stays on this device, behind ${biometry.label}. '
             'Changing the master password turns this off.',
-        suffix: BCSwitch(isSelected: status!.enabled, onSelectedChange: toggle),
+        suffix: toggle(status!.enabled, setBiometric),
       ),
     ];
   }
