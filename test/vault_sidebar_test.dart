@@ -384,8 +384,8 @@ void main() {
       );
     });
 
-    testWidgets('apps group under their organization, then Personal; No app '
-        'stays last, outside the groups', (tester) async {
+    testWidgets('each organization is a section over its apps, then '
+        'Personal, which holds No app', (tester) async {
       await open(tester);
       await editApp(
         tester,
@@ -408,9 +408,11 @@ void main() {
           )
           .dx;
       expect(x('Ledgerly'), x('Acme Corp'));
+      // Apps sit at the first level under their section's header; No app
+      // is one of Personal's.
       expect(indent('Ledgerly'), greaterThan(indent('Acme Corp')));
       expect(indent('Kitchenly'), indent('Ledgerly'));
-      expect(indent('No app'), indent('Acme Corp'));
+      expect(indent('No app'), indent('Kitchenly'));
 
       // An organization is a link to its apps' items.
       await tap(tester, row('Acme Corp'));
@@ -431,13 +433,25 @@ void main() {
         hasLength(10),
       );
 
-      // Closing a group hides its apps and keeps the list.
-      await tap(
-        tester,
-        chevron('Acme Corp', DesktopSymbol.chevronDown.of(DesktopKit.current)),
+      // An open section shows its chevron on hover; closing it hides its
+      // apps and keeps the list, and the closed one keeps its chevron.
+      final fold = chevron(
+        'Acme Corp',
+        DesktopSymbol.chevronDown.of(DesktopKit.current),
       );
+      expect(fold, findsNothing);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: tester.getCenter(row('Acme Corp')));
+      await tester.pumpAndSettle();
+      await tap(tester, fold);
+      await mouse.removePointer();
+      await tester.pumpAndSettle();
       expect(inSidebar('Ledgerly'), findsNothing);
       expect(location(tester), Routes.vault(org: VaultFilter.none));
+      expect(
+        chevron('Acme Corp', DesktopSymbol.chevronRight.of(DesktopKit.current)),
+        findsOneWidget,
+      );
     });
 
     testWidgets('search finds items by their app’s domain or repository', (
@@ -719,7 +733,8 @@ void main() {
         () => app(tester, 'Kitchenly').organization == 'Acme Corp',
       );
       expect(row('Acme Corp, 11 items'), findsOneWidget);
-      expect(inSidebar('Personal'), findsNothing);
+      // Personal has no apps left, and stays for No app's item.
+      expect(row('Personal, 0 items'), findsOneWidget);
       expect(find.text('“Kitchenly” moved to Acme Corp'), findsOneWidget);
 
       await rightClick(tester, row('Kitchenly'));
@@ -741,7 +756,8 @@ void main() {
       );
 
       await rightClick(tester, row('Acme Corp'));
-      expect(find.text('New app…'), findsOneWidget);
+      expect(find.text('New app in Acme Corp…'), findsOneWidget);
+      expect(find.text('New organization…'), findsOneWidget);
       expect(find.text('Edit organization…'), findsOneWidget);
       expect(find.text('New secure note…'), findsOneWidget);
       await tester.tap(find.text('New item…'));
