@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (not released yet)
 
 What developers trying 1.0.1 told us, and a walk through every desktop
 screen.
