@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart'
     show Material, MaterialType, SelectableText;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../../core/expiry.dart';
 import '../../core/format.dart';
+import '../../core/shortcuts.dart';
 import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
@@ -15,11 +17,11 @@ import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart' show BCToastData, showAppToast;
 import '../../shared/widgets/mono_text.dart';
 import '../../shared/widgets/provenance_label.dart';
+import '../../shared/widgets/secret_mask.dart';
 import '../conflict/conflict_dialog.dart';
 import '../notes/notes.dart' show NoteView, copySecureNote;
 import 'desktop_item_type.dart';
 import 'vault_actions.dart';
-import '../../shared/widgets/secret_mask.dart';
 
 /// When [item] was created and last changed, and where: the line the
 /// window's status bar shows for the selected item.
@@ -51,9 +53,26 @@ class DesktopInspector extends ConsumerWidget {
     if (session is! Unlocked) return const SizedBox.shrink();
     final id = itemId;
     if (id == null) {
-      return const _Placeholder(
+      // The largest pane, empty: say how to add something too (P7-04).
+      final filter = VaultFilter.fromUri(GoRouterState.of(context).uri);
+      return _Placeholder(
         title: 'No item selected',
-        description: 'Pick an item to see its fields and files.',
+        description: 'Pick an item to see its fields and files, or add one.',
+        actions: [
+          DesktopButton(
+            label: 'Import a file…',
+            icon: DesktopSymbol.importFile,
+            onPressed: () => openImport(context),
+          ),
+          DesktopButton(
+            label: 'New item…',
+            icon: DesktopSymbol.add,
+            onPressed: () => createItem(context, filter),
+          ),
+        ],
+        hint:
+            '${shortcutLabel('I')} imports, ${shortcutLabel('N')} adds an '
+            'item, or drop a file anywhere in the window.',
       );
     }
     final item = session.index.items[id];
@@ -205,10 +224,21 @@ class _SecureNote extends ConsumerWidget {
 
 /// What the inspector says when there's no item to show.
 class _Placeholder extends StatelessWidget {
-  const _Placeholder({required this.title, required this.description});
+  const _Placeholder({
+    required this.title,
+    required this.description,
+    this.actions = const [],
+    this.hint,
+  });
 
   final String title;
   final String description;
+
+  /// Buttons under the description, side by side.
+  final List<Widget> actions;
+
+  /// A last, smaller line (the shortcuts).
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +267,26 @@ class _Placeholder extends StatelessWidget {
                 color: colors.secondaryText,
               ),
             ),
+            if (actions.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: actions,
+              ),
+            ],
+            if (hint case final hint?) ...[
+              const SizedBox(height: 6),
+              Text(
+                hint,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: DesktopMetrics.secondarySize,
+                  color: colors.secondaryText,
+                ),
+              ),
+            ],
           ],
         ),
       ),

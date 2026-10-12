@@ -191,9 +191,17 @@ void main() {
     testWidgets('+ in the sidebar adds an app with an organization, a kind '
         'and identifiers, and opens it', (tester) async {
       await open(tester);
-      await tester.tap(find.bySemanticsLabel('New app'));
+      // The Apps heading's +; New app at the foot of the sidebar is the
+      // other way in.
+      await tester.tap(find.bySemanticsLabel('New app').first);
       await tester.pumpAndSettle();
-      expect(find.text('New app'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AppEditor),
+          matching: find.text('New app'),
+        ),
+        findsOneWidget,
+      );
       expect(
         find.textContaining('An app, site, service or tool'),
         findsOneWidget,

@@ -16,6 +16,9 @@ enum DesktopSymbol {
   conflicts,
   unreadable,
   add,
+
+  /// A new app (the sidebar's New app).
+  addCircle,
   importFile,
   tag,
   settings,
@@ -104,6 +107,7 @@ enum DesktopSymbol {
     conflicts => CupertinoIcons.arrow_merge,
     unreadable => CupertinoIcons.exclamationmark_shield,
     add => CupertinoIcons.plus,
+    addCircle => CupertinoIcons.plus_circle,
     importFile => CupertinoIcons.arrow_down_doc,
     tag => CupertinoIcons.tag,
     settings => CupertinoIcons.gear,
@@ -177,6 +181,7 @@ enum DesktopSymbol {
     conflicts => fl.FluentIcons.branch_merge,
     unreadable => fl.FluentIcons.shield_alert,
     add => fl.FluentIcons.add,
+    addCircle => fl.FluentIcons.circle_addition,
     importFile => fl.FluentIcons.download,
     tag => fl.FluentIcons.tag,
     settings => fl.FluentIcons.settings,
@@ -248,6 +253,8 @@ enum DesktopSymbol {
     conflicts => yaru.YaruIcons.important,
     unreadable => yaru.YaruIcons.shield_warning,
     add => yaru.YaruIcons.plus,
+    // Yaru has no circled plus.
+    addCircle => yaru.YaruIcons.plus,
     importFile => yaru.YaruIcons.document_open,
     tag => yaru.YaruIcons.tag,
     settings => yaru.YaruIcons.settings,

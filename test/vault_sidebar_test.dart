@@ -10,6 +10,7 @@ import 'package:devvault/features/vault/vault_heading.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:devvault/shared/desktop/desktop_button.dart';
+import 'package:devvault/shared/desktop/desktop_icon_button.dart';
 import 'package:devvault/shared/desktop/desktop_symbols.dart';
 import 'package:devvault/shared/desktop/desktop_theme.dart';
 
@@ -760,7 +761,13 @@ void main() {
       expect(find.text('New organization…'), findsOneWidget);
       expect(find.text('Edit organization…'), findsOneWidget);
       expect(find.text('New secure note…'), findsOneWidget);
-      await tester.tap(find.text('New item…'));
+      // The menu's, not the empty inspector's button.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(MenuItemButton),
+          matching: find.text('New item…'),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(ItemEditor), findsOneWidget);
       expect(
@@ -1138,5 +1145,68 @@ void main() {
         'Kitchenly › Other › Staging',
       );
     });
+  });
+
+  group('ways to create (P7-04)', () {
+    testWidgets('a hovered app offers + for a new item in it', (tester) async {
+      await open(tester);
+      // Screen readers reach it as the row's "New item…" action.
+      final add = find.byWidgetPredicate(
+        (w) => w is DesktopIconButton && w.tooltip == 'New item in Kitchenly',
+      );
+      expect(add, findsNothing);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: tester.getCenter(row('Kitchenly')));
+      addTearDown(mouse.removePointer);
+      await tester.pumpAndSettle();
+      await tap(tester, add);
+
+      expect(find.byType(ItemEditor), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ItemEditor),
+          matching: find.textContaining('Kitchenly'),
+        ),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('New app is always at the foot of the sidebar', (tester) async {
+      await open(tester);
+      await tap(tester, inSidebar('New app'));
+      expect(find.byType(AppEditor), findsOneWidget);
+    });
+
+    testWidgets('an empty vault explains apps and offers both', (tester) async {
+      tester.view
+        ..physicalSize = const Size(1440, 900)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpUnlockedApp(
+        tester,
+        location: Routes.vault(),
+        layout: AppLayout.desktop,
+      );
+      expect(
+        inSidebar(
+          'Group credentials by the app they belong to. Put apps in an '
+          'organization to keep clients apart.',
+        ),
+        findsOneWidget,
+      );
+      await tap(tester, inSidebar('New organization…'));
+      expect(find.text('New organization'), findsOneWidget);
+    });
+  });
+
+  testWidgets('nothing selected: the inspector offers Import and New item', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(find.text('No item selected'), findsOneWidget);
+    expect(find.text('Import a file…'), findsOneWidget);
+    await tap(tester, find.text('New item…'));
+    expect(find.byType(ItemEditor), findsOneWidget);
   });
 }
