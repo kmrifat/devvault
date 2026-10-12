@@ -33,6 +33,16 @@ and exported here under `desktop/`.
 | N09 | AI agent asks for secrets (sheet): reason, items, where the values go (P5-05). Drawn in code first, not yet in `DevVault.fig` | [png](../../screenshots/N09-agent-reveal-light.png) | [png](../../screenshots/N09-agent-command.png) |
 | N09b | AI agent asks to connect (sheet) | [png](../../screenshots/N09b-agent-pair-light.png) | |
 
+### P7 feedback round
+
+The changes from developer feedback on 1.0.1 (docs/PLAN.md › P7) were
+drawn first on the **Proposal · Sidebar & menus** page of
+`design/DevVault.fig`, frames P1–P9, exported under
+[`desktop/p7/`](desktop/p7/): the sidebar before and after (P1–P3), the
+context menu (P4), icon sizes (P5), password dots (P6), clarity (P7),
+consistency (P8) and Settings with the two owner decisions (P9). The
+code's screenshots under `screenshots/` show the result.
+
 ## Structure
 
 - **Main window:** source-list sidebar (220 pt), a unified toolbar
@@ -43,25 +53,37 @@ and exported here under `desktop/`.
     - the vault switcher;
     - the smart lists, with counts: All items, Expiring in 30 days,
       Expired, Conflicts;
-    - the Apps explorer, like a file explorer: Organization › App ›
-      Item. Without any organization it is App › Item. Organizations are
-      listed A–Z, then "Personal" for apps without one, and "No app"
-      last. Every app shows, with or without items; apps start closed
-      unless they hold the selection. An item row shows the item's type
-      icon and title, with its platform symbol and environment dot at
-      the trailing edge. Clicking an organization or app lists its items;
-      clicking an item selects it.
+    - the explorer, like a file explorer (P7-03, frame P2): each
+      organization is a **section header** (small, bold, with its symbol)
+      over its apps, which sit at the first level with their items one
+      step in. Organizations are listed A–Z, then "Personal" for apps
+      without one; "No app" sits in Personal, which shows for it even
+      when every app has an organization. Without any organization there
+      is one "Apps" section. On hover a header shows + (a new app there)
+      and its fold chevron; a closed section always shows its chevron.
+      Every app shows, with or without items; apps start closed unless
+      they hold the selection, and a hovered app shows + (a new item in
+      it) in place of its count. An item row shows the item's type icon
+      and title; where two items in an app share a name, it also shows
+      the environment, as a dot and its name. Clicking an organization or
+      app lists its items; clicking an item selects it.
     - Every explorer row has a context menu, its commands in groups
       split by separators (shown here as |), as macOS groups a menu's:
-      - organization: New item…, New secure note…, New app… | Edit
-        organization… (its name and Markdown notes) | Delete
-        organization… (its apps stay, under Personal);
+      - organization: New app in *organization*…, New item…, New secure
+        note… | New organization… | Edit organization… (its name and
+        Markdown notes) | Delete organization… (its apps stay, under
+        Personal);
       - app: New item…, New secure note… | Edit app…, Move to
         organization…, Remove from *organization* | Delete app…;
       - item (also on table rows): Edit item…, Move to app… | Delete
         item…;
-      - the Apps label: New organization…, New app…, New item…, New
-        secure note….
+      - the Apps label (without organizations): New organization…, New
+        app…, New item…, New secure note….
+    - On macOS these menus, and the ⋯ pull-downs, are AppKit's own
+      `NSMenu` (P7-01), with an SF Symbol beside each command; Windows
+      and Linux use their kit's menus.
+    - An empty vault's explorer says what apps and organizations are for,
+      with New app… and New organization… (frame P3).
     - A selected organization shows, over its items, how many apps it
       has, Edit organization… and its notes, folded to their first line
       like an app's.
@@ -86,29 +108,37 @@ and exported here under `desktop/`.
       the menu key opens the row's menu; typing jumps to a row by name.
       Clicking a row puts the cursor there.
     - Tags;
-    - a footer with the auto-lock time.
-  - The **toolbar** has the title and path, Import, New, the search field
-    (⌘F), sync status and Lock.
+    - New app, always in view, above the footer;
+    - a footer with Settings and the auto-lock time.
+  - The **toolbar** has the title and path, the labelled Import and New
+    buttons (New drops Item…, Secure note…, App…, Organization…), the
+    search field (⌘F), sync status and Lock. On Settings it has only the
+    title, sync status and Lock.
   - Above the **item table**, the All / Expiring / Files / Secrets scope
     bar, then Platform and Environment pop-ups when the listed items
     have more than one of either.
   - The **item table** has columns Name / Type / Expires and is sortable.
-    - Rows are 40 pt and two lines: the name, then the file name in mono.
+    - Rows are 40 pt and two lines: the name, then the file name in mono,
+      or else the platform and environment in words, or else the type.
     - Rows alternate shades (zebra).
     - The selected row is filled with the accent colour.
     - Warning and conflict show as badges.
   - The **inspector**:
     - a header (type tile, name, path) with Export, Edit and ⋯;
     - an expiry box with where the date came from;
-    - a Fields table (value, reveal, copy);
+    - a Fields table (value, "From file" when read from the file, reveal,
+      copy); secrets show eight drawn dots;
     - a File box (Save As…, Replace…);
     - Notes.
+    - With nothing selected: Import a file… and New item…, and the
+      shortcuts.
 - **Sheets** (import, editor, conflict, pairing) slide down from the
   toolbar. They use a classic macOS form: labels right-aligned to a fixed
   column, then controls, with Cancel and the default action (blue) bottom
   right.
-- **Settings** is its own window (⌘,) with icon tabs: General, Security,
-  Sync. On macOS, the Settings row leaves the main window's sidebar.
+- **Settings** opens in the main window (owner decision, P7) with icon
+  tabs: General, Security, Sync, AI Agents. Its toolbar drops the vault's
+  tools; ⌘F from Settings goes back to the vault's search.
 - **Lock screens** (unlock, create, recovery kit) are a compact centred
   window (560 pt) with the app mark.
 
@@ -124,8 +154,14 @@ and exported here under `desktop/`.
 | Segmented control | 22 pt | `MacosSegmentedControl` |
 | Switch, checkbox, radio | system sizes | `MacosSwitch`, `MacosCheckbox`, `MacosRadioButton` |
 | Search field | 28 pt in the toolbar | `MacosSearchField` |
-| Sidebar rows | 26 pt | `Sidebar` + `SidebarItems` |
+| Sidebar rows | 28 pt, 16 pt icons, 18 pt app badges, 12 pt chevrons | DevVault rows (`vault_sidebar.dart`) |
+| Toolbar symbols | 18 pt | `DesktopIconButton` |
+| Inline actions (copy, reveal, remove, +) | 16 pt in a 24 × 24 pt target | `DesktopIconButton` |
 | Table header / rows | 24 pt / 40 pt (32 pt in Expiry) | DevVault table over `ListView` |
+
+Nothing clickable is smaller than 24 × 24 pt (WCAG 2.5.8), and a
+clickable symbol is never in the tertiary text colour (P7-02;
+`DesktopMetrics`). Secure fields type `●`, the system's dot.
 
 Body text is 13 pt and secondary text 11–12 pt. Mono text (IDs,
 fingerprints, file names, keys) is JetBrains Mono 11–12 pt. The frames use
