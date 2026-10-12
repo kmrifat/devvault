@@ -1,6 +1,7 @@
 @Tags(['golden'])
 library;
 
+import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
@@ -280,6 +281,37 @@ void main() {
       );
       GoRouter.of(tester.element(find.byType(MobileVaultScreen)))
           .push(Routes.item(keystore.id));
+    },
+  );
+
+  // Design frame I9: setting a date the file didn't give.
+  shot(
+    'I9-expiry-date',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      final session =
+          appContainer(tester).read(vaultSessionProvider) as Unlocked;
+      final key = session.index.all.firstWhere(
+        (i) => i.title == 'Maps API key',
+      );
+      GoRouter.of(tester.element(find.byType(MobileVaultScreen)))
+          .push(Routes.item(key.id));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set date'));
+      await tester.pumpAndSettle();
+      // A month well ahead of today: bc_ui rings the real today, which
+      // would otherwise move the image from month to month.
+      for (var i = 0; i < 27; i++) {
+        await tester.tap(find.byIcon(Icons.chevron_right).last);
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(
+        find
+            .descendant(of: find.byType(BCCalendar), matching: find.text('25'))
+            .first,
+      );
     },
   );
 }
