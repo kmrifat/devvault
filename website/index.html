@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevVault · Encrypted vault for developer credential files</title>
+  <meta name="description" content="Signing keys, certificates, provisioning profiles, service accounts and API keys in one end-to-end encrypted vault. Synced through a bucket you own. Open source.">
+  <meta property="og:title" content="DevVault">
+  <meta property="og:description" content="An end-to-end encrypted vault for developer credential files. Synced through a bucket you own. Open source.">
+  <meta property="og:image" content="img/vault.png">
+  <meta name="theme-color" content="#111827">
+  <link rel="icon" href="favicon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top"><img src="img/icon.png" alt="" width="28" height="28">DevVault</a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#agents">AI agents</a>
+        <a href="#security">Security</a>
+        <a href="#teams" class="nav-cta">For teams?</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap">
+      <p class="eyebrow">Free and open source · Apache 2.0</p>
+      <h1>Every signing key, certificate and secret your apps need, in one encrypted vault.</h1>
+      <p class="lede">
+        DevVault stores your <code>.p8</code> keys, <code>.p12</code> certificates, provisioning
+        profiles, Android keystores, service-account JSON and API keys. It reads the key IDs,
+        fingerprints and real expiry dates from each file and keeps the original file as it was.
+        It syncs through a storage bucket <strong>you</strong> own. There is no DevVault server.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/kmrifat/devvault/releases/latest/download/DevVault-macos.dmg">Download for macOS</a>
+        <a class="btn" href="https://github.com/kmrifat/devvault/releases/latest">Linux (AppImage)</a>
+        <a class="btn btn-ghost" href="https://github.com/kmrifat/devvault">View source on GitHub</a>
+      </div>
+      <p class="fine">macOS 12+, signed and notarized. Linux x64. Windows, iPhone and Android builds aren't released yet.</p>
+
+      <figure class="shot shot-hero">
+        <img src="img/vault.png" width="1440" height="900"
+             alt="DevVault on macOS: an Android upload keystore with its alias, SHA-1 and SHA-256 fingerprints and a validity date read from the file.">
+      </figure>
+    </section>
+
+    <section id="features" class="wrap section">
+      <h2>Built for the files password managers handle badly</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>Facts from the file, not guesses</h3>
+          <p>Import a keystore or certificate and DevVault shows what's inside: key ID, team, bundle ID,
+            fingerprints and the real expiry date. Every value says where it came from. Nothing is
+            defaulted or inferred.</p>
+        </article>
+        <article class="card">
+          <h3>Expiry before it bites</h3>
+          <p>One list of everything that has expired or expires soon: certificates, provisioning
+            profiles, service accounts. Reminders tell you ahead of time instead of during a release.</p>
+        </article>
+        <article class="card">
+          <h3>Your bucket, your data</h3>
+          <p>Sync between devices through any S3-compatible bucket you control: Cloudflare R2, AWS S3,
+            Backblaze B2 or MinIO. The provider only ever sees encrypted objects with random names.</p>
+        </article>
+        <article class="card">
+          <h3>Organised by app</h3>
+          <p>Group credentials by organization, app, platform and environment, so the production
+            Android keystore is never confused with staging. Search by name, key ID or fingerprint.</p>
+        </article>
+      </div>
+      <figure class="shot">
+        <img src="img/expiry.png" width="1440" height="900" loading="lazy"
+             alt="The Expiry view: one expired certificate, two items expiring within 30 days, and their dates read from the files.">
+      </figure>
+    </section>
+
+    <section id="agents" class="wrap section split">
+      <div>
+        <p class="eyebrow">New</p>
+        <h2>Let AI coding agents use secrets without seeing them</h2>
+        <p>DevVault comes with an MCP server for Claude Code, Codex CLI, Cursor, Gemini CLI, VS Code,
+          Windsurf and other agents. An agent can look through your vault, but a secret value leaves
+          only after you approve it in DevVault's own window.</p>
+        <ul class="ticks">
+          <li>The agent tells you why it needs the secret and which values it wants.</li>
+          <li>Values can be written straight into a file or passed to a command as environment
+            variables, so they never reach the model.</li>
+          <li>Allow once or for 15 minutes, per client. Deny is always one click.</li>
+          <li>You never type your master password into the agent.</li>
+        </ul>
+        <p class="fine">AI agent access is macOS-only for now.</p>
+      </div>
+      <figure class="shot">
+        <img src="img/agent.png" width="1440" height="900" loading="lazy"
+             alt="DevVault asks whether claude-code may run a Gradle signing command with two keystore passwords passed as environment variables.">
+      </figure>
+    </section>
+
+    <section id="security" class="wrap section">
+      <h2>Security, in plain terms</h2>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>End-to-end encrypted</h3>
+          <p>Your master password (Argon2id) and a one-time recovery key each unlock a random vault key.
+            Every item and file is encrypted with XChaCha20-Poly1305.</p>
+        </article>
+        <article class="card">
+          <h3>Open format, open source</h3>
+          <p>The vault format is published with test vectors, and all the code is on GitHub under
+            Apache 2.0, so you can check every claim on this page.</p>
+        </article>
+        <article class="card">
+          <h3>Honest about limits</h3>
+          <p>Nobody can protect against malware on an unlocked device. DevVault reduces the risk with
+            auto-lock and clipboard clearing, and says so instead of promising more.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="teams" class="section teams">
+      <div class="wrap teams-inner">
+        <div class="teams-copy">
+          <p class="eyebrow">Help decide what's next</p>
+          <h2>Would your team use DevVault?</h2>
+          <p>DevVault is built for one person today. Many teams keep signing keys and service accounts
+            in a shared drive, a chat thread or one person's laptop. We're deciding whether to build
+            a team version with shared vaults, access control and offboarding.</p>
+          <p>If you'd use it at work, say so here. If most people just want it for themselves, that's
+            useful to know too: DevVault stays free and open source either way.</p>
+          <p class="fine">Takes 30 seconds. Email is optional and only used to tell you if a team
+            version ships.</p>
+        </div>
+
+        <form id="team-form" class="form" data-endpoint="" novalidate>
+          <fieldset>
+            <legend>How would you use DevVault?</legend>
+            <label class="choice"><input type="radio" name="use" value="personal" required> Just for me</label>
+            <label class="choice"><input type="radio" name="use" value="team"> With my team at work</label>
+            <label class="choice"><input type="radio" name="use" value="both"> Both</label>
+          </fieldset>
+
+          <div class="team-only" hidden>
+            <label class="field">
+              <span>How many people on your team handle credentials?</span>
+              <select name="team_size">
+                <option value="">Choose…</option>
+                <option>2–5</option>
+                <option>6–20</option>
+                <option>21–100</option>
+                <option>More than 100</option>
+              </select>
+            </label>
+
+            <fieldset>
+              <legend>What would your team need? <span class="opt">Pick any</span></legend>
+              <label class="choice"><input type="checkbox" name="needs" value="shared-vaults"> Shared vaults per project or client</label>
+              <label class="choice"><input type="checkbox" name="needs" value="access-control"> Control who can see which items</label>
+              <label class="choice"><input type="checkbox" name="needs" value="offboarding"> Remove someone's access when they leave</label>
+              <label class="choice"><input type="checkbox" name="needs" value="audit-log"> A log of who used which secret</label>
+              <label class="choice"><input type="checkbox" name="needs" value="ci"> Use secrets from CI (GitHub Actions etc.)</label>
+              <label class="choice"><input type="checkbox" name="needs" value="sso"> Sign in with company SSO</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Would your company pay for a team version?</legend>
+              <label class="choice"><input type="radio" name="pay" value="yes"> Yes</label>
+              <label class="choice"><input type="radio" name="pay" value="maybe"> Maybe, depending on price</label>
+              <label class="choice"><input type="radio" name="pay" value="no"> No</label>
+              <label class="choice"><input type="radio" name="pay" value="not-my-call"> Not my decision</label>
+            </fieldset>
+          </div>
+
+          <label class="field">
+            <span>Email <span class="opt">Optional</span></span>
+            <input type="email" name="email" autocomplete="email" placeholder="you@company.com">
+          </label>
+
+          <label class="field">
+            <span>Anything else? <span class="opt">Optional</span></span>
+            <textarea name="message" rows="3" placeholder="What do you use today? What would make you switch?"></textarea>
+          </label>
+
+          <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+          <button type="submit" class="btn btn-primary btn-block">Send</button>
+          <p class="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span><img src="img/icon.png" alt="" width="20" height="20"> DevVault by Binary Castle</span>
+      <nav>
+        <a href="https://github.com/kmrifat/devvault">GitHub</a>
+        <a href="https://github.com/kmrifat/devvault/releases">Releases</a>
+        <a href="https://github.com/kmrifat/devvault/blob/main/LICENSE">Apache 2.0</a>
+        <a href="https://github.com/kmrifat/devvault/issues">Report an issue</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
