@@ -4,6 +4,8 @@ import 'package:agent_bridge/agent_bridge.dart' show socketPathInContainer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart'
+    show NativeLiquidGlassUtils;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vault_core/vault_core.dart';
@@ -103,7 +105,9 @@ Future<void> main() async {
           biometricKeyStoreProvider.overrideWithValue(
             const ChannelBiometricKeyStore(),
           ),
-        if (defaultTargetPlatform == TargetPlatform.iOS)
+        // The UIKit bars draw nothing before iOS 26, so older iPhones keep
+        // bc_ui's.
+        if (NativeLiquidGlassUtils.supportsLiquidGlass)
           nativeBarsProvider.overrideWithValue(true),
         if (phone) ...[
           lockInBackgroundProvider.overrideWithValue(true),

@@ -107,21 +107,6 @@ void main() {
     expect(inList('GitHub deploy key'), findsNothing);
   });
 
-  testWidgets('search narrows the list', (tester) async {
-    await open(tester);
-    await tester.enterText(
-      find.descendant(
-        of: find.byType(MobileVaultScreen),
-        matching: find.byType(EditableText),
-      ),
-      'apns',
-    );
-    await tester.pumpAndSettle();
-    expect(location(tester), Routes.vault(q: 'apns'));
-    expect(inList('APNs auth key'), findsOneWidget);
-    expect(inList('Upload keystore'), findsNothing);
-  });
-
   testWidgets('tapping an item pushes its screen', (tester) async {
     await open(tester);
     final apns = index(tester).all

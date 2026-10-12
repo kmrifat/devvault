@@ -104,39 +104,41 @@ class _VaultItemRowState extends State<VaultItemRow> {
     );
   }
 
-  /// A conflict first, then the expiry: a chip when it needs attention,
-  /// the month otherwise.
-  Widget? _trailing(BuildContext context) {
-    final item = widget.item;
-    if (item.conflict != null) {
-      return const BCChip(
-        size: BCChipSize.sm,
-        variant: BCChipVariant.secondary,
-        color: BCChipColor.defaultColor,
-        startContent: Icon(LucideIcons.gitMerge, size: 12),
-        child: Text('Conflict'),
-      );
-    }
-    final expiresAt = item.expiresAt;
-    return switch (ExpiryState.of(item, widget.now)) {
-      ExpiryState.none => null,
-      ExpiryState.expired => const BCChip(
-        size: BCChipSize.sm,
-        variant: BCChipVariant.soft,
-        color: BCChipColor.danger,
-        child: Text('Expired'),
-      ),
-      ExpiryState.soon => BCChip(
-        size: BCChipSize.sm,
-        variant: BCChipVariant.soft,
-        color: BCChipColor.warning,
-        child: Text(daysLeft(expiresAt!, widget.now)),
-      ),
-      ExpiryState.valid => BCText(
-        DateFormat.yMMM().format(expiresAt!.toLocal()),
-        type: BCTextType.bodyXs,
-        color: BCTextColor.muted,
-      ),
-    };
+  Widget? _trailing(BuildContext context) =>
+      itemStatus(widget.item, widget.now);
+}
+
+/// What a phone row shows at its end for [item]: a conflict first, then
+/// the expiry, as a chip when it needs attention and the month otherwise.
+Widget? itemStatus(Item item, DateTime now) {
+  if (item.conflict != null) {
+    return const BCChip(
+      size: BCChipSize.sm,
+      variant: BCChipVariant.secondary,
+      color: BCChipColor.defaultColor,
+      startContent: Icon(LucideIcons.gitMerge, size: 12),
+      child: Text('Conflict'),
+    );
   }
+  final expiresAt = item.expiresAt;
+  return switch (ExpiryState.of(item, now)) {
+    ExpiryState.none => null,
+    ExpiryState.expired => const BCChip(
+      size: BCChipSize.sm,
+      variant: BCChipVariant.soft,
+      color: BCChipColor.danger,
+      child: Text('Expired'),
+    ),
+    ExpiryState.soon => BCChip(
+      size: BCChipSize.sm,
+      variant: BCChipVariant.soft,
+      color: BCChipColor.warning,
+      child: Text(daysLeft(expiresAt!, now)),
+    ),
+    ExpiryState.valid => BCText(
+      DateFormat.yMMM().format(expiresAt!.toLocal()),
+      type: BCTextType.bodyXs,
+      color: BCTextColor.muted,
+    ),
+  };
 }

@@ -14,8 +14,8 @@ import '../notes/notes.dart' show PhoneNotesCard;
 import 'vault_actions.dart';
 import 'vault_item_row.dart';
 
-/// Design frame B2: the vault on a phone. A large title that collapses,
-/// search, the All / Expiring / Files / Secrets tabs, app chips, and the
+/// Design frame I1: the vault on a phone. A large title that collapses,
+/// the All / Expiring / Files / Secrets tabs, app chips, and the
 /// items grouped by app. Tapping an item pushes its screen (B3).
 ///
 /// Once any app has an organization, the apps are grouped under their
@@ -24,7 +24,8 @@ import 'vault_item_row.dart';
 ///
 /// Everything it shows comes from the `/vault` query, like the desktop
 /// list, so back and forward keep the filters. With sync on, the sync line
-/// sits under the search and pulling the list down syncs (P3-07).
+/// sits under the title and pulling the list down syncs (P3-07). Search
+/// is its own tab (`SearchScreen`).
 class MobileVaultScreen extends ConsumerStatefulWidget {
   const MobileVaultScreen({super.key, required this.uri});
 
@@ -35,22 +36,7 @@ class MobileVaultScreen extends ConsumerStatefulWidget {
 }
 
 class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
-  late final _search = TextEditingController(text: _filter.q ?? '');
-
   VaultFilter get _filter => VaultFilter.fromUri(widget.uri);
-
-  @override
-  void didUpdateWidget(MobileVaultScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final q = _filter.q ?? '';
-    if (q.trim() != _search.text.trim()) _search.text = q;
-  }
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
 
   void _go(VaultFilter filter) => context.go(filter.location());
 
@@ -153,23 +139,13 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           sliver: SliverList.list(
             children: [
-              Semantics(
-                label: 'Search',
-                child: BCSearchField(
-                  controller: _search,
-                  placeholder: 'Search items, bundle IDs, key IDs',
-                  onChanged: (q) => _go(filter.withQuery(q)),
-                  onClear: () => _go(filter.withQuery('')),
-                ),
-              ),
               if (syncing) ...[
-                const SizedBox(height: 8),
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: SyncStatusChip(),
                 ),
+                const SizedBox(height: 12),
               ],
-              const SizedBox(height: 12),
               // Sized to their labels: four equal tabs don't fit a narrow
               // phone.
               SingleChildScrollView(

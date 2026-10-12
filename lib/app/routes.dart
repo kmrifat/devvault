@@ -23,6 +23,10 @@ abstract final class Routes {
   static const expiry = '/expiry';
   static const settings = '/settings';
 
+  /// The Search tab (phones only; desktop searches from the vault list
+  /// and quick-open).
+  static const searchRoot = '/search';
+
   // Settings sections
   static const settingsSync = '/settings/sync';
   static const settingsSecurity = '/settings/security';
@@ -66,6 +70,30 @@ abstract final class Routes {
   /// The expiry dashboard, opened on the expired section when [expired].
   static String expiryShowing({bool expired = false}) =>
       expired ? '$expiry?show=expired' : expiry;
+
+  /// The Search tab: [q] typed, narrowed to one item [type] (its wire
+  /// name), [app], [platform], [env] or [tag].
+  static String search({
+    String? q,
+    String? type,
+    String? app,
+    String? platform,
+    String? env,
+    String? tag,
+  }) {
+    final query = <String, String>{
+      'q': ?q,
+      'type': ?type,
+      'app': ?app,
+      'platform': ?platform,
+      'env': ?env,
+      'tag': ?tag,
+    };
+    return Uri(
+      path: searchRoot,
+      queryParameters: query.isEmpty ? null : query,
+    ).toString();
+  }
 
   /// A single item as its own screen (mobile). On desktop this redirects to
   /// [vault] with the item selected.

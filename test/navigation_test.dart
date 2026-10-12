@@ -1,5 +1,6 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
+import 'package:devvault/app/mobile_shell.dart';
 import 'package:devvault/app/routes.dart';
 import 'package:devvault/data/providers.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
@@ -67,6 +68,7 @@ void main() {
         Routes.settingsSync,
         Routes.settingsSecurity,
         if (layout == AppLayout.desktop) Routes.settingsAgents,
+        if (layout == AppLayout.mobile) Routes.search(q: 'apns'),
         Routes.pair,
       ]) {
         testWidgets(path, (tester) async {
@@ -199,6 +201,40 @@ void main() {
         ['square.stack.3d.up', 'clock', 'gearshape'],
       );
       expect(bar.currentIndex, 0);
+      // Search is its own button beside the tabs.
+      expect(bar.iosActionButton?.label, 'Search');
+      expect(bar.iosActionButton?.icon.sfSymbolName, 'magnifyingglass');
+
+      // On Search the bar gives way to the search field and a button back
+      // to the last tab.
+      bar.onActionButtonPressed!();
+      await tester.pumpAndSettle();
+      expect(
+        GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri.path,
+        Routes.searchRoot,
+      );
+      expect(find.byType(LiquidGlassTabBar), findsNothing);
+      expect(find.byType(SearchDock), findsOneWidget);
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.autocorrect, isFalse);
+      expect(field.enableSuggestions, isFalse);
+
+      await tester.enterText(find.byType(TextField), 'apns');
+      await tester.pumpAndSettle();
+      expect(
+        GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
+            .toString(),
+        Routes.search(q: 'apns'),
+      );
+
+      // Back to the last tab.
+      await tester.tap(find.bySemanticsLabel('Vault'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LiquidGlassTabBar), findsOneWidget);
+      expect(
+        GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri.path,
+        Routes.vaultRoot,
+      );
     });
 
     testWidgets('on iPhone each screen\'s header is UIKit\'s', (tester) async {
