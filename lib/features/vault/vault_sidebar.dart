@@ -223,6 +223,22 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               ),
             ),
           ),
+          // Always in view, where Notes keeps New Folder (P7-04).
+          if (index != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+              child: _SourceRow(
+                icon: DesktopSymbol.addCircle,
+                iconColor: colors.accentIcon,
+                label: 'New app',
+                selected: false,
+                onTap: () => createApp(context),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(height: 0.5, color: colors.separator),
+          ),
           _Footer(selected: section == ShellSection.settings),
         ],
       ),
@@ -287,7 +303,13 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
       ),
     );
     if (tree.isEmpty) {
-      return [appsLabel, const _Hint('Items you add are grouped here by app')];
+      return [
+        appsLabel,
+        _EmptyExplorer(
+          newApp: () => createApp(context),
+          newOrganization: () => createOrganization(context, ref),
+        ),
+      ];
     }
     final selectedApp = index.items[_selectedItem]?.appId;
     final openApp = selectedApp != null && index.apps.containsKey(selectedApp)
@@ -542,6 +564,8 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           leading: AppBadge(app: app, size: DesktopMetrics.sidebarBadgeSize),
           label: app.name,
           count: node.items.length,
+          onAdd: () => createItem(context, VaultFilter(app: app.id)),
+          addTooltip: 'New item in ${app.name}',
           selected: selected,
           onTap: _clicked(key, show),
         ),
@@ -1088,7 +1112,8 @@ class _SourceRow extends StatefulWidget {
   /// hover), and [onAdd]'s + on hover.
   final bool header;
 
-  /// The header's + (a new app in the organization), named [addTooltip].
+  /// The + shown on hover: a new app in a header's organization, a new
+  /// item in an app's row. Named [addTooltip].
   final VoidCallback? onAdd;
   final String? addTooltip;
 
@@ -1279,7 +1304,24 @@ class _SourceRowState extends State<_SourceRow> {
                             ),
                           ),
                         ),
-                        if (widget.trailing case final trailing?)
+                        // On hover, + adds to the row (an app: a new item
+                        // in it) in place of its count (P7-04).
+                        if (widget.onAdd case final onAdd?
+                            when _hovered || widget.focused)
+                          SizedBox(
+                            width: DesktopMetrics.minTarget,
+                            height: DesktopMetrics.minTarget,
+                            child: Semantics(
+                              container: true,
+                              child: DesktopIconButton(
+                                symbol: DesktopSymbol.add,
+                                tooltip: widget.addTooltip ?? 'New item',
+                                size: 14,
+                                onPressed: onAdd,
+                              ),
+                            ),
+                          )
+                        else if (widget.trailing case final trailing?)
                           trailing
                         else if (count != null)
                           Text(
@@ -1371,21 +1413,46 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _Hint extends StatelessWidget {
-  const _Hint(this.text);
+/// The explorer before the first app: what apps and organizations are
+/// for, and both ways to start (design frame P3). One grey line said only
+/// half of that before P7-04.
+class _EmptyExplorer extends StatelessWidget {
+  const _EmptyExplorer({required this.newApp, required this.newOrganization});
 
-  final String text;
+  final VoidCallback newApp;
+  final VoidCallback newOrganization;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: DesktopMetrics.secondarySize,
-          color: context.desktopColors.secondaryText,
+    final colors = context.desktopColors;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(2, 4, 2, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: colors.groupBoxStroke),
+        borderRadius: const BorderRadius.all(
+          Radius.circular(DesktopMetrics.menuRadius),
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 8,
+        children: [
+          Text(
+            'Group credentials by the app they belong to. Put apps in an '
+            'organization to keep clients apart.',
+            style: TextStyle(
+              fontSize: DesktopMetrics.secondarySize + 1,
+              color: colors.secondaryText,
+            ),
+          ),
+          DesktopButton(
+            label: 'New app…',
+            kind: DesktopButtonKind.primary,
+            onPressed: newApp,
+          ),
+          DesktopButton(label: 'New organization…', onPressed: newOrganization),
+        ],
       ),
     );
   }
