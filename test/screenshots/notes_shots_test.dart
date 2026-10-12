@@ -182,7 +182,7 @@ void main() {
     },
   );
   shot(
-    'B2-vault-app-notes',
+    'I1-vault-app-notes',
     Routes.vault(),
     device: ShotDevice.mobile,
     sample: true,

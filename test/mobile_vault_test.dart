@@ -1,5 +1,6 @@
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/data/vault_filter.dart';
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +106,31 @@ void main() {
     expect(inList('Upload keystore'), findsOneWidget);
     expect(inList('Stripe secret key'), findsNothing);
     expect(inList('GitHub deploy key'), findsNothing);
+  });
+
+  testWidgets('says what needs attention and opens Expiry', (tester) async {
+    await open(tester);
+    expect(inList('1 expired · 2 within 30 days'), findsOneWidget);
+    expect(inList('${index(tester).all.length} items'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel(RegExp(r'^1 expired')));
+    await tester.pumpAndSettle();
+    expect(
+      GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
+          .toString(),
+      Routes.expiry,
+    );
+  });
+
+  testWidgets('the summary card is only on the unfiltered list', (
+    tester,
+  ) async {
+    await open(tester, Routes.vault(kind: VaultKind.files.name));
+    expect(inList('1 expired · 2 within 30 days'), findsNothing);
+  });
+
+  testWidgets('rows say the type and the platform', (tester) async {
+    await open(tester);
+    expect(inList('Android Keystore · Android'), findsOneWidget);
   });
 
   testWidgets('tapping an item pushes its screen', (tester) async {

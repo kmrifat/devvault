@@ -240,7 +240,7 @@ void main() {
     },
   );
   shot(
-    'B2-vault-organizations',
+    'I1-vault-organizations',
     Routes.vault(),
     device: ShotDevice.mobile,
     sample: true,
@@ -258,9 +258,9 @@ void main() {
       );
     },
   );
-  shot('B2-vault', Routes.vault(), device: ShotDevice.mobile, sample: true);
+  shot('I1-vault', Routes.vault(), device: ShotDevice.mobile, sample: true);
   shot(
-    'B2-vault-light',
+    'I1-vault-light',
     Routes.vault(),
     device: ShotDevice.mobile,
     sample: true,

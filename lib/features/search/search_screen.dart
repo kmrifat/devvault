@@ -31,7 +31,8 @@ class SearchScreen extends ConsumerStatefulWidget {
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends ConsumerState<SearchScreen> {
+class _SearchScreenState extends ConsumerState<SearchScreen>
+    with LargeTitleScroll {
   late final _field = TextEditingController(text: _query.q ?? '');
 
   SearchQuery get _query => SearchQuery.fromUri(widget.uri);
@@ -62,14 +63,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final native = ref.watch(nativeBarsProvider);
 
     final slivers = <Widget>[
-      if (native)
+      if (native) ...[
         SliverToBoxAdapter(
           child: SizedBox(
             height:
                 MediaQuery.paddingOf(context).top + NativePhoneHeader.barHeight,
           ),
-        )
-      else ...[
+        ),
+        const SliverToBoxAdapter(
+          child: PhoneLargeTitle(
+            'Search',
+            subtitle: BCText(
+              'Titles, bundle IDs, key IDs, file names and tags',
+              type: BCTextType.bodySm,
+              color: BCTextColor.muted,
+            ),
+          ),
+        ),
+      ] else ...[
         const BCSliverAppHeader(largeTitle: Text('Search')),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -110,8 +121,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return Scaffold(
       backgroundColor: bc.background,
       extendBodyBehindAppBar: native,
-      appBar: native ? const NativePhoneHeader(title: 'Search') : null,
+      appBar: native
+          ? NativePhoneHeader(title: titleInBar ? 'Search' : '')
+          : null,
       body: CustomScrollView(
+        controller: titleScroll,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         slivers: slivers,
       ),

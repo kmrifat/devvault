@@ -339,16 +339,20 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(BCSelect<ItemType>));
     await tester.pumpAndSettle();
-    // The last type: the picker's list builds it once scrolled to.
-    await tester.scrollUntilVisible(
-      find.text('Secure Note'),
-      100,
-      scrollable: find
+    // The last type: the picker's list builds it once scrolled to. Its
+    // list is found once, by the first type, which scrolls away.
+    final picker = tester.widget<Scrollable>(
+      find
           .ancestor(
             of: find.text('Apple Auth Key').last,
             matching: find.byType(Scrollable),
           )
           .first,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Secure Note'),
+      100,
+      scrollable: find.byWidget(picker),
     );
     await tester.tap(find.text('Secure Note').last);
     await tester.pumpAndSettle();
