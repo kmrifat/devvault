@@ -81,6 +81,9 @@ enum DesktopSymbol {
   document,
   remove,
 
+  /// Deletes an item or app (the trash can).
+  delete,
+
   /// Closes something passing (a toast).
   close,
 
@@ -107,6 +110,7 @@ enum DesktopSymbol {
     conflicts => CupertinoIcons.arrow_merge,
     unreadable => CupertinoIcons.exclamationmark_shield,
     add => CupertinoIcons.plus,
+    delete => CupertinoIcons.trash,
     addCircle => CupertinoIcons.plus_circle,
     importFile => CupertinoIcons.arrow_down_doc,
     tag => CupertinoIcons.tag,
@@ -181,6 +185,7 @@ enum DesktopSymbol {
     conflicts => fl.FluentIcons.branch_merge,
     unreadable => fl.FluentIcons.shield_alert,
     add => fl.FluentIcons.add,
+    delete => fl.FluentIcons.delete,
     addCircle => fl.FluentIcons.circle_addition,
     importFile => fl.FluentIcons.download,
     tag => fl.FluentIcons.tag,
@@ -253,6 +258,7 @@ enum DesktopSymbol {
     conflicts => yaru.YaruIcons.important,
     unreadable => yaru.YaruIcons.shield_warning,
     add => yaru.YaruIcons.plus,
+    delete => yaru.YaruIcons.trash,
     // Yaru has no circled plus.
     addCircle => yaru.YaruIcons.plus,
     importFile => yaru.YaruIcons.document_open,

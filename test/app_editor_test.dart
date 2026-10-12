@@ -403,9 +403,7 @@ void main() {
       await open(tester);
       await tester.tap(inSidebar('Ledgerly'));
       await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('App actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete app…'));
+      await tester.tap(find.bySemanticsLabel('Delete app…'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('its item stays in the vault under “No app”'),

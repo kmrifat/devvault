@@ -354,7 +354,7 @@ class _OrganizationDetails extends ConsumerWidget {
 
 /// The selected app's organization and kind, when set, over its
 /// identifiers (bundle IDs, package names, domains, URLs, repositories …),
-/// with Edit app… and, under ⋯, Delete app…. The app's notes, when it has
+/// with Edit app… and Delete app… (a trash button). The app's notes, when it has
 /// any, fold out under them.
 class _AppDetails extends ConsumerWidget {
   const _AppDetails({required this.app, required this.itemCount});
@@ -426,16 +426,13 @@ class _AppDetails extends ConsumerWidget {
               label: 'Edit app…',
               onPressed: () => editApp(context, app),
             ),
-            DesktopPullDownButton(
-              label: 'App actions',
-              actions: [
-                DesktopMenuAction(
-                  'Delete app…',
-                  macSymbol: 'trash',
-                  () => deleteApp(context, ref, app, itemCount: itemCount),
-                  destructive: true,
-                ),
-              ],
+            // Its one command, by its own symbol rather than a ⋯ menu.
+            DesktopSymbolButton(
+              symbol: DesktopSymbol.delete,
+              label: 'Delete app…',
+              destructive: true,
+              onPressed: () =>
+                  deleteApp(context, ref, app, itemCount: itemCount),
             ),
           ],
         ),

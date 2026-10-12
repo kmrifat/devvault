@@ -35,7 +35,7 @@ String itemHistory(Item item, {required bool onThisDevice}) {
 }
 
 /// Design frame N03's inspector: the selected item's type, name and place,
-/// Export / Edit / ⋯, its expiry and where that date came from, its fields
+/// Export / Edit / Delete, its expiry and where that date came from, its fields
 /// (secrets masked until revealed, copied through the clipboard guard),
 /// its files, notes and tags. When it was made and changed is in the
 /// window's status bar.
@@ -295,7 +295,8 @@ class _Placeholder extends StatelessWidget {
 }
 
 /// The type tile, name and "Type · App › Platform › Environment", then
-/// Export, Edit and ⋯ (Replace file…, Delete item…).
+/// Export, Edit, Replace files… (only for an item with more than one) and
+/// Delete item… (a trash button).
 class _Header extends ConsumerWidget {
   const _Header({required this.item, required this.app});
 
@@ -364,23 +365,22 @@ class _Header extends ConsumerWidget {
               onPressed: () => editItem(context, item),
             ),
           ),
-        DesktopPullDownButton(
-          label: 'More actions',
-          actions: [
-            if (!item.isReadOnly && item.attachments.isNotEmpty)
-              DesktopMenuAction(
-                'Replace file…',
-                macSymbol: 'arrow.triangle.2.circlepath',
-                () => replaceFile(context, item),
-              ),
-            DesktopMenuAction(
-              'Delete item…',
-              macSymbol: 'trash',
-              () => deleteItem(context, ref, item),
-              destructive: true,
-              startsGroup: true,
+        // The File box offers Replace… for an item's one file; with more,
+        // replacing (all of them, with one file) lives up here.
+        if (!item.isReadOnly && item.attachments.length > 1)
+          button(
+            DesktopButton(
+              label: 'Replace files…',
+              onPressed: () => replaceFile(context, item),
             ),
-          ],
+          ),
+        // Delete by its own symbol: a ⋯ menu held only this and Replace
+        // file… before.
+        DesktopSymbolButton(
+          symbol: DesktopSymbol.delete,
+          label: 'Delete item…',
+          destructive: true,
+          onPressed: () => deleteItem(context, ref, item),
         ),
       ],
     );

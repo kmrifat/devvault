@@ -79,7 +79,7 @@ code's screenshots under `screenshots/` show the result.
         item…;
       - the Apps label (without organizations): New organization…, New
         app…, New item…, New secure note….
-    - On macOS these menus, and the ⋯ pull-downs, are AppKit's own
+    - On macOS these menus, and pull-down buttons, are AppKit's own
       `NSMenu` (P7-01), with an SF Symbol beside each command; Windows
       and Linux use their kit's menus.
     - An empty vault's explorer says what apps and organizations are for,
@@ -124,7 +124,8 @@ code's screenshots under `screenshots/` show the result.
     - The selected row is filled with the accent colour.
     - Warning and conflict show as badges.
   - The **inspector**:
-    - a header (type tile, name, path) with Export, Edit and ⋯;
+    - a header (type tile, name, path) with Export, Edit and Delete (a
+      trash button);
     - an expiry box with where the date came from;
     - a Fields table (value, "From file" when read from the file, reveal,
       copy); secrets show eight drawn dots;

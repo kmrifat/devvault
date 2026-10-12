@@ -371,9 +371,7 @@ void main() {
       router(tester).go(Routes.vault(tag: null, item: maps.id));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.bySemanticsLabel('More actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete item…'));
+      await tester.tap(find.bySemanticsLabel('Delete item…'));
       await tester.pumpAndSettle();
       expect(find.text('Delete “Maps API key”?'), findsOneWidget);
 
@@ -382,9 +380,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(index(tester).items, contains(maps.id));
 
-      await tester.tap(find.bySemanticsLabel('More actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete item…'));
+      await tester.tap(find.bySemanticsLabel('Delete item…'));
       await tester.pumpAndSettle();
       await settleWrite(
         tester,

@@ -161,7 +161,7 @@ void main() {
       expect(rect.right, window.width - DesktopMetrics.toastInset);
       expect(rect.bottom, statusBarTop - DesktopMetrics.toastInset);
       // The toolbar and the inspector's header row (title, Export, Edit,
-      // ⋯) under it.
+      // Delete) under it.
       const header = Rect.fromLTWH(
         0,
         0,
