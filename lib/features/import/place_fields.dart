@@ -1,3 +1,5 @@
+import '../../core/item_templates.dart';
+import '../../data/vault_filter.dart' show VaultLabels;
 import '../../shared/desktop_ui.dart'
     show DesktopIcon, DesktopMetrics, DesktopSymbol, DesktopThemeContext;
 import '../../shared/ui.dart';
@@ -124,6 +126,48 @@ List<String> placeSuggestions(List<String> spec, Iterable<String?> used) => [
 String? typedPlace(String text) {
   final value = text.trim();
   return value.isEmpty ? null : value;
+}
+
+/// The words of a platform or environment combo box: SPEC §6.1's values
+/// read by the names the filters and sidebar use ("iOS", "Production"),
+/// anything else exactly as typed. They read "ios" and "production" in the
+/// sheets before P7-05.
+enum PlaceKind {
+  platform(ItemTemplates.platforms),
+  environment(ItemTemplates.environments);
+
+  const PlaceKind(this.spec);
+
+  /// The values the form suggests.
+  final List<String> spec;
+
+  String _name(String value) => switch (this) {
+    platform => VaultLabels.platform(value),
+    environment => VaultLabels.environment(value),
+  };
+
+  /// What the field shows for [value].
+  String label(String? value) => value == null
+      ? ''
+      : spec.contains(value)
+      ? _name(value)
+      : value;
+
+  /// The suggestions, by their labels: [spec]'s, then what the vault
+  /// already [used].
+  List<String> suggestions(Iterable<String?> used) =>
+      placeSuggestions(spec, used).map(label).toList();
+
+  /// What to store for [text]: a suggested value when [text] is its name
+  /// ("Android" is `android`), else the text as typed; null when empty.
+  String? value(String text) {
+    final typed = typedPlace(text);
+    if (typed == null) return null;
+    for (final value in spec) {
+      if (_name(value) == typed) return value;
+    }
+    return typed;
+  }
 }
 
 /// How a [SheetNote]'s note reads: a plain hint, something still needed,

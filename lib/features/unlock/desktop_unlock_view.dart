@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' show Tooltip;
+import 'package:flutter/services.dart';
 import 'package:vault_core/vault_core.dart' show VaultHeader;
 
 import '../../services/biometric_key_store.dart' show Biometry;
@@ -91,23 +93,45 @@ class DesktopUnlockView extends StatelessWidget {
               ],
             ),
       children: [
+        // Vaults have no name, so nothing is made up: the ID's first eight
+        // characters, enough to tell two apart; the whole ID in the tooltip
+        // and on right-click (P7-05).
         if (header != null)
-          Text.rich(
-            TextSpan(
-              children: [
-                const TextSpan(text: 'Locked · '),
-                TextSpan(
-                  text: 'vault ${header.vaultId}',
-                  style: AppText.mono(
-                    context,
-                    fontSize: DesktopMetrics.secondarySize,
-                  ).copyWith(color: colors.secondaryText),
+          Tooltip(
+            message: 'Vault ${header.vaultId}',
+            child: DesktopContextMenu(
+              actions: [
+                DesktopMenuAction(
+                  'Copy vault ID',
+                  macSymbol: 'doc.on.doc',
+                  () => Clipboard.setData(ClipboardData(text: header.vaultId)),
                 ),
               ],
+              child: Container(
+                // Right-clickable, so a target of its own size.
+                constraints: const BoxConstraints(
+                  minHeight: DesktopMetrics.minTarget,
+                ),
+                alignment: Alignment.center,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Locked · vault '),
+                      TextSpan(
+                        text: shortVaultId(header.vaultId),
+                        style: AppText.mono(
+                          context,
+                          fontSize: DesktopMetrics.secondarySize,
+                        ).copyWith(color: colors.secondaryText),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: secondary,
+                ),
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: secondary,
           ),
         const SizedBox(height: 28),
         const AgentWaitBanner(),
@@ -226,3 +250,7 @@ class _SubmitArrow extends StatelessWidget {
     );
   }
 }
+
+/// A vault ID's first eight characters: how the unlock screen names the
+/// vault.
+String shortVaultId(String id) => id.length <= 8 ? id : id.substring(0, 8);

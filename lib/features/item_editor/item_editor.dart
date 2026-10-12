@@ -30,13 +30,7 @@ import '../../shared/desktop_ui.dart'
         showDesktopSheet;
 import '../../shared/ui.dart';
 import '../import/place_fields.dart'
-    show
-        NoteTone,
-        SheetNote,
-        SheetNotice,
-        SourceTag,
-        placeSuggestions,
-        typedPlace;
+    show NoteTone, PlaceKind, SheetNote, SheetNotice, SourceTag;
 import '../notes/notes.dart'
     show DesktopNotesEditor, PhoneNotesField, SecureNoteEditor;
 import '../vault/desktop_item_type.dart' show DesktopTypeTile;
@@ -458,30 +452,31 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
                         width: placeWidth,
                         child: DesktopComboBox(
                           key: const ValueKey('item-platform'),
-                          value: draft.platform ?? '',
+                          value: PlaceKind.platform.label(draft.platform),
                           placeholder: 'Platform',
                           menuLabel: 'Platform suggestions',
-                          suggestions: placeSuggestions(
-                            ItemTemplates.platforms,
+                          suggestions: PlaceKind.platform.suggestions(
                             items.map((i) => i.platform),
                           ),
-                          onChanged: (text) =>
-                              setState(() => draft.platform = typedPlace(text)),
+                          onChanged: (text) => setState(
+                            () =>
+                                draft.platform = PlaceKind.platform.value(text),
+                          ),
                         ),
                       ),
                       SizedBox(
                         width: placeWidth,
                         child: DesktopComboBox(
                           key: const ValueKey('item-environment'),
-                          value: draft.environment ?? '',
+                          value: PlaceKind.environment.label(draft.environment),
                           placeholder: 'Environment',
                           menuLabel: 'Environment suggestions',
-                          suggestions: placeSuggestions(
-                            ItemTemplates.environments,
+                          suggestions: PlaceKind.environment.suggestions(
                             items.map((i) => i.environment),
                           ),
                           onChanged: (text) => setState(
-                            () => draft.environment = typedPlace(text),
+                            () => draft.environment = PlaceKind.environment
+                                .value(text),
                           ),
                         ),
                       ),
@@ -630,6 +625,7 @@ class _FieldTable extends StatelessWidget {
                 name: Text('Field', style: header),
                 value: Text('Value', style: header),
                 secret: Text('Secret', style: header),
+                remove: Text('Remove', style: header),
               ),
             ),
           ),
@@ -659,6 +655,10 @@ class _FieldTable extends StatelessWidget {
 
 /// The table's columns: name, value (the rest), secret, then room for the
 /// remove button.
+/// A field row's height: an editable row's text fields and buttons, and
+/// the same for a locked one.
+const double _fieldRowHeight = 32;
+
 class _FieldColumns extends StatelessWidget {
   const _FieldColumns({
     required this.name,
@@ -681,8 +681,8 @@ class _FieldColumns extends StatelessWidget {
         children: [
           SizedBox(width: 150, child: name),
           Expanded(child: value),
-          SizedBox(width: 96, child: secret),
-          SizedBox(width: DesktopMetrics.toolbarSearchHeight, child: remove),
+          SizedBox(width: 48, child: Center(child: secret)),
+          SizedBox(width: 52, child: Center(child: remove)),
         ],
       ),
     );
@@ -731,17 +731,41 @@ class _FieldRowState extends State<_FieldRow> {
     ).copyWith(color: colors.text);
     final Widget row;
     if (field.fromFile) {
+      // Read from the file and locked: indented like the fields' text, the
+      // "From file" tag in the value cell, and Secret showing what the file
+      // said (P7-05; the tag used to sit in the Secret column).
       row = _FieldColumns(
-        name: Text(field.name),
-        value: field.secret
-            ? SecretMask(color: colors.text)
-            : Text(
-                field.value,
-                style: mono,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        name: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: Text(field.name),
+        ),
+        value: Row(
+          spacing: 6,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: field.secret
+                    ? Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SecretMask(color: colors.text),
+                      )
+                    : Text(
+                        field.value,
+                        style: mono,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
               ),
-        secret: const SourceTag('From file'),
+            ),
+            const SourceTag('From file'),
+          ],
+        ),
+        secret: DesktopCheckbox(
+          label: '',
+          value: field.secret,
+          onChanged: null,
+        ),
       );
     } else {
       final name = field.name.isEmpty ? 'Field' : field.name;
@@ -808,10 +832,9 @@ class _FieldRowState extends State<_FieldRow> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 2,
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: DesktopMetrics.toolbarSearchHeight,
-            ),
+          // One height for every row, locked or editable.
+          SizedBox(
+            height: _fieldRowHeight,
             child: Center(child: row),
           ),
           if (widget.error case final error?)

@@ -563,8 +563,9 @@ void main() {
       // Environment: picked from SPEC §6.1's suggestions.
       await tester.tap(find.bySemanticsLabel('Environment suggestions'));
       await tester.pumpAndSettle();
-      expect(find.text('development'), findsOneWidget);
-      await tester.tap(find.text('staging').last);
+      // By the names the filters use; the stored value is SPEC's.
+      expect(find.text('Development'), findsOneWidget);
+      await tester.tap(find.text('Staging').last);
       await tester.pumpAndSettle();
       // Tags: Return makes each one a token.
       final tags = input(inSheet(find.byType(DesktopTokenField)));

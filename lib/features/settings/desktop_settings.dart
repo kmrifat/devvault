@@ -558,8 +558,8 @@ class _BiometricRow extends ConsumerWidget {
   }
 }
 
-/// The footer: the vault's id and folder, and how it's encrypted, read
-/// from `vault.json`. Copy ID and Show in Finder act on them.
+/// The vault: its id and folder, and how it's encrypted, read from
+/// `vault.json`, with Copy and Show in Finder beside them.
 class _VaultFacts extends ConsumerWidget {
   const _VaultFacts({required this.vault});
 
@@ -567,7 +567,6 @@ class _VaultFacts extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.desktopColors;
     final revealer = ref.watch(folderRevealerProvider);
     final kdf = vault.header.kdf;
     final folder = vault.store.root;
@@ -576,58 +575,22 @@ class _VaultFacts extends ConsumerWidget {
     final shownPath = folder.path.startsWith(supportDir)
         ? 'App data${folder.path.substring(supportDir.length)}'
         : folder.path;
-    final secondary = TextStyle(
-      fontSize: DesktopMetrics.secondarySize,
-      color: colors.secondaryText,
-    );
-    final mono = AppText.mono(
-      context,
-      fontSize: DesktopMetrics.secondarySize,
-      color: colors.secondaryText,
-    );
     final showLabel = switch (context.desktopKit) {
       DesktopKit.macos => 'Show in Finder',
       DesktopKit.fluent => 'Show in Explorer',
       DesktopKit.yaru => 'Show in Files',
     };
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 6,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 1),
-            child: DesktopIcon(DesktopSymbol.info, size: 12),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 3,
-              children: [
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 4,
-                  children: [
-                    Text('Vault ID', style: secondary),
-                    Text(vault.vaultId, style: mono),
-                    Text('·', style: secondary),
-                    Text(shownPath, style: mono),
-                  ],
-                ),
-                Text(
-                  'XChaCha20-Poly1305 · Argon2id '
-                  '${kdf.memLimit ~/ (1024 * 1024)} MiB, ${kdf.opsLimit} '
-                  '${kdf.opsLimit == 1 ? 'pass' : 'passes'} · '
-                  'format v${Envelope.formatVersion}',
-                  style: secondary,
-                ),
-              ],
-            ),
-          ),
-          DesktopButton(
-            label: 'Copy ID',
+    // A group like the ones above, one fact per row, each action beside
+    // its fact; the ID and path used to wrap in mono beside two buttons
+    // (P7-05).
+    return DesktopSettingsBox(
+      children: [
+        DesktopSettingsRow(
+          title: 'Vault ID',
+          description: vault.vaultId,
+          trailing: DesktopButton(
+            label: 'Copy',
             onPressed: () async {
               await ref
                   .read(clipboardGuardProvider)
@@ -643,13 +606,26 @@ class _VaultFacts extends ConsumerWidget {
               );
             },
           ),
-          if (revealer.isSupported)
-            DesktopButton(
-              label: showLabel,
-              onPressed: () => revealer.reveal(folder),
-            ),
-        ],
-      ),
+        ),
+        DesktopSettingsRow(
+          title: 'Location',
+          description: shownPath,
+          trailing: revealer.isSupported
+              ? DesktopButton(
+                  label: showLabel,
+                  onPressed: () => revealer.reveal(folder),
+                )
+              : null,
+        ),
+        DesktopSettingsRow(
+          title: 'Encryption',
+          description:
+              'XChaCha20-Poly1305 · Argon2id '
+              '${kdf.memLimit ~/ (1024 * 1024)} MiB, ${kdf.opsLimit} '
+              '${kdf.opsLimit == 1 ? 'pass' : 'passes'} · '
+              'format v${Envelope.formatVersion}',
+        ),
+      ],
     );
   }
 }
