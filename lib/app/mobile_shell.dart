@@ -13,7 +13,7 @@ import '../data/providers.dart';
 /// On iPhone the tab bar is UIKit's own (`native_liquid_glass`): Liquid
 /// Glass on iOS 26, the standard bar before it, with SF Symbols. It hides
 /// itself while a sheet or dialog covers the shell. Android, and tests
-/// ([nativeTabBarProvider]), keep bc_ui's floating bar.
+/// ([nativeBarsProvider]), keep bc_ui's floating bar.
 class MobileShell extends ConsumerWidget {
   const MobileShell({super.key, required this.navigationShell});
 
@@ -39,7 +39,7 @@ class MobileShell extends ConsumerWidget {
       backgroundColor: bc.background,
       extendBody: true,
       body: navigationShell,
-      bottomNavigationBar: ref.watch(nativeTabBarProvider)
+      bottomNavigationBar: ref.watch(nativeBarsProvider)
           ? LiquidGlassTabBar(
               currentIndex: navigationShell.currentIndex,
               onTabSelected: _select,

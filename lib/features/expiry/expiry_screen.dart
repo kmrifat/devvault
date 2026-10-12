@@ -118,12 +118,37 @@ class ExpiryScreen extends ConsumerWidget {
       ],
     ];
 
+    // On iPhone the title (and Show all) is in UIKit's header instead.
+    final native = !desktop && ref.watch(nativeBarsProvider);
     return Scaffold(
       backgroundColor: bc.background,
+      extendBodyBehindAppBar: native,
+      appBar: native
+          ? NativePhoneHeader(
+              title: 'Expiry',
+              actions: [
+                if (onlyExpired)
+                  NativeHeaderAction(
+                    id: 'all',
+                    label: 'Show all',
+                    onPressed: () => context.go(Routes.expiry),
+                  ),
+              ],
+            )
+          : null,
       body: SingleChildScrollView(
         padding: desktop
             ? const EdgeInsets.fromLTRB(32, 24, 32, 32)
-            : const EdgeInsets.fromLTRB(16, 16, 16, 120),
+            : EdgeInsets.fromLTRB(
+                16,
+                16 +
+                    (native
+                        ? MediaQuery.paddingOf(context).top +
+                              NativePhoneHeader.barHeight
+                        : 0),
+                16,
+                120,
+              ),
         child: Align(
           alignment: Alignment.topLeft,
           child: ConstrainedBox(
@@ -131,20 +156,21 @@ class ExpiryScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: BCText('Expiry', type: BCTextType.h2),
-                    ),
-                    if (onlyExpired)
-                      BCButton(
-                        size: BCButtonSize.sm,
-                        variant: BCButtonVariant.ghost,
-                        onPressed: () => context.go(Routes.expiry),
-                        child: const Text('Show all'),
+                if (!native)
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: BCText('Expiry', type: BCTextType.h2),
                       ),
-                  ],
-                ),
+                      if (onlyExpired)
+                        BCButton(
+                          size: BCButtonSize.sm,
+                          variant: BCButtonVariant.ghost,
+                          onPressed: () => context.go(Routes.expiry),
+                          child: const Text('Show all'),
+                        ),
+                    ],
+                  ),
                 const SizedBox(height: BCSpacing.xs),
                 const BCText(
                   'Every date here was read from a file or entered by you. '

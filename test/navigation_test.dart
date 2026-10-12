@@ -7,6 +7,7 @@ import 'package:devvault/features/pairing/pair_screen.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
+import 'package:devvault/shared/widgets/native_phone_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -182,7 +183,7 @@ void main() {
         tester,
         location: Routes.vault(),
         layout: AppLayout.mobile,
-        overrides: [nativeTabBarProvider.overrideWithValue(true)],
+        overrides: [nativeBarsProvider.overrideWithValue(true)],
       );
       expect(find.byType(LiquidGlassTabBar), findsOneWidget);
       expect(find.byType(BCBottomNav), findsNothing);
@@ -198,6 +199,40 @@ void main() {
         ['square.stack.3d.up', 'clock', 'gearshape'],
       );
       expect(bar.currentIndex, 0);
+    });
+
+    testWidgets('on iPhone each screen\'s header is UIKit\'s', (tester) async {
+      setView(tester, AppLayout.mobile);
+      await pumpUnlockedApp(
+        tester,
+        location: Routes.vault(),
+        layout: AppLayout.mobile,
+        overrides: [nativeBarsProvider.overrideWithValue(true)],
+      );
+      NativePhoneHeader header() =>
+          tester.widget<NativePhoneHeader>(find.byType(NativePhoneHeader));
+
+      expect(header().title, 'Vault');
+      expect(
+        [for (final a in header().actions) a.symbol],
+        ['square.and.arrow.down', 'plus'],
+      );
+      expect(find.byType(BCSliverAppHeader), findsNothing);
+
+      final router = GoRouter.of(tester.element(find.byType(Scaffold).first));
+      router.go(Routes.expiry);
+      await tester.pumpAndSettle();
+      expect(header().title, 'Expiry');
+      // The title is the header's, not a heading in the page too.
+      expect(
+        find.byWidgetPredicate((w) => w is BCText && w.data == 'Expiry'),
+        findsNothing,
+      );
+
+      router.go(Routes.settings);
+      await tester.pumpAndSettle();
+      expect(header().title, 'Settings');
+      expect(header().onBack, isNull);
     });
 
     testWidgets('an item is pushed as its own screen', (tester) async {
