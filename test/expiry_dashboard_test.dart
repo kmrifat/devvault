@@ -227,6 +227,17 @@ void main() {
       expect(inScreen(find.text('Nothing to track yet')), findsOneWidget);
     });
 
+    testWidgets('the phone Expiry tab counts each group and says the app', (
+      tester,
+    ) async {
+      await open(tester, layout: AppLayout.mobile);
+      expect(find.bySemanticsLabel('1 Expired'), findsOneWidget);
+      expect(find.bySemanticsLabel('2 In 30 days'), findsOneWidget);
+      expect(find.bySemanticsLabel('1 Later'), findsOneWidget);
+      expect(inScreen(find.text('Kitchenly · from file')), findsWidgets);
+      expect(inScreen(find.text('in 12 days')), findsOneWidget);
+    });
+
     testWidgets('the phone Expiry tab pushes the item screen', (tester) async {
       await open(tester, layout: AppLayout.mobile);
       expect(row('Distribution certificate'), findsOneWidget);
