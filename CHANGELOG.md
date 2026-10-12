@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.1 (not released yet)
+
+Fixes to the item editor and the inspector, from a look at 1.1.0.
+
+- A masked value's dots no longer run together: they're drawn with room
+  between them in every password field.
+- The item editor's field rows no longer cut off the bottom of their
+  text, and a value you show wraps onto more lines so all of it can be
+  read (a connection string, a key). Field names get more room.
+- The inspector and the app header have a Delete button with a trash
+  icon in place of a ⋯ menu that held little else. Items with more than
+  one file get Replace files… beside it.
+- Buttons beside Edit are the same height as Edit on macOS, Windows and
+  Linux.
+
 ## 1.1.0 (2026-10-12)
 
 [v1.1.0](https://github.com/kmrifat/devvault/releases/tag/v1.1.0), macOS and Linux.
