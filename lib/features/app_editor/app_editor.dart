@@ -406,6 +406,18 @@ class _AppEditorState extends ConsumerState<AppEditor> {
                     ),
                   ),
                 ),
+                DesktopFormRow(
+                  label: 'Colour',
+                  child: _ColorPicker(
+                    value: _draft.colorName,
+                    automatic: switch (_draft.base) {
+                      final app? => AppBadge.automaticFor(app.id),
+                      null => null,
+                    },
+                    onChanged: (name) =>
+                        setState(() => _draft.colorName = name),
+                  ),
+                ),
               ],
             ),
             _IdentifierTable(
@@ -434,6 +446,136 @@ class _AppEditorState extends ConsumerState<AppEditor> {
                 child: Text(error),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The badge colour (SPEC §6.2 `color`, P7-06): Automatic, the colour the
+/// app shows when none is picked, then the six to pick from. The badges'
+/// colours used to come only from the app's id, so apps shared them.
+class _ColorPicker extends StatelessWidget {
+  const _ColorPicker({
+    required this.value,
+    required this.automatic,
+    required this.onChanged,
+  });
+
+  /// The picked [AppColor.wireName]; null is Automatic. A name this
+  /// version doesn't know stays until another is picked.
+  final String? value;
+
+  /// What Automatic looks like for this app; null for a new app, which has
+  /// no id yet.
+  final Color? automatic;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final value = this.value;
+    final name = value == null
+        ? 'Automatic'
+        : AppColor.fromWireName(value)?.label ?? value;
+    return Row(
+      spacing: 6,
+      children: [
+        _Swatch(
+          color: automatic ?? colors.tertiaryText,
+          label: 'Automatic',
+          initial: 'A',
+          selected: value == null,
+          onTap: () => onChanged(null),
+        ),
+        for (final color in AppColor.values)
+          _Swatch(
+            color: AppBadge.of(color),
+            label: color.label,
+            selected: value == color.wireName,
+            onTap: () => onChanged(color.wireName),
+          ),
+        const SizedBox(width: 4),
+        // For the eye; the picked swatch already says it to screen readers.
+        Flexible(
+          child: ExcludeSemantics(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: DesktopMetrics.secondarySize,
+                color: colors.secondaryText,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One colour to pick: a rounded square, ringed in the accent colour when
+/// picked.
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    required this.color,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.initial,
+  });
+
+  final Color color;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  /// A letter on the swatch (Automatic's "A").
+  final String? initial;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final initial = this.initial;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          width: DesktopMetrics.minTarget,
+          height: DesktopMetrics.minTarget,
+          // The ring takes the padding's place, so the swatch stays put.
+          padding: EdgeInsets.all(selected ? 2 : 4),
+          decoration: BoxDecoration(
+            border: selected
+                ? Border.all(color: colors.accent, width: 2)
+                : null,
+            borderRadius: const BorderRadius.all(Radius.circular(7)),
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+            ),
+            child: initial == null
+                ? null
+                : Center(
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: colors.onAccent,
+                      ),
+                    ),
+                  ),
+          ),
         ),
       ),
     );

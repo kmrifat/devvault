@@ -345,7 +345,7 @@ func canonicalJSON(v any) string {
 }
 
 // normalizeApp applies SPEC §6.2's writer rules to a decoded app record:
-// organization, kind and notes trimmed (left out when empty), identifier
+// organization, kind, color and notes trimmed (left out when empty), identifier
 // values trimmed, empty ones and repeats within a kind dropped, bundle_id and
 // package_name entries moved to bundle_ids / package_names. It returns the
 // record a conforming writer stores and every identifier a reader shows:
@@ -355,7 +355,7 @@ func normalizeApp(in map[string]any) (map[string]any, []appIdentifierVec) {
 	for k, v := range in {
 		out[k] = v
 	}
-	for _, key := range []string{"organization", "kind", "notes"} {
+	for _, key := range []string{"organization", "kind", "color", "notes"} {
 		s, _ := out[key].(string)
 		if s = strings.TrimSpace(s); s == "" {
 			delete(out, key)

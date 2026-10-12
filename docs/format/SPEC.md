@@ -336,6 +336,7 @@ with `app_id`.
 { "schema": 1, "id": "a1b2…", "name": "Billing API",
   "organization": "Acme Corp",
   "kind": "backend",
+  "color": "teal",
   "bundle_ids": ["com.acme.billing"], "package_names": [],
   "identifiers": [
     { "kind": "domain", "value": "api.acme.com" },
@@ -351,15 +352,17 @@ with `app_id`.
 | `name` | Required string. |
 | `organization` | Optional string: who the app is for (an employer, a client), as the user typed it. Never defaulted or inferred. It names an organization (§6.7). |
 | `kind` | Optional string, chosen by the user, never inferred: `mobile`, `web`, `desktop`, `backend`, `cli` (CLI or tool), `library`, `other`. A value a reader doesn't know MUST be kept and MAY be shown as it is. |
+| `color` | Optional string, chosen by the user, never inferred: the colour of the app's badge, by name: `orange`, `blue`, `purple`, `teal`, `green`, `rose`. Each client draws a name in its own palette. Without it a client picks a colour from the app's `id`, the same on every device. A name a reader doesn't know MUST be kept; the reader then shows the colour it would without one. |
 | `bundle_ids` | List of strings: Apple bundle IDs. Always written, `[]` when empty. |
 | `package_names` | List of strings: Android package names. Always written, `[]` when empty. |
 | `identifiers` | Optional list of `{"kind": string, "value": string}`: every other identifier. Kinds: `domain`, `url`, `repository`, `other`. An entry of a kind a reader doesn't know MUST be kept, in place, with any extra fields it has. |
 | `notes` | Optional string: the user's note about the app, as Markdown (CommonMark) text, rendered like an item's `notes` (§6.6). Not secret, but never indexed for search. |
 | `icon_blob_id` | Optional blob id. |
 
-`organization`, `kind`, `identifiers` and `notes` were added within schema
-1: they are optional, so a record without them is valid and means "not
-set", and readers that predate them keep them as unknown fields (§6).
+`organization`, `kind`, `color`, `identifiers` and `notes` were added
+within schema 1: they are optional, so a record without them is valid and
+means "not set", and readers that predate them keep them as unknown fields
+(§6).
 Readers MUST treat a missing field, `null`, `""` (for `notes`, also white
 space only) and (for `identifiers`) `[]` the same.
 
@@ -373,8 +376,8 @@ them is secret.
 **Writer rules.** A writer normalizes every app record it writes. The same
 rules applied by a reader give what the writer would store.
 
-1. `organization`, `kind` and `notes` are trimmed (Unicode white space at
-   both ends). If the result is empty, or the field is `null`, it is left
+1. `organization`, `kind`, `color` and `notes` are trimmed (Unicode white
+   space at both ends). If the result is empty, or the field is `null`, it is left
    out. Inside `notes`, nothing else changes: line breaks and Markdown are
    kept as typed.
 2. Each identifier's `kind` and `value` are trimmed. An entry whose kind or
@@ -398,13 +401,13 @@ type (for example an `identifiers` entry without a string `value`) makes
 the record unreadable, like any other malformed record (§10).
 
 **Older clients.** A client that predates these fields reads `bundle_ids`
-and `package_names` as before, and keeps `organization`, `kind`,
+and `package_names` as before, and keeps `organization`, `kind`, `color`,
 `identifiers` and `notes` unchanged when it rewrites the record (§6). It cannot merge
 them field by field: when it merges a concurrent edit (ADR-0004), its local
 copy of those fields wins as a whole.
 
-**Merging.** `name`, `organization`, `kind`, `notes` and `icon_blob_id`
-merge like item fields: the side that changed since the base wins, and on a clash the
+**Merging.** `name`, `organization`, `kind`, `color`, `notes` and
+`icon_blob_id` merge like item fields: the side that changed since the base wins, and on a clash the
 local value stays (apps have no conflict slot). `bundle_ids`,
 `package_names` and `identifiers` merge as sets per kind: everything either
 side added, minus what either side removed since the base.

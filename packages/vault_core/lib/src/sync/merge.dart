@@ -231,6 +231,7 @@ AppRecord mergeApps({
       remote.organization,
     ),
     kindName: pick(base?.kindName, local.kindName, remote.kindName),
+    colorName: pick(base?.colorName, local.colorName, remote.colorName),
     bundleIds: _mergeSet(base?.bundleIds, local.bundleIds, remote.bundleIds),
     packageNames: _mergeSet(
       base?.packageNames,

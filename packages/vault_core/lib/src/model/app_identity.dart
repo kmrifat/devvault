@@ -30,6 +30,32 @@ enum AppKind {
   static AppKind? fromWireName(String? wireName) => _byWireName[wireName];
 }
 
+/// The colour an app's badge shows (SPEC §6.2 `color`), when the user
+/// picked one. Optional and only ever chosen by the user; without it the
+/// app shows a colour chosen from its id. The vault stores the name, not a
+/// colour value, so each client draws it in its own palette.
+enum AppColor {
+  orange('orange', 'Orange'),
+  blue('blue', 'Blue'),
+  purple('purple', 'Purple'),
+  teal('teal', 'Teal'),
+  green('green', 'Green'),
+  rose('rose', 'Rose');
+
+  const AppColor(this.wireName, this.label);
+
+  final String wireName;
+  final String label;
+
+  static final Map<String, AppColor> _byWireName = {
+    for (final color in values) color.wireName: color,
+  };
+
+  /// The colour for [wireName], or `null` for one this version doesn't
+  /// know.
+  static AppColor? fromWireName(String? wireName) => _byWireName[wireName];
+}
+
 /// The kinds of identifier an app carries (SPEC §6.2).
 ///
 /// Bundle IDs and package names are stored in the record's original

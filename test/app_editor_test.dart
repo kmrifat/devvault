@@ -8,6 +8,7 @@ import 'package:devvault/features/app_editor/app_editor.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
+import 'package:devvault/shared/widgets/app_badge.dart';
 import 'package:devvault/shared/desktop_ui.dart'
     show DesktopComboBox, DesktopPopup;
 import 'package:flutter/material.dart';
@@ -366,6 +367,36 @@ void main() {
       );
       expect(inSidebar('Ledgerly Cloud'), findsOneWidget);
       expect(inSidebar('Ledgerly'), findsNothing);
+    });
+
+    testWidgets('a picked colour is saved and shown on the badge', (
+      tester,
+    ) async {
+      await open(tester);
+      final before = appNamed(tester, 'Ledgerly');
+      expect(before.colorName, isNull);
+      await tester.tap(inSidebar('Ledgerly'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit app…'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Automatic'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Teal'));
+      await tester.pumpAndSettle();
+      await settleWrite(
+        tester,
+        find.text('Save'),
+        () => appNamed(tester, 'Ledgerly').colorName == 'teal',
+      );
+      final badge = tester.widget<AppBadge>(
+        find.descendant(
+          of: find.byType(VaultSidebar),
+          matching: find.byWidgetPredicate(
+            (w) => w is AppBadge && w.app?.name == 'Ledgerly',
+          ),
+        ),
+      );
+      expect(AppBadge.colorFor(badge.app!), AppBadge.of(AppColor.teal));
     });
 
     testWidgets('deleting an app keeps its items under No app', (tester) async {
