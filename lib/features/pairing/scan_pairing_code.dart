@@ -57,25 +57,65 @@ class _ScanScreenState extends State<_ScanScreen> {
     final bc = context.bcTheme;
     return Scaffold(
       backgroundColor: bc.background,
+      // Expand: without it the stack took the size of its one unpositioned
+      // child, the header, and the camera filled only that strip.
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: MobileScanner(controller: _controller, onDetect: _onDetect),
+          MobileScanner(controller: _controller, onDetect: _onDetect),
+          // Where to hold the code.
+          Center(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: bc.accent, width: 3),
+                  borderRadius: BorderRadius.circular(BCRadius.xxl),
+                ),
+                child: const SizedBox.square(dimension: 240),
+              ),
+            ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(BCSpacing.md),
-              child: Row(
-                children: [
-                  BCCloseButton(onPressed: () => Navigator.of(context).pop()),
-                  const SizedBox(width: BCSpacing.sm),
-                  const Expanded(
-                    child: BCText(
-                      'Point the camera at the code on your other device',
-                      weight: BCTextWeight.medium,
-                    ),
+          // The header over a band of the background colour, so its text
+          // reads over any picture.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    bc.background.withValues(alpha: 0.85),
+                    bc.background.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    BCSpacing.md,
+                    BCSpacing.md,
+                    BCSpacing.md,
+                    BCSpacing.xl,
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      BCCloseButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      const SizedBox(width: BCSpacing.sm),
+                      const Expanded(
+                        child: BCText(
+                          'Point the camera at the code on your other device',
+                          weight: BCTextWeight.medium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
