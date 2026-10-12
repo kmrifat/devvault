@@ -6,6 +6,8 @@ import 'package:devvault/features/vault/mobile_vault_screen.dart';
 import 'package:devvault/features/vault/vault_list_pane.dart';
 import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:devvault/shared/desktop/desktop_toast.dart';
+import 'package:devvault/shared/desktop/desktop_icon_button.dart';
+import 'package:devvault/shared/desktop/desktop_text_field.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -132,6 +134,49 @@ void main() {
     Routes.vault(),
     sample: true,
     interact: editKeystore,
+    brightness: Brightness.light,
+  );
+
+  /// The editor with a password shown and a long value typed: the dots
+  /// have room between them, and a shown value wraps to its full length.
+  Future<void> editWithLongValue(WidgetTester tester) async {
+    await editKeystore(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .byWidgetPredicate(
+            (w) => w is DesktopIconButton && w.tooltip == 'Show value',
+          )
+          .first,
+    );
+    await tester.tap(find.text('Add Field'));
+    await tester.pumpAndSettle();
+    EditableText input(String placeholder) => tester.widget<EditableText>(
+      find
+          .descendant(
+            of: find.byWidgetPredicate(
+              (w) => w is DesktopTextField && w.placeholder == placeholder,
+              skipOffstage: false,
+            ),
+            matching: find.byType(EditableText, skipOffstage: false),
+            skipOffstage: false,
+          )
+          .last,
+    );
+    input('Value').controller.text =
+        'postgresql://limit_yes_user:AVNS_example@db-postgresql-fra1-0000'
+        '.example.com:25060/limit_yes?sslmode=require';
+    input('Name').controller.text = 'Database string';
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Add Field'));
+    await tester.pumpAndSettle();
+  }
+
+  shot(
+    'N03e-item-editor-values-light',
+    Routes.vault(),
+    sample: true,
+    interact: editWithLongValue,
     brightness: Brightness.light,
   );
   for (final kit in otherKits) {
