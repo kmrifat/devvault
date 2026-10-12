@@ -15,6 +15,7 @@ import '../../data/vault_session.dart';
 import '../../shared/ui.dart';
 import '../conflict/conflict_dialog.dart';
 import '../notes/notes.dart' show NoteView, copySecureNote;
+import 'expiry_date_sheet.dart';
 import 'vault_actions.dart';
 
 /// Design frame I5's item detail on a phone: one item's type, place in the
@@ -75,7 +76,14 @@ class ItemDetailPane extends ConsumerWidget {
           if (item.type == ItemType.secureNote)
             _SecureNoteCard(markdown: item.notes ?? '')
           else
-            _ExpiryCard(item: item, now: now),
+            _ExpiryCard(
+              item: item,
+              now: now,
+              // A date the file gave is a fact; one it didn't can be set.
+              onEdit: item.isReadOnly || item.expiresSource == ExpirySource.file
+                  ? null
+                  : () => showExpiryDateSheet(context, item),
+            ),
           if (item.fields.isNotEmpty)
             _Section(
               title: 'Fields',
@@ -289,10 +297,13 @@ Future<void> showItemMoreActions(
 
 /// When the item expires and how the app knows.
 class _ExpiryCard extends StatelessWidget {
-  const _ExpiryCard({required this.item, required this.now});
+  const _ExpiryCard({required this.item, required this.now, this.onEdit});
 
   final Item item;
   final DateTime now;
+
+  /// Opens the expiry date sheet; null when the date can't be edited here.
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +344,8 @@ class _ExpiryCard extends StatelessWidget {
       ),
     };
 
-    return _Surface(
+    final onEdit = this.onEdit;
+    final card = _Surface(
       padding: const EdgeInsets.all(14),
       child: Row(
         spacing: 12,
@@ -367,7 +379,27 @@ class _ExpiryCard extends StatelessWidget {
             ),
           ),
           if (expiresAt != null) ProvenanceLabel(source: item.expiresSource),
+          if (onEdit != null)
+            if (expiresAt == null)
+              BCButton(
+                size: BCButtonSize.sm,
+                variant: BCButtonVariant.secondary,
+                onPressed: onEdit,
+                child: const Text('Set date'),
+              )
+            else
+              Icon(LucideIcons.chevronRight, size: 18, color: bc.muted),
         ],
+      ),
+    );
+    if (onEdit == null || expiresAt == null) return card;
+    return Semantics(
+      button: true,
+      label: '$title, change the date',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onEdit,
+        child: card,
       ),
     );
   }
