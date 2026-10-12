@@ -4,6 +4,7 @@ import 'package:macos_ui/macos_ui.dart' as mac;
 
 import 'desktop_macos_menu.dart';
 import 'desktop_menu_focus.dart';
+import 'desktop_metrics.dart';
 import 'desktop_native_menu.dart';
 import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
@@ -88,7 +89,14 @@ class DesktopPullDownButton extends StatelessWidget {
         // Fluent's tooltip also names the button for screen readers.
         buttonBuilder: (context, onOpen) => fl.Tooltip(
           message: label,
-          child: fl.Button(onPressed: onOpen, child: icon),
+          child: fl.Button(
+            onPressed: onOpen,
+            // On a line of text, so the button is as tall as the text
+            // buttons beside it (Edit, Export); an icon alone is shorter.
+            child: Text.rich(
+              WidgetSpan(alignment: PlaceholderAlignment.middle, child: icon),
+            ),
+          ),
         ),
       ),
       DesktopKit.yaru => _YaruPullDown(
@@ -148,10 +156,13 @@ class _MacosPullDownState extends State<_MacosPullDown> {
     // The button carries the name; the tooltip would say it twice.
     excludeFromSemantics: true,
     child: SizedBox(
-      // An icon-only push button: the kit's 60 pt minimum is for text.
+      // An icon-only push button: the kit's 60 pt minimum is for text. As
+      // tall as the text buttons beside it (Edit, Export), which are
+      // DesktopButton's large push buttons.
       width: 32,
+      height: DesktopMetrics.buttonHeight,
       child: mac.PushButton(
-        controlSize: mac.ControlSize.regular,
+        controlSize: mac.ControlSize.large,
         secondary: true,
         semanticLabel: widget.label,
         onPressed: onPressed,
@@ -247,11 +258,24 @@ class _YaruPullDownState extends State<_YaruPullDown> {
           ),
         ],
       ],
-      // The tooltip isn't a label; the icon's is.
-      builder: (context, menu, _) => IconButton(
-        tooltip: widget.label,
-        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-        icon: widget.icon,
+      // The tooltip isn't a label; the icon's is. Outlined, and as tall
+      // as the text buttons beside it (Edit, Export), which are too.
+      builder: (context, menu, _) => Tooltip(
+        message: widget.label,
+        excludeFromSemantics: true,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            padding: DesktopMetrics.yaruSymbolButtonPadding,
+          ),
+          onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+          // On a line of text, as tall as a label.
+          child: Text.rich(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: widget.icon,
+            ),
+          ),
+        ),
       ),
     );
   }
