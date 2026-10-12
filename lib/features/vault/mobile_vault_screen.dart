@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart'
+    show LiquidGlassSegmentedControl;
 import 'package:vault_core/vault_core.dart';
 
 import '../../app/routes.dart';
+import '../../core/expiry.dart';
 import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
 import '../../data/vault_filter.dart';
@@ -35,7 +38,8 @@ class MobileVaultScreen extends ConsumerStatefulWidget {
   ConsumerState<MobileVaultScreen> createState() => _MobileVaultScreenState();
 }
 
-class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
+class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen>
+    with LargeTitleScroll {
   VaultFilter get _filter => VaultFilter.fromUri(widget.uri);
 
   void _go(VaultFilter filter) => context.go(filter.location());
@@ -103,19 +107,25 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
 
     // On iPhone the header is UIKit's, over the list (Scaffold below).
     final native = ref.watch(nativeBarsProvider);
+    final summary = _Summary(count: index.all.length, syncing: syncing);
+    final (expired, soon) = _expiryCounts(index.all, now);
     final list = CustomScrollView(
+      controller: titleScroll,
       // Pull to refresh needs a list that scrolls even when it's short.
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (native)
+        if (native) ...[
           SliverToBoxAdapter(
             child: SizedBox(
               height:
                   MediaQuery.paddingOf(context).top +
                   NativePhoneHeader.barHeight,
             ),
-          )
-        else
+          ),
+          SliverToBoxAdapter(
+            child: PhoneLargeTitle('Vault', subtitle: summary),
+          ),
+        ] else
           BCSliverAppHeader(
             largeTitle: const Text('Vault'),
             actions: [
@@ -136,29 +146,32 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
             ],
           ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, native ? 16 : 8, 16, 0),
           sliver: SliverList.list(
             children: [
-              if (syncing) ...[
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: SyncStatusChip(),
+              if (!native) ...[summary, const SizedBox(height: 12)],
+              if (native)
+                LiquidGlassSegmentedControl(
+                  labels: [for (final kind in VaultKind.values) kind.label],
+                  selectedIndex: filter.kind.index,
+                  onValueChanged: (i) =>
+                      _go(filter.withKind(VaultKind.values[i])),
+                  height: 36,
+                )
+              else
+                // Sized to their labels: four equal tabs don't fit a narrow
+                // phone.
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: BCTabs<VaultKind>(
+                    value: filter.kind,
+                    onValueChange: (kind) => _go(filter.withKind(kind)),
+                    items: [
+                      for (final kind in VaultKind.values)
+                        BCTabItem(value: kind, label: kind.label),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              // Sized to their labels: four equal tabs don't fit a narrow
-              // phone.
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: BCTabs<VaultKind>(
-                  value: filter.kind,
-                  onValueChange: (kind) => _go(filter.withKind(kind)),
-                  items: [
-                    for (final kind in VaultKind.values)
-                      BCTabItem(value: kind, label: kind.label),
-                  ],
-                ),
-              ),
               if (apps.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 SingleChildScrollView(
@@ -197,6 +210,9 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
                       for (final app in apps)
                         _AppChip(
                           label: app.name,
+                          count: index.all
+                              .where((i) => i.appId == app.id)
+                              .length,
                           leading: AppBadge(app: app, size: 16),
                           selected: filter.app == app.id,
                           onPressed: () => _go(
@@ -210,6 +226,12 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
                     ],
                   ),
                 ),
+              ],
+              if (expired + soon > 0 &&
+                  filter.isAll &&
+                  filter.kind == VaultKind.all) ...[
+                const SizedBox(height: 16),
+                _ExpiryCard(expired: expired, soon: soon),
               ],
               if (appNotes != null) ...[
                 const SizedBox(height: 16),
@@ -268,7 +290,13 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
                       BCText(
                         app?.name ?? 'No app',
                         type: BCTextType.bodySm,
-                        weight: BCTextWeight.medium,
+                        weight: BCTextWeight.semibold,
+                      ),
+                      BCText(
+                        groupItems.length == 1
+                            ? '1 item'
+                            : '${groupItems.length} items',
+                        type: BCTextType.bodyXs,
                         color: BCTextColor.muted,
                       ),
                     ],
@@ -304,7 +332,7 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
       extendBodyBehindAppBar: native,
       appBar: native
           ? NativePhoneHeader(
-              title: 'Vault',
+              title: titleInBar ? 'Vault' : '',
               actions: [
                 NativeHeaderAction(
                   id: 'import',
@@ -340,12 +368,16 @@ class _AppChip extends StatelessWidget {
     required this.selected,
     required this.onPressed,
     this.leading,
+    this.count,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onPressed;
   final Widget? leading;
+
+  /// How many items the chip's app holds, of every kind.
+  final int? count;
 
   @override
   Widget build(BuildContext context) {
@@ -356,8 +388,133 @@ class _AppChip extends StatelessWidget {
         variant: selected ? BCChipVariant.soft : BCChipVariant.secondary,
         color: selected ? BCChipColor.accent : BCChipColor.defaultColor,
         startContent: leading,
+        endContent: count == null
+            ? null
+            : BCText(
+                '$count',
+                type: BCTextType.bodyXs,
+                color: BCTextColor.muted,
+              ),
         onPressed: onPressed,
         child: Text(label),
+      ),
+    );
+  }
+}
+
+/// How many of [items] have expired, and how many expire within the
+/// warning window, at [now].
+(int, int) _expiryCounts(Iterable<Item> items, DateTime now) {
+  var expired = 0, soon = 0;
+  for (final item in items) {
+    switch (ExpiryState.of(item, now)) {
+      case ExpiryState.expired:
+        expired++;
+      case ExpiryState.soon:
+        soon++;
+      case ExpiryState.valid || ExpiryState.none:
+        break;
+    }
+  }
+  return (expired, soon);
+}
+
+/// The line under the title: how many items the vault holds and, with
+/// sync on, its status.
+class _Summary extends StatelessWidget {
+  const _Summary({required this.count, required this.syncing});
+
+  final int count;
+  final bool syncing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      spacing: 8,
+      children: [
+        BCText(
+          count == 1 ? '1 item' : '$count items',
+          type: BCTextType.bodySm,
+          color: BCTextColor.muted,
+        ),
+        if (syncing) const SyncStatusChip(),
+      ],
+    );
+  }
+}
+
+/// What needs attention, over the list (design frame I1): how many items
+/// have expired or expire soon. Opens the Expiry tab.
+class _ExpiryCard extends StatelessWidget {
+  const _ExpiryCard({required this.expired, required this.soon});
+
+  final int expired;
+  final int soon;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    final shape = BCShapes.continuous(BCRadius.xxxl);
+    final title = [
+      if (expired > 0) '$expired expired',
+      if (soon > 0) '$soon within ${ExpiryState.expiryWindow.inDays} days',
+    ].join(' · ');
+    return Semantics(
+      button: true,
+      label: '$title. Open Expiry',
+      excludeSemantics: true,
+      child: BCPressable(
+        onPressed: () => context.go(Routes.expiry),
+        shape: shape,
+        background: DecoratedBox(
+          decoration: ShapeDecoration(color: bc.warningSoft, shape: shape),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            spacing: 12,
+            children: [
+              DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: bc.warningSoftHover,
+                  shape: const CircleBorder(),
+                ),
+                child: SizedBox.square(
+                  dimension: 40,
+                  child: Icon(
+                    LucideIcons.clockAlert,
+                    size: 20,
+                    color: bc.warning,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 2,
+                  children: [
+                    BCText(
+                      title,
+                      type: BCTextType.bodySm,
+                      weight: BCTextWeight.semibold,
+                      style: TextStyle(color: bc.warningSoftForeground),
+                    ),
+                    BCText(
+                      'Dates read from files or set by you',
+                      type: BCTextType.bodyXs,
+                      style: TextStyle(color: bc.warningSoftForeground),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: bc.warningSoftForeground,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -2,10 +2,11 @@ import 'package:intl/intl.dart';
 import 'package:vault_core/vault_core.dart';
 
 import '../../core/expiry.dart';
+import '../../data/vault_filter.dart' show VaultLabels;
 import '../../shared/ui.dart';
 
-/// One item in the phone list (design frame B2): type tile, title, file
-/// name or type, and a conflict or expiry chip. The desktop shows items in
+/// One item in the phone list (design frame I1): type tile, title, type
+/// and platform, and a conflict or expiry chip. The desktop shows items in
 /// the vault table (`vault_list_pane.dart`).
 class VaultItemRow extends StatefulWidget {
   const VaultItemRow({
@@ -32,7 +33,6 @@ class _VaultItemRowState extends State<VaultItemRow> {
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
     final item = widget.item;
-    final file = item.attachments.firstOrNull?.filename;
     final typeLabel = item.type?.label ?? item.typeName;
 
     return Semantics(
@@ -75,22 +75,17 @@ class _VaultItemRowState extends State<VaultItemRow> {
                             color: bc.foreground,
                           ),
                         ),
-                        if (file != null)
-                          MonoText(
-                            file,
-                            middleEllipsis: true,
-                            style: TextStyle(
-                              fontSize: BCTypography.sizeXs,
-                              color: bc.muted,
-                            ),
-                          )
-                        else
-                          BCText(
+                        BCText(
+                          [
                             typeLabel,
-                            type: BCTextType.bodyXs,
-                            color: BCTextColor.muted,
-                            maxLines: 1,
-                          ),
+                            if (item.platform case final platform?)
+                              VaultLabels.platform(platform),
+                          ].join(' · '),
+                          type: BCTextType.bodyXs,
+                          color: BCTextColor.muted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),

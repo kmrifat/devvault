@@ -64,36 +64,118 @@ class NativePhoneHeader extends StatelessWidget implements PreferredSizeWidget {
       container: true,
       header: true,
       label: title,
-      child: SafeArea(
-        bottom: false,
-        child: LiquidGlassNavigationBar(
-          title: title,
-          height: barHeight,
-          tintColor: bc.accent,
-          brightness: Theme.of(context).brightness,
-          leadingItems: [
-            if (onBack != null)
-              const LiquidGlassNavBarItem(
-                id: 'back',
-                icon: NativeLiquidGlassIcon.sfSymbol('chevron.left'),
-              ),
-          ],
-          trailingItems: [
-            for (final action in actions)
-              switch (action.symbol) {
-                final symbol? => LiquidGlassNavBarItem(
-                  id: action.id,
-                  icon: NativeLiquidGlassIcon.sfSymbol(symbol),
+      // UIKit fades a page out under its bar (the scroll edge effect); a
+      // bar hosted over Flutter has no scroll view to do that, so the page
+      // fades here, behind it.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [bc.background, bc.background.withValues(alpha: 0)],
+            stops: const [0.8, 1],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: LiquidGlassNavigationBar(
+            title: title,
+            height: barHeight,
+            tintColor: bc.accent,
+            brightness: Theme.of(context).brightness,
+            leadingItems: [
+              if (onBack != null)
+                const LiquidGlassNavBarItem(
+                  id: 'back',
+                  icon: NativeLiquidGlassIcon.sfSymbol('chevron.left'),
                 ),
-                null => LiquidGlassNavBarItem(
-                  id: action.id,
-                  label: action.label,
-                ),
-              },
-          ],
-          onItemTapped: _tapped,
+            ],
+            trailingItems: [
+              for (final action in actions)
+                switch (action.symbol) {
+                  final symbol? => LiquidGlassNavBarItem(
+                    id: action.id,
+                    icon: NativeLiquidGlassIcon.sfSymbol(symbol),
+                  ),
+                  null => LiquidGlassNavBarItem(
+                    id: action.id,
+                    label: action.label,
+                  ),
+                },
+            ],
+            onItemTapped: _tapped,
+          ),
         ),
       ),
     );
+  }
+}
+
+/// A root tab's large title on iPhone (design frames I1, I2, I6, I7): the
+/// title, and an optional line of facts under it, at the top of the
+/// page, which scrolls with it. Pair it with [LargeTitleScroll], which
+/// puts the title in the [NativePhoneHeader] once this has scrolled under
+/// the bar, as UIKit's large titles do.
+class PhoneLargeTitle extends StatelessWidget {
+  const PhoneLargeTitle(this.title, {super.key, this.subtitle});
+
+  final String title;
+  final Widget? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(BCSpacing.md, 0, BCSpacing.md, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: BCSpacing.xxs,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: BCTypography.size3xl,
+                height: 1.2,
+                fontWeight: BCTypography.bold,
+                letterSpacing: BCTypography.trackingTight(BCTypography.size3xl),
+                color: bc.foreground,
+              ),
+            ),
+          ),
+          ?subtitle,
+        ],
+      ),
+    );
+  }
+}
+
+/// The scroll position of a page with a [PhoneLargeTitle]: [titleInBar]
+/// turns true once the large title has scrolled under the bar. Give
+/// [titleScroll] to the page's scroll view.
+mixin LargeTitleScroll<T extends StatefulWidget> on State<T> {
+  final titleScroll = ScrollController();
+  bool titleInBar = false;
+
+  /// How far the page scrolls before the title belongs in the bar: about
+  /// the large title's own height.
+  static const threshold = 36.0;
+
+  @override
+  void initState() {
+    super.initState();
+    titleScroll.addListener(_scrolled);
+  }
+
+  void _scrolled() {
+    final under = titleScroll.offset > threshold;
+    if (under != titleInBar) setState(() => titleInBar = under);
+  }
+
+  @override
+  void dispose() {
+    titleScroll.dispose();
+    super.dispose();
   }
 }

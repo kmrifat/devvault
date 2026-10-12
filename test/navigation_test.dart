@@ -248,6 +248,15 @@ void main() {
       NativePhoneHeader header() =>
           tester.widget<NativePhoneHeader>(find.byType(NativePhoneHeader));
 
+      // At the top the title is large, in the page; the bar takes it once
+      // it has scrolled under.
+      expect(header().title, '');
+      expect(find.byType(PhoneLargeTitle), findsOneWidget);
+      await tester.drag(
+        find.byType(CustomScrollView).first,
+        const Offset(0, -200),
+      );
+      await tester.pumpAndSettle();
       expect(header().title, 'Vault');
       expect(
         [for (final a in header().actions) a.symbol],

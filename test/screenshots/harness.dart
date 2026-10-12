@@ -12,7 +12,7 @@
 /// render it in the machine's time zone.
 ///
 /// Images land in `screenshots/<name>.png` at the repo root, named after the
-/// design frame they implement (`D03-vault`, `B2-vault`, …), so they can be
+/// design frame they implement (`D03-vault`, `I1-vault`, …), so they can be
 /// compared side by side with `design/DevVault.fig`.
 ///
 /// Desktop frames render with the macOS kit, as designed. The main screens
