@@ -567,7 +567,10 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
   static const double _labelWidth = 110;
 
   /// Fixed-width controls (IDs, pickers) leave room for a note beside them.
-  static const double _controlWidth = 200;
+  /// Every control in the form is this wide, so their right edges line
+  /// up (P7-05); it fits "App Store Connect API", the longest choice (macOS
+  /// sizes a pop-up's menu to the button).
+  static const double _controlWidth = 230;
 
   Widget _sheet(BuildContext context) {
     final draft = _draft;
@@ -870,9 +873,7 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
             DesktopFormRow(
               label: 'Used for',
               child: SheetNote(
-                // Fits "App Store Connect API" (macOS sizes the menu to
-                // the button).
-                width: _controlWidth + 30,
+                width: _controlWidth,
                 note: 'Optional · the file doesn’t say',
                 // One choice, or none: "Not set" stores nothing.
                 control: DesktopPopup<String>(
@@ -913,14 +914,14 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
                 note: 'Type your own, or pick one',
                 control: DesktopComboBox(
                   key: const ValueKey('import-platform'),
-                  value: draft.platform ?? '',
+                  value: PlaceKind.platform.label(draft.platform),
                   menuLabel: 'Platform suggestions',
-                  suggestions: placeSuggestions(
-                    ItemTemplates.platforms,
+                  suggestions: PlaceKind.platform.suggestions(
                     items.map((i) => i.platform),
                   ),
-                  onChanged: (text) =>
-                      setState(() => draft.platform = typedPlace(text)),
+                  onChanged: (text) => setState(
+                    () => draft.platform = PlaceKind.platform.value(text),
+                  ),
                 ),
               ),
             ),
@@ -930,14 +931,14 @@ class _ImportDialogState extends ConsumerState<ImportDialog> {
                 width: _controlWidth,
                 control: DesktopComboBox(
                   key: const ValueKey('import-environment'),
-                  value: draft.environment ?? '',
+                  value: PlaceKind.environment.label(draft.environment),
                   menuLabel: 'Environment suggestions',
-                  suggestions: placeSuggestions(
-                    ItemTemplates.environments,
+                  suggestions: PlaceKind.environment.suggestions(
                     items.map((i) => i.environment),
                   ),
-                  onChanged: (text) =>
-                      setState(() => draft.environment = typedPlace(text)),
+                  onChanged: (text) => setState(
+                    () => draft.environment = PlaceKind.environment.value(text),
+                  ),
                 ),
               ),
             ),

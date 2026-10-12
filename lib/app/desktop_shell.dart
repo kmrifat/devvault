@@ -73,7 +73,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     _commands?.unbind();
     _commands = commands
       ?..bind(
-        find: _inFront(_searchFocus.requestFocus),
+        find: _inFront(_find),
         newItem: _inFront(_newItem),
         newSecureNote: _inFront(_newSecureNote),
         importFile: _inFront(() => showImportDialog(context)),
@@ -93,6 +93,20 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     _commands?.unbind();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  /// To the search field; from Settings, whose toolbar has none (P7-05),
+  /// back to the vault first.
+  void _find() {
+    final section = ShellSection.values[widget.navigationShell.currentIndex];
+    if (section == ShellSection.settings) {
+      context.go(Routes.vault());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _searchFocus.requestFocus(),
+      );
+      return;
+    }
+    _searchFocus.requestFocus();
   }
 
   /// A new item where the user is looking: in the selected app, platform,
@@ -131,7 +145,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
       return true;
     }
     if (event.logicalKey == LogicalKeyboardKey.keyF) {
-      _searchFocus.requestFocus();
+      _find();
       return true;
     }
     if (event.logicalKey == LogicalKeyboardKey.keyK) {
@@ -292,6 +306,7 @@ class _ToolbarState extends ConsumerState<ShellToolbar> {
     final session = ref.watch(vaultSessionProvider);
     final index = session is Unlocked ? session.index : null;
     final about = _describe(widget.section, widget.uri, index);
+    final settings = widget.section == ShellSection.settings;
     final count = about.count;
     final subtitle = [
       if (about.path.isNotEmpty) about.path,
@@ -338,63 +353,69 @@ class _ToolbarState extends ConsumerState<ShellToolbar> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // Labelled, so the two ways in are easy to find (P7-02).
-              DesktopButton(
-                label: 'Import',
-                icon: DesktopSymbol.importFile,
-                onPressed: () => openImport(context),
-              ),
-              // One node for screen readers: the button "New", with its
-              // menu's commands as actions.
-              MergeSemantics(
-                child: DesktopContextMenu(
-                  key: _newMenu,
-                  actions: [
-                    DesktopMenuAction(
-                      'Item…',
-                      macSymbol: 'doc.badge.plus',
-                      () => createItem(context, _filter),
-                    ),
-                    DesktopMenuAction(
-                      'Secure note…',
-                      macSymbol: 'note.text.badge.plus',
-                      () => createSecureNote(context, _filter),
-                    ),
-                    DesktopMenuAction(
-                      'App…',
-                      macSymbol: 'plus.app',
-                      () => createApp(context),
-                      startsGroup: true,
-                    ),
-                    DesktopMenuAction(
-                      'Organization…',
-                      macSymbol: 'building.2',
-                      () => createOrganization(context, ref),
-                    ),
-                  ],
-                  child: DesktopButton(
-                    label: 'New',
-                    icon: DesktopSymbol.add,
-                    kind: DesktopButtonKind.primary,
-                    menu: true,
-                    onPressed: () => _newMenu.currentState?.openBelow(),
-                  ),
+              // Settings has its own toolbar: its title, the sync status
+              // and Lock; none of the vault's tools, which do nothing there
+              // (P7-05).
+              if (!settings) ...[
+                const SizedBox(width: 8),
+                // Labelled, so the two ways in are easy to find (P7-02).
+                DesktopButton(
+                  label: 'Import',
+                  icon: DesktopSymbol.importFile,
+                  onPressed: () => openImport(context),
                 ),
-              ),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: DesktopSearchField(
-                      controller: _search,
-                      focusNode: widget.searchFocus,
-                      placeholder: 'Search items, key IDs, fingerprints',
-                      onChanged: _onSearch,
+                // One node for screen readers: the button "New", with its
+                // menu's commands as actions.
+                MergeSemantics(
+                  child: DesktopContextMenu(
+                    key: _newMenu,
+                    actions: [
+                      DesktopMenuAction(
+                        'Item…',
+                        macSymbol: 'doc.badge.plus',
+                        () => createItem(context, _filter),
+                      ),
+                      DesktopMenuAction(
+                        'Secure note…',
+                        macSymbol: 'note.text.badge.plus',
+                        () => createSecureNote(context, _filter),
+                      ),
+                      DesktopMenuAction(
+                        'App…',
+                        macSymbol: 'plus.app',
+                        () => createApp(context),
+                        startsGroup: true,
+                      ),
+                      DesktopMenuAction(
+                        'Organization…',
+                        macSymbol: 'building.2',
+                        () => createOrganization(context, ref),
+                      ),
+                    ],
+                    child: DesktopButton(
+                      label: 'New',
+                      icon: DesktopSymbol.add,
+                      kind: DesktopButtonKind.primary,
+                      menu: true,
+                      onPressed: () => _newMenu.currentState?.openBelow(),
                     ),
                   ),
                 ),
-              ),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      child: DesktopSearchField(
+                        controller: _search,
+                        focusNode: widget.searchFocus,
+                        placeholder: 'Search items, key IDs, fingerprints',
+                        onChanged: _onSearch,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else
+                const Spacer(),
               const DesktopSyncStatus(),
               DesktopIconButton(
                 symbol: DesktopSymbol.lock,

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Tooltip;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -403,48 +404,57 @@ class _AppDetails extends ConsumerWidget {
     TextStyle style,
   ) {
     final colors = context.desktopColors;
-    return Row(
-      spacing: 8,
+    // The buttons share a line with the organization and kind; the
+    // identifiers get the next line to themselves, the pane's full width,
+    // so a URL isn't squeezed beside them (P7-05).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 4,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 2,
-            children: [
-              if (about.isNotEmpty)
-                Text(
-                  about,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style.copyWith(color: colors.text),
+        Row(
+          spacing: 8,
+          children: [
+            Expanded(
+              child: Text(
+                about,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: style.copyWith(color: colors.text),
+              ),
+            ),
+            DesktopButton(
+              label: 'Edit app…',
+              onPressed: () => editApp(context, app),
+            ),
+            DesktopPullDownButton(
+              label: 'App actions',
+              actions: [
+                DesktopMenuAction(
+                  'Delete app…',
+                  macSymbol: 'trash',
+                  () => deleteApp(context, ref, app, itemCount: itemCount),
+                  destructive: true,
                 ),
-              if (ids.isEmpty)
-                Text(
-                  'No identifiers',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
-                )
-              else
-                MonoText(ids.join(' · '), middleEllipsis: true, style: style),
-            ],
-          ),
-        ),
-        DesktopButton(
-          label: 'Edit app…',
-          onPressed: () => editApp(context, app),
-        ),
-        DesktopPullDownButton(
-          label: 'App actions',
-          actions: [
-            DesktopMenuAction(
-              'Delete app…',
-              macSymbol: 'trash',
-              () => deleteApp(context, ref, app, itemCount: itemCount),
-              destructive: true,
+              ],
             ),
           ],
         ),
+        if (ids.isEmpty)
+          Text(
+            'No identifiers',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          )
+        else
+          Tooltip(
+            message: ids.join('\n'),
+            child: MonoText(
+              ids.join(' · '),
+              middleEllipsis: true,
+              style: style,
+            ),
+          ),
       ],
     );
   }
