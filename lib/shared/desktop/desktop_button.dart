@@ -263,3 +263,82 @@ class _MacosFilledButtonState extends State<_MacosFilledButton> {
     );
   }
 }
+
+/// A push button showing only a symbol, as tall as [DesktopButton]s beside
+/// it (the inspector's Delete next to Export and Edit). [label] is its
+/// tooltip and what screen readers call it; [destructive] draws the
+/// symbol in the danger colour.
+class DesktopSymbolButton extends StatelessWidget {
+  const DesktopSymbolButton({
+    super.key,
+    required this.symbol,
+    required this.label,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  final DesktopSymbol symbol;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.desktopColors;
+    final kit = context.desktopKit;
+    final icon = Icon(
+      symbol.of(kit),
+      size: 14,
+      color: onPressed == null
+          ? colors.tertiaryText
+          : destructive
+          ? colors.danger
+          : colors.text,
+    );
+    // On a line of text, so the button is as tall as a labelled one.
+    final line = Text.rich(
+      WidgetSpan(alignment: PlaceholderAlignment.middle, child: icon),
+    );
+    final button = switch (kit) {
+      DesktopKit.macos => mac.MacosTooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: SizedBox(
+          // The kit's 60 pt minimum is for text.
+          width: 32,
+          height: DesktopMetrics.buttonHeight,
+          child: mac.PushButton(
+            controlSize: mac.ControlSize.large,
+            secondary: true,
+            semanticLabel: label,
+            onPressed: onPressed,
+            child: icon,
+          ),
+        ),
+      ),
+      DesktopKit.fluent => fl.Tooltip(
+        message: label,
+        child: fl.Button(onPressed: onPressed, child: line),
+      ),
+      DesktopKit.yaru => Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            padding: DesktopMetrics.yaruSymbolButtonPadding,
+          ),
+          onPressed: onPressed,
+          child: line,
+        ),
+      ),
+    };
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      onTap: onPressed,
+      child: button,
+    );
+  }
+}

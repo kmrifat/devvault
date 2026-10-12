@@ -233,9 +233,8 @@ void main() {
           .go(Routes.vault(item: item.id));
       await tester.pumpAndSettle();
       opener.queue.add(file);
-      await tester.tap(find.bySemanticsLabel('More actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Replace file…'));
+      // The File box's Replace…, for the item's one file.
+      await tester.tap(find.text('Replace…'));
       await tester.pump();
       await settle(
         tester,
