@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.1.0 (not released yet)
+## 1.1.0 (2026-10-12)
+
+[v1.1.0](https://github.com/kmrifat/devvault/releases/tag/v1.1.0), macOS and Linux.
 
 What developers trying 1.0.1 told us, and a walk through every desktop
 screen.
