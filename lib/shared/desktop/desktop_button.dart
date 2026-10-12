@@ -39,6 +39,7 @@ class DesktopButton extends StatelessWidget {
     this.kind = DesktopButtonKind.plain,
     this.size = DesktopButtonSize.regular,
     this.icon,
+    this.menu = false,
   });
 
   final String label;
@@ -50,6 +51,9 @@ class DesktopButton extends StatelessWidget {
 
   /// A symbol before the label (Save PDF…, Unlock with Touch ID).
   final DesktopSymbol? icon;
+
+  /// It opens a menu (the toolbar's New): a chevron after the label.
+  final bool menu;
 
   @override
   Widget build(BuildContext context) {
@@ -65,28 +69,27 @@ class DesktopButton extends StatelessWidget {
             DesktopTheme.of(context).brightness == Brightness.dark);
     final symbol = icon;
     Widget labelled(Widget text) {
-      if (symbol == null) return text;
+      if (symbol == null && !menu) return text;
       final onMacAccent = kit == DesktopKit.macos
           ? kind == DesktopButtonKind.primary
           : filled;
+      final ink = onPressed == null
+          ? colors.tertiaryText
+          : redFill
+          ? colors.onDangerButton
+          : onMacAccent
+          ? colors.onAccent
+          : danger
+          ? colors.danger
+          : colors.text;
       return Row(
         mainAxisSize: MainAxisSize.min,
         spacing: 5,
         children: [
-          Icon(
-            symbol.of(kit),
-            size: 14,
-            color: onPressed == null
-                ? colors.tertiaryText
-                : redFill
-                ? colors.onDangerButton
-                : onMacAccent
-                ? colors.onAccent
-                : danger
-                ? colors.danger
-                : colors.text,
-          ),
+          if (symbol != null) Icon(symbol.of(kit), size: 14, color: ink),
           Flexible(child: text),
+          if (menu)
+            Icon(DesktopSymbol.chevronDown.of(kit), size: 10, color: ink),
         ],
       );
     }
@@ -126,7 +129,9 @@ class DesktopButton extends StatelessWidget {
             : DesktopMetrics.buttonHeight,
         child: mac.PushButton(
           controlSize: mac.ControlSize.large,
-          secondary: kind != DesktopButtonKind.primary,
+          // A disabled default button is grey, as AppKit draws it; macos_ui
+          // would paint it a pale blue that reads as broken (P7-02).
+          secondary: kind != DesktopButtonKind.primary || onPressed == null,
           onPressed: onPressed,
           child: danger
               ? labelled(Text(label, style: TextStyle(color: colors.danger)))

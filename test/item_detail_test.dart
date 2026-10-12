@@ -86,7 +86,9 @@ void main() {
       findsOneWidget,
     );
     expect(inDetail(find.textContaining('24 years left')), findsOneWidget);
-    expect(inDetail(find.text('From file')), findsOneWidget);
+    // The expiry's, and one on each field read from the file: Alias,
+    // SHA-1 and SHA-256 (the passwords were typed).
+    expect(inDetail(find.text('From file')), findsNWidgets(4));
     // When it was made, and where, is in the window's status bar.
     expect(
       inStatusBar(find.text('Created Oct 7, 2026 on this device')),

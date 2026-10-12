@@ -331,12 +331,9 @@ class _Choice extends StatelessWidget {
                             color: BCTextColor.muted,
                           )
                         : masked
-                        ? Text(
-                            SecretRow.mask,
-                            style: TextStyle(
-                              color: bc.foreground,
-                              letterSpacing: 2,
-                            ),
+                        ? Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: SecretMask(color: bc.foreground),
                           )
                         : MonoText(value),
                   ),
@@ -785,7 +782,7 @@ class _DesktopChoice extends StatelessWidget {
     final text = value == null
         ? Text('Not set', style: style.copyWith(color: colors.secondaryText))
         : masked
-        ? Text(SecretRow.mask, style: style.copyWith(letterSpacing: 2))
+        ? SecretMask(color: colors.text)
         : mono
         ? Text(
             value,

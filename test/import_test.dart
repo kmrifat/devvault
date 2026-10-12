@@ -348,7 +348,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(ShellToolbar),
-          matching: find.bySemanticsLabel(RegExp('^Import a file')),
+          matching: find.text('Import'),
         ),
       );
       await tester.pump();
@@ -831,7 +831,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(ShellToolbar),
-          matching: find.bySemanticsLabel(RegExp('^Import a file')),
+          matching: find.text('Import'),
         ),
       );
       await tester.pumpAndSettle();

@@ -1062,7 +1062,8 @@ class _Facts extends StatelessWidget {
             for (final MapEntry(:key, :value) in facts.entries)
               _FactRow(
                 label: Format.fieldLabel(key),
-                value: value.secret ? SecretRow.mask : value.value,
+                value: value.value,
+                secret: value.secret,
               ),
           ],
         ),
@@ -1072,10 +1073,17 @@ class _Facts extends StatelessWidget {
 }
 
 class _FactRow extends StatelessWidget {
-  const _FactRow({required this.label, required this.value});
+  const _FactRow({
+    required this.label,
+    required this.value,
+    this.secret = false,
+  });
 
   final String label;
   final String value;
+
+  /// Shown as [SecretMask], never as [value].
+  final bool secret;
 
   @override
   Widget build(BuildContext context) {
@@ -1092,7 +1100,14 @@ class _FactRow extends StatelessWidget {
               color: BCTextColor.muted,
             ),
           ),
-          Expanded(child: MonoText(value, selectable: true)),
+          Expanded(
+            child: secret
+                ? const Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: SecretMask(),
+                  )
+                : MonoText(value, selectable: true),
+          ),
         ],
       ),
     );
@@ -1406,7 +1421,11 @@ class _SheetFacts extends StatelessWidget {
                               ),
                               Expanded(
                                 child: value.secret
-                                    ? Text(SecretRow.mask, style: mono)
+                                    ? Align(
+                                        alignment:
+                                            AlignmentDirectional.centerStart,
+                                        child: SecretMask(color: colors.text),
+                                      )
                                     : SelectableText(value.value, style: mono),
                               ),
                             ],

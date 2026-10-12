@@ -79,7 +79,24 @@ abstract final class DesktopMetrics {
   );
 
   static const double sidebarWidth = 220;
-  static const double sidebarRowHeight = 26;
+
+  /// Sidebar rows, their icons, app badges and disclosure chevrons: the
+  /// size of macOS's "medium" sidebar. At 26 / 14 / 10 pt they were hard
+  /// to see and to hit (P7-02).
+  static const double sidebarRowHeight = 28;
+  static const double sidebarIconSize = 16;
+  static const double sidebarBadgeSize = 18;
+  static const double disclosureSize = 12;
+
+  /// Toolbar symbols (Lock, the sync status).
+  static const double toolbarIconSize = 18;
+
+  /// A symbol inside a row or field that is itself a button (copy, reveal,
+  /// remove), and the least a clickable thing measures either way (WCAG
+  /// 2.5.8).
+  static const double inlineActionSize = 16;
+  static const double minTarget = 24;
+
   static const double toolbarHeight = 52;
   static const double toolbarSearchHeight = 28;
   static const double statusBarHeight = 24;

@@ -452,12 +452,11 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
     );
     final value = Expanded(
       child: masked
-          ? Semantics(
-              label: '${widget.label}, hidden',
-              excludeSemantics: true,
-              child: Text(
-                SecretRow.mask,
-                style: TextStyle(color: bc.foreground, letterSpacing: 2),
+          ? Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SecretMask(
+                color: bc.foreground,
+                semanticLabel: '${widget.label}, hidden',
               ),
             )
           : SelectableText(field.value, style: AppText.mono(context)),

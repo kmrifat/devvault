@@ -129,7 +129,12 @@ void main() {
         findsNothing,
         reason: item.title,
       );
-      // Title, file name or type, the type column and a dash; nothing more.
+      // Title; file name, else platform and environment, else type; the
+      // type column and a dash; nothing more.
+      final place = [
+        if (item.platform case final p?) VaultLabels.platform(p),
+        if (item.environment case final e?) VaultLabels.environment(e),
+      ].join(' · ');
       final texts = [
         for (final text in tester.widgetList<Text>(
           find.descendant(of: row, matching: find.byType(Text)),
@@ -138,7 +143,8 @@ void main() {
       ];
       expect(texts, [
         item.title,
-        item.attachments.firstOrNull?.filename ?? item.typeLabel,
+        item.attachments.firstOrNull?.filename ??
+            (place.isEmpty ? item.typeLabel : place),
         item.shortTypeLabel,
         '—',
       ], reason: item.title);

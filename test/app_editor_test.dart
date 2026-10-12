@@ -403,7 +403,10 @@ void main() {
         tester,
         appNamed(tester, 'Ledgerly').copyWith(organization: 'Acme Corp'),
       );
-      await tester.tap(find.bySemanticsLabel('New item'));
+      // The toolbar's New, then Item… in its menu.
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Item…'));
       await tester.pumpAndSettle();
       final apps = tester
           .widgetList<DesktopPopup<String>>(find.byType(DesktopPopup<String>))

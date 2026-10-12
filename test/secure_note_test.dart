@@ -228,7 +228,10 @@ void main() {
       tester,
     ) async {
       await open(tester);
-      await tester.tap(find.bySemanticsLabel('New item'));
+      // The toolbar's New, then Item… in its menu.
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Item…'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(
