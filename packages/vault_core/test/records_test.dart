@@ -305,6 +305,24 @@ void main() {
       expect(renamed.toJson()['kind'], 'game');
     });
 
+    test('color: the picked name, trimmed; unknown ones kept; empty left '
+        'out', () {
+      final teal = AppRecord.fromJson(appJson({'color': ' teal '}));
+      expect(teal.colorName, 'teal');
+      expect(teal.color, AppColor.teal);
+      expect(teal.toJson()['color'], 'teal');
+
+      final newer = AppRecord.fromJson(appJson({'color': 'magenta'}));
+      expect(newer.color, isNull);
+      expect(newer.copyWith(name: 'B').toJson()['color'], 'magenta');
+
+      final none = AppRecord.fromJson(appJson({'color': '  '}));
+      expect(none.colorName, isNull);
+      expect(none.toJson().containsKey('color'), isFalse);
+      // Cleared with an empty string, like the other optional fields.
+      expect(teal.copyWith(colorName: '').colorName, isNull);
+    });
+
     test('an older client still reads bundle IDs and package names, and '
         'keeps the new fields when it rewrites the app', () {
       final app = AppRecord(

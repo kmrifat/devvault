@@ -269,6 +269,28 @@ void main() {
       expect(merged.identifiers, [repo, url]);
     });
 
+    test('color: the changed side wins; on a clash the local one stays', () {
+      final base = app(a, 'Kitchenly', []);
+      final remote = base.copyWith(
+        colorName: AppColor.rose.wireName,
+        rev: b.tick(),
+        deviceId: b.id,
+      );
+      final renamed = base.copyWith(name: 'Kitchenly Pro', rev: a.tick());
+      expect(
+        mergeApps(base: base, local: renamed, remote: remote).color,
+        AppColor.rose,
+      );
+      final local = base.copyWith(
+        colorName: AppColor.teal.wireName,
+        rev: a.tick(),
+      );
+      expect(
+        mergeApps(base: base, local: local, remote: remote).color,
+        AppColor.teal,
+      );
+    });
+
     test('notes: the changed side wins; on a clash the local note stays', () {
       final base = app(a, 'Kitchenly', []).copyWith(notes: 'Base');
       final remote = base.copyWith(

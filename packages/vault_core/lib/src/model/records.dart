@@ -389,6 +389,7 @@ class AppRecord implements SyncedRecord {
     required this.deviceId,
     String? organization,
     String? kindName,
+    String? colorName,
     List<String> bundleIds = const [],
     List<String> packageNames = const [],
     List<AppIdentifier> identifiers = const [],
@@ -399,6 +400,7 @@ class AppRecord implements SyncedRecord {
   }) : organization = _trimmed(organization),
        notes = _trimmed(notes),
        kindName = _trimmed(kindName),
+       colorName = _trimmed(colorName),
        bundleIds = _legacy(bundleIds, identifiers, IdentifierKind.bundleId),
        packageNames = _legacy(
          packageNames,
@@ -423,6 +425,11 @@ class AppRecord implements SyncedRecord {
   /// The stored `kind` ([AppKind.wireName]), kept even when this version
   /// doesn't know it. Null when not set; never inferred.
   final String? kindName;
+
+  /// The stored `color` ([AppColor.wireName]), the badge colour the user
+  /// picked, kept even when this version doesn't know it. Null when not
+  /// set: the app shows a colour chosen from its id. Never inferred.
+  final String? colorName;
 
   /// Apple bundle IDs (`bundle_ids`).
   final List<String> bundleIds;
@@ -450,6 +457,9 @@ class AppRecord implements SyncedRecord {
 
   /// The known kind, or `null` when not set or newer than this version.
   AppKind? get kind => AppKind.fromWireName(kindName);
+
+  /// The known colour, or `null` when not set or newer than this version.
+  AppColor? get color => AppColor.fromWireName(colorName);
 
   /// Every identifier in one list: bundle IDs, then package names, then
   /// the rest in their stored order.
@@ -512,6 +522,7 @@ class AppRecord implements SyncedRecord {
     'name',
     'organization',
     'kind',
+    'color',
     'bundle_ids',
     'package_names',
     'identifiers',
@@ -531,6 +542,7 @@ class AppRecord implements SyncedRecord {
       name: r.string('name'),
       organization: r.optionalString('organization'),
       kindName: r.optionalString('kind'),
+      colorName: r.optionalString('color'),
       bundleIds: r.strings('bundle_ids'),
       packageNames: r.strings('package_names'),
       identifiers: [
@@ -547,9 +559,9 @@ class AppRecord implements SyncedRecord {
     );
   }
 
-  /// `organization`, `kind`, `identifiers` and `notes` are left out when
-  /// not set, so an app that uses none of them encodes exactly as before
-  /// they existed.
+  /// `organization`, `kind`, `color`, `identifiers` and `notes` are left
+  /// out when not set, so an app that uses none of them encodes exactly as
+  /// before they existed.
   @override
   Map<String, Object?> toJson() => {
     ...unknownFields,
@@ -558,6 +570,7 @@ class AppRecord implements SyncedRecord {
     'name': name,
     'organization': ?organization,
     'kind': ?kindName,
+    'color': ?colorName,
     'bundle_ids': bundleIds,
     'package_names': packageNames,
     if (identifiers.isNotEmpty)
@@ -571,12 +584,13 @@ class AppRecord implements SyncedRecord {
   };
 
   /// A copy with changes. [identifiers] replaces every identifier, bundle
-  /// IDs and package names included; to clear [organization], the kind or
-  /// [notes], pass an empty string.
+  /// IDs and package names included; to clear [organization], the kind,
+  /// the colour or [notes], pass an empty string.
   AppRecord copyWith({
     String? name,
     String? organization,
     String? kindName,
+    String? colorName,
     List<AppIdentifier>? identifiers,
     String? notes,
     String? iconBlobId,
@@ -588,6 +602,7 @@ class AppRecord implements SyncedRecord {
     name: name ?? this.name,
     organization: organization ?? this.organization,
     kindName: kindName ?? this.kindName,
+    colorName: colorName ?? this.colorName,
     bundleIds: identifiers == null ? bundleIds : const [],
     packageNames: identifiers == null ? packageNames : const [],
     identifiers: identifiers ?? this.identifiers,

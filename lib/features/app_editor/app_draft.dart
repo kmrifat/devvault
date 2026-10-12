@@ -32,6 +32,7 @@ class AppDraft {
     required this.name,
     required this.organization,
     required this.kindName,
+    required this.colorName,
     required this.identifiers,
     required this.notes,
     this.base,
@@ -43,6 +44,7 @@ class AppDraft {
     name: '',
     organization: organization ?? '',
     kindName: null,
+    colorName: null,
     identifiers: [],
     notes: '',
   );
@@ -52,6 +54,7 @@ class AppDraft {
     name: app.name,
     organization: app.organization ?? '',
     kindName: app.kindName,
+    colorName: app.colorName,
     identifiers: [for (final id in app.allIdentifiers) DraftIdentifier.of(id)],
     notes: app.notes ?? '',
   );
@@ -66,6 +69,10 @@ class AppDraft {
   /// The chosen [AppKind.wireName] (or a newer kind kept from [base]);
   /// null is "Not set".
   String? kindName;
+
+  /// The picked [AppColor.wireName] (or a newer colour kept from [base]);
+  /// null is "Automatic".
+  String? colorName;
 
   /// In the order the form shows them.
   final List<DraftIdentifier> identifiers;
@@ -123,6 +130,7 @@ class AppDraft {
       // An empty string clears them.
       organization: organization,
       kindName: kindName ?? '',
+      colorName: colorName ?? '',
       notes: notes,
       identifiers: [
         for (final id in identifiers)

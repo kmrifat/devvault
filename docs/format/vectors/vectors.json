@@ -237,6 +237,60 @@
       "identifiers": []
     },
     {
+      "about": "A colour the user picked: trimmed, stored by name.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "color": " teal "
+      },
+      "canonical": "{\"bundle_ids\":[],\"color\":\"teal\",\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"name\":\"Billing API\",\"package_names\":[],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": []
+    },
+    {
+      "about": "A colour this version does not know: kept as it is.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "color": "magenta"
+      },
+      "canonical": "{\"bundle_ids\":[],\"color\":\"magenta\",\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"name\":\"Billing API\",\"package_names\":[],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": []
+    },
+    {
+      "about": "Empty colour: left out.",
+      "record": {
+        "schema": 1,
+        "id": "faf3ad88-4000-4edb-a4a8-03ba341039cb",
+        "name": "Billing API",
+        "bundle_ids": [],
+        "package_names": [],
+        "icon_blob_id": null,
+        "created_at": "2026-10-07T09:00:00Z",
+        "updated_at": "2026-10-07T09:00:00Z",
+        "rev": "001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "device_id": "2530b979-e992-4aaf-8aac-52a2ce7abaf4",
+        "color": "  "
+      },
+      "canonical": "{\"bundle_ids\":[],\"created_at\":\"2026-10-07T09:00:00Z\",\"device_id\":\"2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"icon_blob_id\":null,\"id\":\"faf3ad88-4000-4edb-a4a8-03ba341039cb\",\"name\":\"Billing API\",\"package_names\":[],\"rev\":\"001759827600000-00000-2530b979-e992-4aaf-8aac-52a2ce7abaf4\",\"schema\":1,\"updated_at\":\"2026-10-07T09:00:00Z\"}",
+      "identifiers": []
+    },
+    {
       "about": "Kinds and fields this version does not know: kept as they are.",
       "record": {
         "schema": 1,

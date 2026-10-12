@@ -10,7 +10,8 @@ class AppBadge extends StatelessWidget {
   final AppRecord? app;
   final double size;
 
-  /// Each deep enough for the white initial to reach WCAG AA (4.5:1).
+  /// Each deep enough for the white initial to reach WCAG AA (4.5:1). In
+  /// [AppColor] order: orange, blue, purple, teal, green, rose.
   static const _palette = [
     Color(0xFFC44F0F),
     Color(0xFF0475D9),
@@ -20,10 +21,17 @@ class AppBadge extends StatelessWidget {
     Color(0xFFE0244D),
   ];
 
-  /// The app's colour, picked from its id so it's the same on every
-  /// device.
-  static Color colorFor(AppRecord app) {
-    final hash = app.id.codeUnits.fold(0, (h, c) => (h * 31 + c) & 0xFFFFFF);
+  /// [color]'s shade.
+  static Color of(AppColor color) => _palette[color.index];
+
+  /// The app's colour: the one the user picked (SPEC §6.2 `color`), else
+  /// one picked from its id, so it's the same on every device.
+  static Color colorFor(AppRecord app) =>
+      app.color == null ? automaticFor(app.id) : of(app.color!);
+
+  /// The colour an app with [id] shows when none was picked.
+  static Color automaticFor(String id) {
+    final hash = id.codeUnits.fold(0, (h, c) => (h * 31 + c) & 0xFFFFFF);
     return _palette[hash % _palette.length];
   }
 

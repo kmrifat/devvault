@@ -430,6 +430,15 @@ List<Map<String, Object?>> _appRecordVectors() {
       record({'organization': ' ', 'kind': null, 'identifiers': <Object>[]}),
     ),
     (
+      'A colour the user picked: trimmed, stored by name.',
+      record({'color': ' teal '}),
+    ),
+    (
+      'A colour this version does not know: kept as it is.',
+      record({'color': 'magenta'}),
+    ),
+    ('Empty colour: left out.', record({'color': '  '})),
+    (
       'Kinds and fields this version does not know: kept as they are.',
       record({
         'kind': 'game',
