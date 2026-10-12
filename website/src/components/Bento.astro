@@ -1,0 +1,189 @@
+---
+// Small details, each a tile with a tiny looping visual.
+import Icon from './Icon.astro';
+import { links } from '../lib/links';
+---
+<section class="wrap bento-wrap" id="details">
+  <h2 class="title">The little things, done right.</h2>
+  <div class="bento">
+    <!-- Facts from the file -->
+    <article class="tile wide t-rose">
+      <div class="viz facts">
+        <div class="frow"><span>Key ID</span><code>8G4K2LXQ9R</code><i class="ff">From file</i></div>
+        <div class="frow"><span>SHA-256</span><code>FA:C6:17:45:DC:09…</code><i class="ff">From file</i></div>
+        <div class="frow"><span>Expires</span><code>14 Jan 2051</code><i class="ff">From file</i></div>
+        <div class="frow"><span>Team ID</span><code>A1B2C3D4E5</code><i class="ff you">You typed</i></div>
+      </div>
+      <h3>Facts, not guesses</h3>
+      <p>Every value says where it came from.</p>
+    </article>
+
+    <!-- Clipboard -->
+    <article class="tile t-amber">
+      <div class="viz clip">
+        <span class="copied"><Icon name="copy" size={14} /> Copied</span>
+        <svg class="ring" viewBox="0 0 44 44" width="64" height="64" aria-hidden="true">
+          <circle cx="22" cy="22" r="18" />
+          <circle class="arc" cx="22" cy="22" r="18" />
+        </svg>
+        <span class="secs">30s</span>
+      </div>
+      <h3>Clipboard clears itself</h3>
+      <p>Copied secrets vanish after 30 seconds.</p>
+    </article>
+
+    <!-- Auto-lock -->
+    <article class="tile t-violet">
+      <div class="viz lockviz">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="18" height="11" x="3" y="11" rx="2" />
+          <path class="shackle" d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </div>
+      <h3>Locks on its own</h3>
+      <p>After 5 minutes without use, or with ⌘L.</p>
+    </article>
+
+    <!-- Search -->
+    <article class="tile t-sky">
+      <div class="viz searchviz">
+        <div class="sbox"><Icon name="search" size={13} /><span class="q">5E:8F:16</span></div>
+        <div class="hit"><Icon name="lock" size={12} /> Upload keystore <small>SHA-1</small></div>
+      </div>
+      <h3>Search by fingerprint</h3>
+      <p>Or by key ID, bundle ID or name.</p>
+    </article>
+
+    <!-- Encryption -->
+    <article class="tile t-ink">
+      <div class="viz cipher">
+        <code class="plain">sk_live_51Hx…Qa</code>
+        <code class="enc">9f2c·a71e·04bd·e3…</code>
+      </div>
+      <h3>End-to-end encrypted</h3>
+      <p>XChaCha20-Poly1305 and Argon2id. Only you hold the key.</p>
+    </article>
+
+    <!-- Open source -->
+    <a class="tile full t-gray" href={links.repo}>
+      <div class="viz oss">
+        <Icon name="github" size={40} stroke={1.5} />
+        <div class="oss-lines"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <h3>Open source <Icon name="arrow-right" size={15} /></h3>
+      <p>Apache 2.0 with a published vault format. Check every claim on this page yourself.</p>
+    </a>
+  </div>
+</section>
+
+<style>
+  .bento-wrap { padding-top: 150px; }
+  .title { text-align: center; margin-bottom: 48px; }
+  .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .tile {
+    border-radius: 22px; padding: 26px; min-height: 280px;
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative; overflow: hidden;
+  }
+  .tile.wide { grid-column: span 2; }
+  .tile.full { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; align-items: center; column-gap: 32px; }
+  .tile.full .viz { grid-row: 1 / span 2; margin: 0; }
+  .tile.full h3 { align-self: end; }
+  .tile.full p { align-self: start; }
+  .tile p { color: var(--muted); font-size: 15px; }
+  .tile h3 { display: inline-flex; align-items: center; gap: 6px; font-size: 1.15rem; }
+  .viz { flex: 1; display: grid; place-items: center; margin-bottom: 18px; min-height: 140px; }
+  .t-rose { background: #fff0f3; }
+  .t-amber { background: #fff6e8; }
+  .t-violet { background: #f3f0ff; }
+  .t-sky { background: #ecf5ff; }
+  .t-gray { background: var(--soft); transition: background .2s; }
+  .t-gray:hover { background: #eef0f3; }
+  .t-ink { background: #12151b; color: #fff; }
+  .t-ink p { color: #a3a9b5; }
+
+  /* facts */
+  .facts { place-items: stretch; align-content: center; gap: 6px; }
+  .frow {
+    display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 10px;
+    background: #fff; border-radius: 10px; padding: 9px 12px; font-size: 13px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / .05);
+  }
+  .frow span { color: var(--muted); }
+  .frow code { font-family: var(--mono); font-size: 12.5px; }
+  .ff { font-style: normal; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; animation: pop 6s infinite; opacity: 0; }
+  .ff.you { color: #3157d6; border-color: #c9d6ff; }
+  .frow:nth-child(2) .ff { animation-delay: .25s; }
+  .frow:nth-child(3) .ff { animation-delay: .5s; }
+  .frow:nth-child(4) .ff { animation-delay: .75s; }
+  @keyframes pop {
+    0%, 8% { opacity: 0; transform: scale(.7); }
+    14%, 88% { opacity: 1; transform: none; }
+    96%, 100% { opacity: 0; }
+  }
+
+  /* clipboard */
+  .clip { position: relative; }
+  .copied {
+    position: absolute; top: 10px;
+    display: inline-flex; gap: 6px; align-items: center;
+    background: #1d1d1f; color: #fff; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 999px;
+    animation: copied 6s infinite;
+  }
+  @keyframes copied { 0%, 5% { opacity: 0; transform: translateY(6px); } 10%, 30% { opacity: 1; transform: none; } 38%, 100% { opacity: 0; } }
+  .ring { margin-top: 40px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke: #f2dfc0; stroke-width: 4; }
+  .ring .arc { stroke: #e08a00; stroke-linecap: round; stroke-dasharray: 113.1; animation: drain 6s linear infinite; }
+  @keyframes drain { 0%, 8% { stroke-dashoffset: 0; } 92% { stroke-dashoffset: 113.1; } 100% { stroke-dashoffset: 113.1; } }
+  .secs { position: absolute; top: 101px; font: 600 13px/1 var(--font); color: #a35f00; }
+
+  /* lock */
+  .lockviz { color: #5b3fd6; }
+  .shackle { animation: shackle 5s infinite; transform-origin: 17px 11px; }
+  @keyframes shackle { 0%, 40% { transform: translateY(-3px) ; } 50%, 90% { transform: none; } 100% { transform: translateY(-3px); } }
+
+  /* search */
+  .searchviz { align-content: center; gap: 10px; }
+  .sbox {
+    width: 220px; height: 34px; border-radius: 10px; background: #fff;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / .08), 0 0 0 4px rgb(10 132 255 / .12);
+    display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--muted);
+  }
+  .q { font-family: var(--mono); font-size: 13px; color: var(--ink); clip-path: inset(0 100% 0 0); animation: type 5s steps(8) infinite; }
+  @keyframes type { 0%, 10% { clip-path: inset(0 100% 0 0); } 35%, 90% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 100% 0 0); } }
+  .hit {
+    width: 220px; display: flex; align-items: center; gap: 8px;
+    background: #0a6cff; color: #fff; border-radius: 9px; padding: 8px 12px; font-size: 13px; font-weight: 500;
+    animation: hit 5s infinite;
+  }
+  .hit small { margin-left: auto; opacity: .8; }
+  @keyframes hit { 0%, 35% { opacity: 0; transform: translateY(-4px); } 42%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+  /* cipher */
+  .cipher { position: relative; }
+  .cipher code { position: absolute; font-family: var(--mono); font-size: 15px; padding: 8px 12px; border-radius: 8px; background: rgb(255 255 255 / .06); }
+  .plain { color: #fda4af; animation: plain 5s infinite; }
+  .enc { color: #4ade80; animation: enc 5s infinite; }
+  @keyframes plain { 0%, 35% { opacity: 1; filter: none; } 50%, 90% { opacity: 0; filter: blur(4px); } 100% { opacity: 1; } }
+  @keyframes enc { 0%, 35% { opacity: 0; filter: blur(4px); } 50%, 90% { opacity: 1; filter: none; } 100% { opacity: 0; } }
+
+  /* oss */
+  .oss { grid-auto-flow: column; gap: 22px; justify-content: center; color: var(--ink); }
+  .oss-lines { display: grid; gap: 8px; }
+  .oss-lines i { display: block; height: 8px; border-radius: 4px; background: #d9dce3; width: 180px; }
+  .oss-lines i:nth-child(2) { width: 130px; background: #fecdd3; }
+  .oss-lines i:nth-child(3) { width: 160px; }
+  .oss-lines i:nth-child(4) { width: 100px; background: #c7d7fe; }
+
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .bento-wrap { padding-top: 100px; }
+    .bento { grid-template-columns: 1fr; }
+    .tile.wide { grid-column: auto; }
+    .tile.full { display: flex; }
+    .tile.full .viz { margin-bottom: 18px; }
+    .tile { min-height: 0; }
+  }
+</style>

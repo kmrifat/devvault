@@ -1,0 +1,44 @@
+---
+import Icon from './Icon.astro';
+import { u } from '../lib/url';
+import { links } from '../lib/links';
+---
+<section class="dl wrap" id="download">
+  <img class="icon" src={u('icon.png')} alt="" width="112" height="112" />
+  <h2>Get DevVault</h2>
+  <p class="sub">Free, open source, and yours to keep.</p>
+  <div class="ctas">
+    <a class="btn btn-primary" href={links.mac}><Icon name="download" size={17} /> Download for Mac</a>
+    <a class="btn" href={links.linux}>Linux AppImage</a>
+  </div>
+  <p class="fine">macOS 12+, signed and notarized · Linux x64 · Windows, iPhone and Android are on the way</p>
+</section>
+
+<footer class="foot">
+  <div class="wrap row">
+    <span class="by"><img src={u('icon.png')} alt="" width="20" height="20" /> DevVault by Binary Castle</span>
+    <nav>
+      <a href={links.repo}>GitHub</a>
+      <a href={links.releases}>Releases</a>
+      <a href={links.security}>Vault format</a>
+      <a href={links.license}>Apache 2.0</a>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .dl { padding: 140px 24px 120px; display: grid; justify-items: center; text-align: center; gap: 18px; }
+  .icon { border-radius: 26px; box-shadow: 0 30px 60px -18px rgb(225 29 72 / .55); margin-bottom: 10px; }
+  .ctas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .fine { color: var(--muted); font-size: 14px; }
+  .foot { border-top: 1px solid var(--line); padding: 26px 0; font-size: 14px; color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+  .by { display: inline-flex; align-items: center; gap: 8px; }
+  .by img { border-radius: 5px; }
+  nav { display: flex; flex-wrap: wrap; gap: 22px; }
+  nav a:hover { color: var(--ink); }
+  @media (max-width: 640px) {
+    .dl { padding: 100px 16px 80px; }
+    .ctas .btn { flex: 1 1 100%; justify-content: center; }
+  }
+</style>

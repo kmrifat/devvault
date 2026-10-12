@@ -1,0 +1,39 @@
+---
+import Icon from './Icon.astro';
+import { u } from '../lib/url';
+import { links } from '../lib/links';
+---
+<header class="nav">
+  <div class="wrap inner">
+    <a class="brand" href={u('/')}>
+      <img src={u('icon.png')} alt="" width="30" height="30" />
+      DevVault
+    </a>
+    <nav class="links">
+      <a href="#features">Features</a>
+      <a href="#teams">For teams</a>
+      <a href={links.repo}><Icon name="github" size={16} /> GitHub</a>
+    </nav>
+    <a class="btn btn-primary get" href="#download">Download</a>
+  </div>
+</header>
+
+<style>
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgb(255 255 255 / .8);
+    backdrop-filter: saturate(1.8) blur(16px);
+    -webkit-backdrop-filter: saturate(1.8) blur(16px);
+    border-bottom: 1px solid rgb(0 0 0 / .05);
+  }
+  .inner { height: 64px; display: flex; align-items: center; gap: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+  .brand img { border-radius: 8px; }
+  .links { display: flex; gap: 26px; margin-left: 16px; font-size: 15px; color: var(--muted); }
+  .links a { display: inline-flex; align-items: center; gap: 6px; transition: color .15s; }
+  .links a:hover { color: var(--ink); }
+  .get { margin-left: auto; height: 38px; padding: 0 16px; font-size: 14px; }
+  @media (max-width: 640px) {
+    .links { display: none; }
+  }
+</style>

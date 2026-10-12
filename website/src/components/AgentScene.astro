@@ -1,0 +1,115 @@
+---
+// AI agents: Claude Code asks to run a signing command with two keystore
+// passwords; DevVault asks the user (N09-agent-command frame); the command
+// runs with the values as environment variables and the agent never sees
+// them.
+import Icon from './Icon.astro';
+---
+<div class="fit" data-w="680" data-h="480">
+  <div class="stage" data-scene data-steps="300,1500,2300,3000,4300,4700,5000,5500" data-loop="10500">
+    <div class="term">
+      <div class="t-bar"><i></i><i></i><i></i><span>claude — ~/kitchenly</span></div>
+      <div class="t-body">
+        <p class="ln prompt"><span class="gt">&gt;</span> <span class="typed">Sign the Android release build</span></p>
+        <p class="ln l2"><span class="bullet">●</span> devvault · <b>run_with_secrets</b></p>
+        <p class="ln l2 dim">  ./gradlew bundleRelease -Pstore.password="$STORE_PASSWORD" …</p>
+        <p class="ln l3 dim wait"><span class="spin"></span> Waiting for approval in DevVault…</p>
+        <p class="ln l4 ok">  ✓ Approved once</p>
+        <p class="ln l4">  &gt; Task :app:signReleaseBundle</p>
+        <p class="ln l5 ok">  BUILD SUCCESSFUL in 41s</p>
+        <p class="ln l5 dim">  The passwords went in as env vars. The model never saw them.</p>
+      </div>
+    </div>
+
+    <div class="ask">
+      <div class="a-head">
+        <span class="spark"><Icon name="sparkle" size={18} /></span>
+        <div>
+          <b>“claude-code” wants to run a command with secrets</b>
+          <small>Nothing leaves DevVault unless you allow it.</small>
+        </div>
+      </div>
+      <label>Reason it gave</label>
+      <div class="box">“Sign the Android release build”</div>
+      <label>Item</label>
+      <div class="box"><b>Kitchenly › Android › Upload keystore</b><small>store_password · key_password</small></div>
+      <div class="btns">
+        <span>Deny</span>
+        <span>Allow for 15 Minutes</span>
+        <span class="primary">Allow Once</span>
+      </div>
+    </div>
+
+    <svg class="cur" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 2.5v17.2l4.6-4.3 2.9 6.7 2.9-1.2-2.9-6.6H18L4 2.5z" fill="#111" stroke="#fff" stroke-width="1.4" stroke-linejoin="round" />
+    </svg>
+  </div>
+</div>
+
+<style>
+  .stage { font-family: var(--font); transition: opacity .45s; }
+  .term {
+    position: absolute; left: 30px; top: 30px; width: 520px; height: 300px;
+    background: #0f1115; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / .08), 0 30px 60px -20px rgb(0 0 0 / .6);
+    color: #e6e6e6; font: 12px/1.7 var(--mono);
+  }
+  .t-bar { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: #1a1d23; color: #8a8f98; font-size: 11px; }
+  .t-bar i { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+  .t-bar i:nth-child(2) { background: #febc2e; } .t-bar i:nth-child(3) { background: #28c840; }
+  .t-bar span { margin-left: auto; margin-right: auto; font-family: var(--font); }
+  .t-body { padding: 14px 16px; }
+  .ln { margin: 0; white-space: pre; opacity: 0; transition: opacity .25s; }
+  .prompt { opacity: 1; }
+  .gt { color: #f43f5e; font-weight: 700; }
+  .typed { display: inline-block; clip-path: inset(0 100% 0 0); transition: clip-path 1s steps(30); vertical-align: bottom; }
+  .bullet { color: #ff8a3d; }
+  .dim { color: #8a8f98; }
+  .ok { color: #4ade80; }
+  .spin { display: inline-block; width: 9px; height: 9px; border: 2px solid #8a8f98; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .ask {
+    position: absolute; left: 230px; top: 150px; width: 420px;
+    background: #fff; color: var(--app-text); border-radius: 14px; padding: 16px 18px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / .1), 0 40px 80px -20px rgb(0 0 0 / .7);
+    font-size: 12px;
+    opacity: 0; transform: translateY(16px) scale(.97); transition: opacity .3s, transform .4s cubic-bezier(.2,.9,.2,1);
+  }
+  .a-head { display: flex; gap: 10px; margin-bottom: 12px; }
+  .a-head b { display: block; font-size: 13px; }
+  .a-head small { color: var(--app-muted); }
+  .spark { color: var(--app-sel); flex: none; margin-top: 1px; }
+  label { display: block; font-size: 10.5px; font-weight: 600; color: var(--app-muted); margin: 8px 0 4px; }
+  .box { border: 1px solid var(--app-line); border-radius: 8px; padding: 8px 10px; }
+  .box b { display: block; font-weight: 600; }
+  .box small { color: var(--app-muted); font-size: 11px; }
+  .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .btns span { height: 26px; padding: 0 11px; display: inline-flex; align-items: center; border-radius: 6px; box-shadow: 0 0 0 1px rgb(0 0 0 / .14); font-weight: 500; }
+  .btns .primary { background: var(--app-sel); color: #fff; box-shadow: none; transition: filter .1s, transform .1s; }
+
+  .cur {
+    position: absolute; left: 0; top: 0; z-index: 5;
+    transform: translate(660px, 470px);
+    transition: transform .9s cubic-bezier(.45,.05,.25,1);
+    filter: drop-shadow(0 2px 3px rgb(0 0 0 / .4));
+  }
+
+  /* s1 user types the request */
+  .s1 .typed { clip-path: inset(0 0 0 0); }
+  /* s2 agent calls the tool */
+  .s2 .l2 { opacity: 1; }
+  /* s3 waiting, DevVault asks */
+  .s3 .l3 { opacity: 1; }
+  .s3 .ask { opacity: 1; transform: none; }
+  /* s4 pointer to Allow Once, s5 click */
+  .s4 .cur { transform: translate(580px, 384px); }
+  .s5 .btns .primary { filter: brightness(.8); transform: scale(.96); }
+  /* s6 dialog closes */
+  .s6 .ask { opacity: 0; transform: translateY(8px) scale(.98); }
+  .s6 .wait { display: none; }
+  .s6 .cur { transform: translate(640px, 300px); }
+  /* s7, s8 command output */
+  .s7 .l4, .s8 .l5 { opacity: 1; }
+  .fade { opacity: 0; }
+</style>

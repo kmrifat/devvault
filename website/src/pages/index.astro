@@ -1,0 +1,52 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import Feature from '../components/Feature.astro';
+import ExpiryScene from '../components/ExpiryScene.astro';
+import AgentScene from '../components/AgentScene.astro';
+import SyncScene from '../components/SyncScene.astro';
+import Bento from '../components/Bento.astro';
+import Survey from '../components/Survey.astro';
+import Download from '../components/Download.astro';
+---
+<Base
+  title="DevVault · An encrypted vault for your app's keys"
+  description="Certificates, keystores, provisioning profiles and API keys in one end-to-end encrypted vault. Free and open source."
+>
+  <Nav />
+  <main>
+    <Hero />
+
+    <div id="features">
+      <Feature
+        title="Never miss<br />an expiry."
+        sub="Dates come straight from the file. DevVault reminds you before a certificate or profile runs out."
+        tone="amber"
+      >
+        <ExpiryScene />
+      </Feature>
+
+      <Feature
+        title="AI agents<br />ask first."
+        sub="Claude Code, Cursor and others can use a secret only after you click Allow. The value never reaches the model."
+        tone="ink"
+        flip
+      >
+        <AgentScene />
+      </Feature>
+
+      <Feature
+        title="Sync through<br />your own bucket."
+        sub="Use Cloudflare R2, S3, Backblaze B2 or MinIO. There is no DevVault server."
+        tone="sky"
+      >
+        <SyncScene />
+      </Feature>
+    </div>
+
+    <Bento />
+    <Survey />
+  </main>
+  <Download />
+</Base>

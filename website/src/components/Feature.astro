@@ -1,0 +1,37 @@
+---
+// One feature: a short title and line beside a big visual panel.
+interface Props {
+  title: string;
+  sub: string;
+  tone: 'rose' | 'amber' | 'violet' | 'sky' | 'ink';
+  flip?: boolean;
+  id?: string;
+}
+const { title, sub, tone, flip = false, id } = Astro.props;
+---
+<section class:list={['feature wrap', { flip }]} id={id}>
+  <div class="copy">
+    <h2 set:html={title} />
+    <p class="sub">{sub}</p>
+    <slot name="extra" />
+  </div>
+  <div class={`panel panel-${tone} visual`}>
+    <slot />
+  </div>
+</section>
+
+<style>
+  .feature {
+    display: grid; grid-template-columns: 4fr 8fr; gap: 56px; align-items: center;
+    padding-top: 140px;
+  }
+  .flip .copy { order: 2; }
+  .copy { display: grid; gap: 18px; }
+  @media (max-width: 900px) {
+    .feature { grid-template-columns: 1fr; gap: 32px; padding-top: 96px; }
+    .flip .copy { order: 0; }
+  }
+  @media (max-width: 640px) {
+    .visual { border-radius: 18px; }
+  }
+</style>

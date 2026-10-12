@@ -1,0 +1,108 @@
+---
+// Sync: devices push encrypted objects with random names to the user's own
+// S3-compatible bucket. There's no DevVault server in between.
+import Icon from './Icon.astro';
+
+const blobs = ['7f3a9c…e1', 'c40b12…9d', '1e88f0…4a', 'a9d27e…07', '5b61cc…f2', 'e03d94…8b'];
+---
+<div class="fit" data-w="680" data-h="480">
+  <div class="stage">
+    <div class="dev d1"><Icon name="laptop" size={44} stroke={1.4} /><b>MacBook</b><small>Unlocked</small></div>
+    <div class="dev d2"><Icon name="monitor" size={44} stroke={1.4} /><b>Linux desktop</b><small>Paired</small></div>
+
+    <div class="lane l1">
+      {blobs.slice(0, 3).map((b, i) => (
+        <span class="blob" style={`animation-delay:${i * 1.2}s`}><Icon name="lock" size={10} /> {b}</span>
+      ))}
+    </div>
+    <div class="lane l2">
+      {blobs.slice(3).map((b, i) => (
+        <span class="blob back" style={`animation-delay:${0.6 + i * 1.2}s`}><Icon name="lock" size={10} /> {b}</span>
+      ))}
+    </div>
+
+    <div class="bucket">
+      <div class="b-ic"><Icon name="database" size={30} stroke={1.5} /></div>
+      <b>your-bucket</b>
+      <small>Only encrypted objects with random names</small>
+      <div class="chips">
+        <span>Cloudflare R2</span><span>AWS S3</span><span>Backblaze B2</span><span>MinIO</span>
+      </div>
+    </div>
+
+    <div class="noserver">
+      <span class="srv"><Icon name="server" size={16} /></span>
+      DevVault server
+      <em>doesn't exist</em>
+    </div>
+  </div>
+</div>
+
+<style>
+  .stage { font-family: var(--font); color: var(--app-text); }
+  .dev {
+    position: absolute; left: 34px; width: 150px; height: 120px;
+    display: grid; justify-items: center; align-content: center; gap: 2px;
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 18px 40px -16px rgb(30 60 140 / .35);
+    font-size: 13px;
+  }
+  .dev :global(svg) { color: #3b4250; margin-bottom: 6px; }
+  .dev small { color: var(--app-muted); font-size: 11px; }
+  .d1 { top: 70px; } .d2 { top: 250px; }
+
+  .bucket {
+    position: absolute; right: 34px; top: 110px; width: 230px;
+    background: #fff; border-radius: 18px; padding: 20px;
+    display: grid; justify-items: center; text-align: center; gap: 4px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 24px 50px -16px rgb(30 60 140 / .4);
+    font-size: 14px;
+  }
+  .b-ic { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(140deg, #e0ecff, #ede5ff); color: #3157d6; margin-bottom: 6px; }
+  .bucket b { font-family: var(--mono); font-size: 13px; }
+  .bucket small { color: var(--app-muted); font-size: 11.5px; line-height: 1.4; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 10px; }
+  .chips span { font-size: 10.5px; font-weight: 500; background: #f2f4f8; border-radius: 999px; padding: 3px 8px; color: #3b4250; }
+
+  .lane { position: absolute; left: 190px; width: 230px; height: 30px; }
+  .l1 { top: 128px; } .l2 { top: 296px; }
+  .lane::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px dashed rgb(49 87 214 / .25); }
+  .blob {
+    position: absolute; top: 4px; left: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+    font: 500 10px/1 var(--mono); color: #3157d6;
+    background: #fff; border-radius: 999px; padding: 5px 8px;
+    box-shadow: 0 0 0 1px rgb(49 87 214 / .15), 0 6px 14px -6px rgb(49 87 214 / .5);
+    opacity: 0;
+    animation: flow 3.6s cubic-bezier(.45,.05,.4,1) infinite;
+  }
+  .blob.back { animation-name: flowback; }
+  @keyframes flow {
+    0% { transform: translateX(-10px); opacity: 0; }
+    12% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateX(150px); opacity: 0; }
+  }
+  @keyframes flowback {
+    0% { transform: translateX(150px); opacity: 0; }
+    12% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateX(-10px); opacity: 0; }
+  }
+
+  .noserver {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgb(255 255 255 / .7); border-radius: 999px; padding: 7px 14px 7px 8px;
+    font-size: 12.5px; color: var(--app-muted); text-decoration: line-through; text-decoration-color: var(--danger);
+  }
+  .noserver em { font-style: normal; text-decoration: none; display: inline-block; color: var(--danger); font-weight: 600; }
+  .srv { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #fde8eb; color: var(--danger); position: relative; }
+  .srv::after { content: ""; position: absolute; width: 22px; height: 2px; background: var(--danger); transform: rotate(-45deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .blob { animation: none; opacity: 1; }
+    .blob:nth-child(n + 2) { display: none; }
+    .l1 .blob { transform: translateX(60px); }
+    .l2 .blob { transform: translateX(60px); }
+  }
+</style>

@@ -1,0 +1,163 @@
+---
+// "Would your team use it?" Three big choices; team answers get two quick
+// follow-ups. Posts to surveyEndpoint (Formspree).
+import Icon from './Icon.astro';
+import { surveyEndpoint } from '../lib/links';
+---
+<section class="survey" id="teams">
+  <div class="wrap inner">
+    <h2>Using it at work?</h2>
+    <p class="sub">DevVault is built for one person today. Tell us if your team would use it: your answer decides what we build next.</p>
+
+    <form class="form" data-endpoint={surveyEndpoint} novalidate>
+      <div class="choices" role="radiogroup" aria-label="How would you use DevVault?">
+        <label class="choice">
+          <input type="radio" name="use" value="personal" />
+          <span class="c-ic"><Icon name="user" size={26} stroke={1.6} /></span>
+          <b>Just me</b>
+        </label>
+        <label class="choice">
+          <input type="radio" name="use" value="team" />
+          <span class="c-ic"><Icon name="users" size={26} stroke={1.6} /></span>
+          <b>My team</b>
+        </label>
+        <label class="choice">
+          <input type="radio" name="use" value="both" />
+          <span class="c-ic both"><Icon name="user" size={20} stroke={1.6} /><Icon name="users" size={20} stroke={1.6} /></span>
+          <b>Both</b>
+        </label>
+      </div>
+
+      <div class="more" hidden>
+        <div class="team-q" hidden>
+          <p class="q">How big is the team?</p>
+          <div class="chips">
+            {['2–5', '6–20', '21–100', '100+'].map((v) => (
+              <label class="chip"><input type="radio" name="team_size" value={v} /><span>{v}</span></label>
+            ))}
+          </div>
+          <p class="q">Would your company pay for it?</p>
+          <div class="chips">
+            {[['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No'], ['not-my-call', 'Not my call']].map(([v, l]) => (
+              <label class="chip"><input type="radio" name="pay" value={v} /><span>{l}</span></label>
+            ))}
+          </div>
+        </div>
+        <div class="send">
+          <input type="email" name="email" autocomplete="email" placeholder="Email, if you'd like to hear back (optional)" aria-label="Email (optional)" />
+          <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <button class="btn btn-primary" type="submit">Send <Icon name="arrow-right" size={16} /></button>
+        </div>
+      </div>
+
+      <p class="status" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+
+<style>
+  .survey { margin-top: 150px; padding: 110px 0; background: linear-gradient(180deg, #fff 0%, #fff5f7 30%, #fff5f7 70%, #fff 100%); }
+  .inner { display: grid; justify-items: center; text-align: center; gap: 16px; }
+  .form { width: 100%; max-width: 620px; margin-top: 28px; display: grid; gap: 22px; }
+  .choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .choice {
+    position: relative; cursor: pointer;
+    display: grid; justify-items: center; gap: 10px;
+    padding: 24px 12px 20px; border-radius: 18px;
+    background: #fff; border: 1.5px solid var(--line);
+    transition: border-color .15s, box-shadow .2s, transform .15s;
+  }
+  .choice:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgb(0 0 0 / .18); }
+  .choice input, .chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .c-ic { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; background: var(--soft); color: var(--muted); transition: background .15s, color .15s; }
+  .c-ic.both { display: flex; justify-content: center; gap: 0; }
+  .choice b { font-size: 16px; }
+  .choice:has(input:checked) { border-color: var(--brand); box-shadow: 0 0 0 4px rgb(225 29 72 / .12); }
+  .choice:has(input:checked) .c-ic { background: var(--brand); color: #fff; }
+  .choice:has(input:focus-visible), .chip:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+  .more { display: grid; gap: 16px; animation: rise .3s ease-out; }
+  .more[hidden], .team-q[hidden] { display: none; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+  .team-q { display: grid; gap: 10px; justify-items: center; }
+  .q { font-weight: 600; margin-top: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip span {
+    display: inline-flex; align-items: center; height: 38px; padding: 0 16px; border-radius: 999px;
+    background: #fff; border: 1.5px solid var(--line); font-size: 14.5px; font-weight: 500; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .chip { position: relative; }
+  .chip:has(input:checked) span { border-color: var(--brand); background: #fff0f3; color: var(--brand-lo); }
+
+  .send { display: flex; gap: 10px; margin-top: 6px; }
+  .send input[type="email"] {
+    flex: 1; height: 46px; border-radius: 12px; border: 1.5px solid var(--line); padding: 0 14px;
+    font: inherit; font-size: 15px; background: #fff; color: var(--ink);
+  }
+  .send input[type="email"]:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px rgb(225 29 72 / .12); }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; }
+  .status { min-height: 1.5em; color: var(--muted); font-size: 15px; }
+  .status.ok { color: #15803d; font-weight: 600; font-size: 17px; }
+  .status.err { color: var(--brand-lo); }
+  .form.sent .choices, .form.sent .more { display: none; }
+
+  @media (max-width: 640px) {
+    .survey { margin-top: 100px; padding: 80px 0; }
+    .choices { gap: 8px; }
+    .choice { padding: 18px 6px 14px; }
+    .send { flex-direction: column; }
+    .send .btn { justify-content: center; }
+  }
+</style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('#teams form')!;
+  const more = form.querySelector<HTMLElement>('.more')!;
+  const teamQ = form.querySelector<HTMLElement>('.team-q')!;
+  const status = form.querySelector<HTMLElement>('.status')!;
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+
+  const say = (text: string, kind = '') => {
+    status.textContent = text;
+    status.className = `status ${kind}`;
+  };
+
+  form.addEventListener('change', (e) => {
+    const t = e.target as HTMLInputElement;
+    if (t.name !== 'use') return;
+    more.hidden = false;
+    teamQ.hidden = t.value === 'personal';
+    say('');
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = form.querySelector<HTMLInputElement>('input[name="email"]')!;
+    if (email.value && !email.checkValidity()) {
+      say('That email doesn’t look right.', 'err');
+      email.focus();
+      return;
+    }
+    const endpoint = form.dataset.endpoint;
+    if (!endpoint) {
+      say('The survey isn’t connected yet. Please tell us on GitHub instead.', 'err');
+      return;
+    }
+    const data = new FormData(form);
+    // Team questions don't belong in a personal answer.
+    if (teamQ.hidden) ['team_size', 'pay'].forEach((k) => data.delete(k));
+
+    button.disabled = true;
+    say('Sending…');
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: data, headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error(String(res.status));
+      form.classList.add('sent');
+      say('Thank you! That helps us decide what to build next.', 'ok');
+    } catch {
+      button.disabled = false;
+      say('Couldn’t send that. Check your connection and try again.', 'err');
+    }
+  });
+</script>

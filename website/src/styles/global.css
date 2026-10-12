@@ -1,0 +1,114 @@
+/* Brand colours match lib/app/theme.dart (AppBrand); the app UI inside the
+   scenes uses the macOS light palette from the N-frame screenshots. */
+:root {
+  --brand: #e11d48;
+  --brand-hi: #f43f5e;
+  --brand-lo: #be123c;
+  --ink: #0b0d12;
+  --muted: #5f6672;
+  --line: #e7e8ec;
+  --soft: #f5f6f8;
+  --bg: #ffffff;
+  --accent: #0a84ff;
+
+  /* App palette (macOS light) */
+  --app-bg: #ffffff;
+  --app-side: #ececef;
+  --app-line: #dedee3;
+  --app-text: #1d1d1f;
+  --app-muted: #6e6e73;
+  --app-sel: #0a6cff;
+  --app-row: #f6f6f8;
+  --warn: #b26a00;
+  --warn-bg: #fff1d6;
+  --danger: #d70015;
+  --ok: #1a8f3c;
+
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI Variable", "Segoe UI", Roboto, Ubuntu, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  --wrap: 1180px;
+  --r-lg: 28px;
+  --r: 14px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.55 var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+img, svg { display: block; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, p { margin: 0; }
+h1 {
+  font-size: clamp(2.5rem, 6.2vw, 4.6rem);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  font-weight: 750;
+}
+h2 {
+  font-size: clamp(2rem, 4.2vw, 3.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  font-weight: 750;
+}
+h3 { font-size: 1.05rem; letter-spacing: -0.015em; font-weight: 650; }
+.sub { color: var(--muted); font-size: clamp(1.05rem, 1.6vw, 1.2rem); max-width: 34em; }
+.grad {
+  background: linear-gradient(100deg, var(--brand-hi), var(--brand) 45%, #fb7185);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 6px; }
+
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 46px; padding: 0 20px;
+  border-radius: 12px;
+  font: inherit; font-size: 15px; font-weight: 600;
+  border: 1px solid var(--line);
+  background: #fff; color: var(--ink);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, background .15s;
+}
+.btn:hover { box-shadow: 0 2px 10px rgb(0 0 0 / .06); }
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: var(--brand); border-color: var(--brand); color: #fff;
+  box-shadow: 0 1px 0 rgb(255 255 255 / .25) inset, 0 6px 18px -6px rgb(225 29 72 / .6);
+}
+.btn-primary:hover { background: #d0173f; box-shadow: 0 1px 0 rgb(255 255 255 / .25) inset, 0 10px 24px -8px rgb(225 29 72 / .7); }
+
+/* A visual card, like CleanShot's coloured panels. */
+.panel {
+  position: relative;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  isolation: isolate;
+}
+.panel-rose  { background: linear-gradient(140deg, #ffe4ea 0%, #ffd0db 40%, #f7c6e6 100%); }
+.panel-amber { background: linear-gradient(140deg, #fff3d6 0%, #ffe1c2 55%, #ffd4cc 100%); }
+.panel-violet{ background: linear-gradient(140deg, #ece8ff 0%, #dcd6ff 50%, #f3d7ff 100%); }
+.panel-sky   { background: linear-gradient(140deg, #e0f0ff 0%, #d3e6ff 50%, #e6dcff 100%); }
+.panel-ink   { background: radial-gradient(120% 120% at 20% 0%, #2a2f3a 0%, #12151b 60%); }
+
+/* Fixed-size stage scaled to its box by scenes.ts. */
+.fit { position: relative; width: 100%; }
+.fit > .stage {
+  position: absolute; top: 0; left: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--k, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
