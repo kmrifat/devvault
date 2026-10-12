@@ -71,7 +71,8 @@ flutter:
   # machines: under Swift Package Manager, Flutter's generated plugin
   # package targets iOS 12 while native_liquid_glass's SVGKit pulls
   # CocoaLumberjack, which needs iOS 15. macOS's Sparkle is a pod too.
-  disable-swift-package-manager: true
+  config:
+    enable-swift-package-manager: false
 
   # bc_ui bundles Inter under its own package namespace, but its text styles
   # ask for the bare 'Inter' family, which only resolves if the app registers
