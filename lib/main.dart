@@ -103,6 +103,8 @@ Future<void> main() async {
           biometricKeyStoreProvider.overrideWithValue(
             const ChannelBiometricKeyStore(),
           ),
+        if (defaultTargetPlatform == TargetPlatform.iOS)
+          nativeTabBarProvider.overrideWithValue(true),
         if (phone) ...[
           lockInBackgroundProvider.overrideWithValue(true),
           clipboardAccessProvider.overrideWithValue(

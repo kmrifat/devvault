@@ -1,6 +1,7 @@
 import 'package:bc_ui/bc_ui.dart';
 import 'package:devvault/app/layout.dart';
 import 'package:devvault/app/routes.dart';
+import 'package:devvault/data/providers.dart';
 import 'package:devvault/features/expiry/expiry_screen.dart';
 import 'package:devvault/features/pairing/pair_screen.dart';
 import 'package:devvault/features/vault/mobile_vault_screen.dart';
@@ -9,6 +10,7 @@ import 'package:devvault/features/vault/vault_sidebar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart';
 
 import 'test_overrides.dart';
 
@@ -172,6 +174,30 @@ void main() {
       expect(find.byType(VaultSidebar), findsNothing);
       expect(find.byType(MobileVaultScreen), findsOneWidget);
       expect(find.text('Your vault is empty'), findsOneWidget);
+    });
+
+    testWidgets('on iPhone the tab bar is UIKit\'s own', (tester) async {
+      setView(tester, AppLayout.mobile);
+      await pumpUnlockedApp(
+        tester,
+        location: Routes.vault(),
+        layout: AppLayout.mobile,
+        overrides: [nativeTabBarProvider.overrideWithValue(true)],
+      );
+      expect(find.byType(LiquidGlassTabBar), findsOneWidget);
+      expect(find.byType(BCBottomNav), findsNothing);
+      final bar = tester.widget<LiquidGlassTabBar>(
+        find.byType(LiquidGlassTabBar),
+      );
+      expect(
+        [for (final item in bar.items) item.label],
+        ['Vault', 'Expiry', 'Settings'],
+      );
+      expect(
+        [for (final item in bar.items) item.icon.sfSymbolName],
+        ['square.stack.3d.up', 'clock', 'gearshape'],
+      );
+      expect(bar.currentIndex, 0);
     });
 
     testWidgets('an item is pushed as its own screen', (tester) async {
