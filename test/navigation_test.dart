@@ -277,7 +277,8 @@ void main() {
 
       router.go(Routes.settings);
       await tester.pumpAndSettle();
-      expect(header().title, 'Settings');
+      expect(header().title, '');
+      expect([for (final a in header().actions) a.label], ['Lock']);
       expect(header().onBack, isNull);
     });
 

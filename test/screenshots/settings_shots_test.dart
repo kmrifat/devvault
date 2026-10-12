@@ -101,7 +101,7 @@ void main() {
   // Phones: General and Security on one page, sync storage on its own
   // (P3-07).
   shot(
-    'B-settings',
+    'I7-settings',
     Routes.settings,
     device: ShotDevice.mobile,
     sample: true,
