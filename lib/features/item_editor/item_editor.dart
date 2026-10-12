@@ -653,12 +653,12 @@ class _FieldTable extends StatelessWidget {
   }
 }
 
+/// A field row's least height: an editable row's text fields and
+/// buttons, and the same for a locked one.
+const double _fieldRowHeight = 36;
+
 /// The table's columns: name, value (the rest), secret, then room for the
 /// remove button.
-/// A field row's height: an editable row's text fields and buttons, and
-/// the same for a locked one.
-const double _fieldRowHeight = 32;
-
 class _FieldColumns extends StatelessWidget {
   const _FieldColumns({
     required this.name,
@@ -679,7 +679,7 @@ class _FieldColumns extends StatelessWidget {
       child: Row(
         spacing: 10,
         children: [
-          SizedBox(width: 150, child: name),
+          SizedBox(width: 180, child: name),
           Expanded(child: value),
           SizedBox(width: 48, child: Center(child: secret)),
           SizedBox(width: 52, child: Center(child: remove)),
@@ -769,6 +769,7 @@ class _FieldRowState extends State<_FieldRow> {
       );
     } else {
       final name = field.name.isEmpty ? 'Field' : field.name;
+      final masked = field.secret && !_revealed;
       row = _FieldColumns(
         name: Semantics(
           label: 'Field name',
@@ -785,9 +786,15 @@ class _FieldRowState extends State<_FieldRow> {
               child: Semantics(
                 label: '$name value',
                 child: DesktopTextField(
+                  // A new field when the dots go, so it can grow: a masked
+                  // field holds one line, a shown value wraps to its full
+                  // length (a connection string, a key).
+                  key: ValueKey(masked),
                   controller: _value,
-                  obscureText: field.secret && !_revealed,
+                  obscureText: masked,
                   mono: true,
+                  minLines: 1,
+                  maxLines: masked ? 1 : 6,
                   placeholder: field.secret ? 'Secret value' : 'Value',
                   onChanged: (v) => field.value = v,
                 ),
@@ -832,9 +839,11 @@ class _FieldRowState extends State<_FieldRow> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 2,
         children: [
-          // One height for every row, locked or editable.
-          SizedBox(
-            height: _fieldRowHeight,
+          // One height for every row, locked or editable, at least. A
+          // field is never squeezed: the system font can need more than
+          // the tests' font, and a shown value wraps to more lines.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: _fieldRowHeight),
             child: Center(child: row),
           ),
           if (widget.error case final error?)

@@ -76,7 +76,13 @@ class DesktopTextField extends StatelessWidget {
     final wrapsOneValue = maxLines > 1 && onSubmitted != null;
     final keyboardType = wrapsOneValue ? TextInputType.text : null;
     final textInputAction = wrapsOneValue ? TextInputAction.done : null;
-    final style = mono ? AppText.mono(context, fontSize: 12.5) : null;
+    // Dots are drawn in the UI font with room between them: in the mono
+    // font ● is as wide as its cell, so a masked value ran together.
+    final style = obscureText
+        ? TextStyle(fontSize: DesktopMetrics.bodySize, letterSpacing: 2.5)
+        : mono
+        ? AppText.mono(context, fontSize: 12.5)
+        : null;
     final monoStyle = style?.copyWith(color: colors.text);
     return switch (context.desktopKit) {
       DesktopKit.macos => mac.MacosTextField(
