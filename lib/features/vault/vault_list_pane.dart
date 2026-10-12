@@ -439,6 +439,7 @@ class _AppDetails extends ConsumerWidget {
           actions: [
             DesktopMenuAction(
               'Delete app…',
+              macSymbol: 'trash',
               () => deleteApp(context, ref, app, itemCount: itemCount),
               destructive: true,
             ),

@@ -320,10 +320,12 @@ class _Header extends ConsumerWidget {
             if (!item.isReadOnly && item.attachments.isNotEmpty)
               DesktopMenuAction(
                 'Replace file…',
+                macSymbol: 'arrow.triangle.2.circlepath',
                 () => replaceFile(context, item),
               ),
             DesktopMenuAction(
               'Delete item…',
+              macSymbol: 'trash',
               () => deleteItem(context, ref, item),
               destructive: true,
               startsGroup: true,

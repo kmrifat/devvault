@@ -15,11 +15,20 @@ List<DesktopMenuAction> itemMenu(
   Item item,
 ) => [
   if (!item.isReadOnly) ...[
-    DesktopMenuAction('Edit item…', () => editItem(context, item)),
-    DesktopMenuAction('Move to app…', () => moveItemTo(context, ref, item)),
+    DesktopMenuAction(
+      'Edit item…',
+      macSymbol: 'pencil',
+      () => editItem(context, item),
+    ),
+    DesktopMenuAction(
+      'Move to app…',
+      macSymbol: 'folder',
+      () => moveItemTo(context, ref, item),
+    ),
   ],
   DesktopMenuAction(
     'Delete item…',
+    macSymbol: 'trash',
     () => deleteItem(context, ref, item),
     destructive: true,
     startsGroup: true,

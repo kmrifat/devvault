@@ -205,15 +205,22 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                     menu: [
                       DesktopMenuAction(
                         'New organization…',
+                        macSymbol: 'building.2',
                         () => createOrganization(context, ref),
                       ),
-                      DesktopMenuAction('New app…', () => createApp(context)),
+                      DesktopMenuAction(
+                        'New app…',
+                        macSymbol: 'plus.app',
+                        () => createApp(context),
+                      ),
                       DesktopMenuAction(
                         'New item…',
+                        macSymbol: 'doc.badge.plus',
                         () => createItem(context, const VaultFilter()),
                       ),
                       DesktopMenuAction(
                         'New secure note…',
+                        macSymbol: 'note.text.badge.plus',
                         () => createSecureNote(context, const VaultFilter()),
                       ),
                     ],
@@ -356,6 +363,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               if (group.apps.isNotEmpty)
                 DesktopMenuAction(
                   'New item…',
+                  macSymbol: 'doc.badge.plus',
                   () => createItem(
                     context,
                     VaultFilter(org: orgKey),
@@ -365,6 +373,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
               if (group.apps.isNotEmpty)
                 DesktopMenuAction(
                   'New secure note…',
+                  macSymbol: 'note.text.badge.plus',
                   () => createSecureNote(
                     context,
                     VaultFilter(org: orgKey),
@@ -373,16 +382,19 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                 ),
               DesktopMenuAction(
                 'New app…',
+                macSymbol: 'plus.app',
                 () => createApp(context, organization: org),
               ),
               if (org != null) ...[
                 DesktopMenuAction(
                   'Edit organization…',
+                  macSymbol: 'pencil',
                   () => editOrganization(context, ref, org),
                   startsGroup: true,
                 ),
                 DesktopMenuAction(
                   'Delete organization…',
+                  macSymbol: 'trash',
                   () => deleteOrganization(
                     context,
                     ref,
@@ -458,28 +470,34 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           menu: [
             DesktopMenuAction(
               'New item…',
+              macSymbol: 'doc.badge.plus',
               () => createItem(context, VaultFilter(app: app.id)),
             ),
             DesktopMenuAction(
               'New secure note…',
+              macSymbol: 'note.text.badge.plus',
               () => createSecureNote(context, VaultFilter(app: app.id)),
             ),
             DesktopMenuAction(
               'Edit app…',
+              macSymbol: 'pencil',
               () => editApp(context, app),
               startsGroup: true,
             ),
             DesktopMenuAction(
               'Move to organization…',
+              macSymbol: 'folder',
               () => moveAppTo(context, ref, app),
             ),
             if (organization != null)
               DesktopMenuAction(
                 'Remove from $organization',
+                macSymbol: 'folder.badge.minus',
                 () => moveApp(context, ref, app, null),
               ),
             DesktopMenuAction(
               'Delete app…',
+              macSymbol: 'trash',
               () => deleteApp(context, ref, app, itemCount: node.items.length),
               destructive: true,
               startsGroup: true,
@@ -549,10 +567,12 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
             menu: [
               DesktopMenuAction(
                 'New item…',
+                macSymbol: 'doc.badge.plus',
                 () => createItem(context, const VaultFilter(app: app)),
               ),
               DesktopMenuAction(
                 'New secure note…',
+                macSymbol: 'note.text.badge.plus',
                 () => createSecureNote(context, const VaultFilter(app: app)),
               ),
             ],

@@ -8,9 +8,11 @@ import 'desktop_colors.dart';
 import 'desktop_metrics.dart';
 import 'desktop_theme.dart';
 
-/// The macOS menu look DevVault draws itself (context, pull-down, pop-up
-/// and combo box menus), after the system's own: a translucent panel that
-/// blurs what is behind it, with a hairline border and a soft shadow;
+/// The macOS menu look DevVault draws itself (pop-up and combo box menus,
+/// the date field's calendar, and context and pull-down menus in tests;
+/// the app's window uses AppKit's for those, `DesktopNativeMenu`), after
+/// the system's own: a near-opaque panel over a blur of what is behind
+/// it, with a hairline border and a soft shadow;
 /// 24 pt rows that fill with the accent when hovered or focused, a check
 /// mark beside the chosen one, and hairline separators between groups.
 ///
@@ -23,8 +25,10 @@ abstract final class MacosMenuStyle {
   /// A row's label and a separator are this far in from the row's edge.
   static const double _inset = 10;
 
-  /// How much of the panel's colour covers the blurred window behind it.
-  static const double _opacity = 0.75;
+  /// How much of the panel's colour covers the blurred window behind it:
+  /// nearly all, so rows and a selection behind never show through (at
+  /// 75% they did, and the menu was hard to read; P7-01).
+  static const double _opacity = 0.97;
   static const double _blur = 24;
 
   /// The panel itself: its shape, border and shadow. It is clear;

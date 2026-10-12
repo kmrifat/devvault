@@ -4,6 +4,8 @@ import FlutterMacOS
 class MainFlutterWindow: NSWindow {
   /// Sparkle, behind the `devvault/updater` channel (P6-04).
   private var updater: AppUpdater?
+  /// AppKit's context and pull-down menus, behind `devvault/menu` (P7-01).
+  private var menus: NativeMenu?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -18,6 +20,9 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     updater = AppUpdater(messenger: flutterViewController.engine.binaryMessenger)
+    menus = NativeMenu(
+      messenger: flutterViewController.engine.binaryMessenger,
+      view: flutterViewController.view)
 
     super.awakeFromNib()
   }

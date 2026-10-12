@@ -4,6 +4,7 @@ import 'package:macos_ui/macos_ui.dart' as mac;
 
 import 'desktop_macos_menu.dart';
 import 'desktop_menu_focus.dart';
+import 'desktop_native_menu.dart';
 import 'desktop_symbols.dart';
 import 'desktop_theme.dart';
 import 'desktop_yaru_menu.dart';
@@ -17,10 +18,15 @@ class DesktopMenuAction {
     this.onSelected, {
     this.destructive = false,
     this.startsGroup = false,
+    this.macSymbol,
   });
 
   final String label;
   final VoidCallback onSelected;
+
+  /// The SF Symbol beside [label] in AppKit's menu ([DesktopNativeMenu]),
+  /// e.g. `trash`. The drawn menus have no icons.
+  final String? macSymbol;
 
   /// Deletes something: drawn in the danger colour.
   final bool destructive;
@@ -38,7 +44,8 @@ bool separatorBefore(List<DesktopMenuAction> actions, int i) =>
 /// menu of commands, such as the inspector's "Replace file…" and "Delete
 /// item…". [label] names it for screen readers and its tooltip.
 ///
-/// - macOS: a `PushButton` with the menu in the macOS menu style (the
+/// - macOS: a `PushButton` that drops AppKit's own menu
+///   ([DesktopNativeMenu]); in tests, the drawn macOS menu style (the
 ///   macos_ui pull-down draws a caret the design doesn't have).
 /// - Windows: Fluent `DropDownButton` with a menu flyout.
 /// - Linux: an icon button with the Linux command menu ([YaruMenuStyle]).
@@ -126,10 +133,41 @@ class _MacosPullDownState extends State<_MacosPullDown> {
     super.dispose();
   }
 
+  /// Opens AppKit's menu just below the button, as a pull-down does.
+  void _openNative(BuildContext button) {
+    final box = button.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    DesktopNativeMenu.show(
+      widget.actions,
+      box.localToGlobal(Offset(0, box.size.height + 4)),
+    );
+  }
+
+  Widget _button({required VoidCallback onPressed}) => mac.MacosTooltip(
+    message: widget.label,
+    // The button carries the name; the tooltip would say it twice.
+    excludeFromSemantics: true,
+    child: SizedBox(
+      // An icon-only push button: the kit's 60 pt minimum is for text.
+      width: 32,
+      child: mac.PushButton(
+        controlSize: mac.ControlSize.regular,
+        secondary: true,
+        semanticLabel: widget.label,
+        onPressed: onPressed,
+        child: widget.icon,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final label = widget.label;
     final actions = widget.actions;
+    if (DesktopNativeMenu.usedIn(context)) {
+      return Builder(
+        builder: (button) => _button(onPressed: () => _openNative(button)),
+      );
+    }
     return MenuAnchor(
       alignmentOffset: const Offset(0, 4),
       style: MacosMenuStyle.panel(context.desktopColors),
@@ -156,22 +194,8 @@ class _MacosPullDownState extends State<_MacosPullDown> {
           ],
         ),
       ],
-      builder: (context, menu, _) => mac.MacosTooltip(
-        message: label,
-        // The button carries the name; the tooltip would say it twice.
-        excludeFromSemantics: true,
-        child: SizedBox(
-          // An icon-only push button: the kit's 60 pt minimum is for text.
-          width: 32,
-          child: mac.PushButton(
-            controlSize: mac.ControlSize.regular,
-            secondary: true,
-            semanticLabel: label,
-            onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-            child: widget.icon,
-          ),
-        ),
-      ),
+      builder: (context, menu, _) =>
+          _button(onPressed: () => menu.isOpen ? menu.close() : menu.open()),
     );
   }
 }

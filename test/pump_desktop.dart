@@ -10,6 +10,7 @@ Future<void> pumpDesktop(
   DesktopKit kit,
   Widget child, {
   Brightness brightness = Brightness.light,
+  bool nativeWindow = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -22,7 +23,7 @@ Future<void> pumpDesktop(
       // Above the Navigator, as in the app, so menus and flyouts (pushed
       // as routes) get the kit's theme and strings too.
       builder: (context, navigator) =>
-          DesktopTheme(kit: kit, child: navigator!),
+          DesktopTheme(kit: kit, nativeWindow: nativeWindow, child: navigator!),
       home: Scaffold(
         body: Center(
           child: Padding(padding: const EdgeInsets.all(24), child: child),
