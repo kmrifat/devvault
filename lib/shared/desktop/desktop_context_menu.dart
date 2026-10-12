@@ -69,6 +69,14 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
     );
   }
 
+  /// Opens the menu just below [child], as a pull-down button's does (the
+  /// toolbar's New), with nothing highlighted.
+  void openBelow() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    _open(box.localToGlobal(Offset(0, box.size.height + 4)));
+  }
+
   void _open(Offset global, {bool fromKeyboard = false}) {
     final actions = widget.actions;
     if (actions.isEmpty) return;

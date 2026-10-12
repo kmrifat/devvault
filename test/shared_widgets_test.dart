@@ -92,6 +92,33 @@ void main() {
     });
   });
 
+  group('SecretMask', () {
+    testWidgets('is eight drawn dots, whatever the secret', (tester) async {
+      await pumpBC(
+        tester,
+        const SecretMask(semanticLabel: 'Store password, hidden'),
+      );
+      final dots = find.descendant(
+        of: find.byType(SecretMask),
+        matching: find.byType(DecoratedBox),
+      );
+      expect(dots, findsNWidgets(SecretMask.dots));
+      for (final dot in tester.widgetList<DecoratedBox>(dots)) {
+        expect((dot.decoration as BoxDecoration).shape, BoxShape.circle);
+      }
+      expect(tester.getSize(dots.first), const Size.square(6));
+      // No text at all: nothing to read the secret, or its length, from.
+      expect(
+        find.descendant(
+          of: find.byType(SecretMask),
+          matching: find.byType(Text),
+        ),
+        findsNothing,
+      );
+      expect(find.bySemanticsLabel('Store password, hidden'), findsOneWidget);
+    });
+  });
+
   group('SecretRow', () {
     const secret = 'hunter2-store-pass';
 
@@ -104,7 +131,7 @@ void main() {
         ),
       );
       expect(find.text(secret), findsNothing);
-      expect(find.text(SecretRow.mask), findsOneWidget);
+      expect(find.byType(SecretMask), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Reveal'));
       await tester.pump();

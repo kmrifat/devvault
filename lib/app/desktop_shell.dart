@@ -249,6 +249,9 @@ class ShellToolbar extends ConsumerStatefulWidget {
 }
 
 class _ToolbarState extends ConsumerState<ShellToolbar> {
+  /// New's menu: everything you can create.
+  final _newMenu = GlobalKey<DesktopContextMenuState>();
+
   late final _search = TextEditingController(text: _query ?? '');
 
   String? get _query => widget.section == ShellSection.vault
@@ -336,15 +339,48 @@ class _ToolbarState extends ConsumerState<ShellToolbar> {
                 ),
               ),
               const SizedBox(width: 8),
-              DesktopIconButton(
-                symbol: DesktopSymbol.importFile,
-                tooltip: 'Import a file (${shortcutLabel('I')})',
+              // Labelled, so the two ways in are easy to find (P7-02).
+              DesktopButton(
+                label: 'Import',
+                icon: DesktopSymbol.importFile,
                 onPressed: () => openImport(context),
               ),
-              DesktopIconButton(
-                symbol: DesktopSymbol.add,
-                tooltip: 'New item',
-                onPressed: () => createItem(context, _filter),
+              // One node for screen readers: the button "New", with its
+              // menu's commands as actions.
+              MergeSemantics(
+                child: DesktopContextMenu(
+                  key: _newMenu,
+                  actions: [
+                    DesktopMenuAction(
+                      'Item…',
+                      macSymbol: 'doc.badge.plus',
+                      () => createItem(context, _filter),
+                    ),
+                    DesktopMenuAction(
+                      'Secure note…',
+                      macSymbol: 'note.text.badge.plus',
+                      () => createSecureNote(context, _filter),
+                    ),
+                    DesktopMenuAction(
+                      'App…',
+                      macSymbol: 'plus.app',
+                      () => createApp(context),
+                      startsGroup: true,
+                    ),
+                    DesktopMenuAction(
+                      'Organization…',
+                      macSymbol: 'building.2',
+                      () => createOrganization(context, ref),
+                    ),
+                  ],
+                  child: DesktopButton(
+                    label: 'New',
+                    icon: DesktopSymbol.add,
+                    kind: DesktopButtonKind.primary,
+                    menu: true,
+                    onPressed: () => _newMenu.currentState?.openBelow(),
+                  ),
+                ),
               ),
               Expanded(
                 child: Center(
@@ -363,6 +399,7 @@ class _ToolbarState extends ConsumerState<ShellToolbar> {
               DesktopIconButton(
                 symbol: DesktopSymbol.lock,
                 tooltip: 'Lock now (${shortcutLabel('L')})',
+                size: DesktopMetrics.toolbarIconSize,
                 onPressed: () => ref.read(vaultSessionProvider.notifier).lock(),
               ),
             ],

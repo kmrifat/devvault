@@ -62,6 +62,10 @@ class DesktopTextField extends StatelessWidget {
   /// field never has them.
   final bool autocorrect;
 
+  /// The dot a secure field types: the system's own (●), not Flutter's
+  /// default text bullet (•), which was too small to see (P7-02).
+  static const _dot = '\u25CF';
+
   @override
   Widget build(BuildContext context) {
     final colors = context.desktopColors;
@@ -97,6 +101,7 @@ class DesktopTextField extends StatelessWidget {
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         obscureText: obscureText,
+        obscuringCharacter: _dot,
         enabled: enabled,
         autofocus: autofocus,
         autocorrect: corrects,
@@ -117,6 +122,7 @@ class DesktopTextField extends StatelessWidget {
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         obscureText: obscureText,
+        obscuringCharacter: _dot,
         enabled: enabled,
         autocorrect: corrects,
         enableSuggestions: corrects,
@@ -134,6 +140,7 @@ class DesktopTextField extends StatelessWidget {
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         obscureText: obscureText,
+        obscuringCharacter: _dot,
         enabled: enabled,
         autofocus: autofocus,
         autocorrect: corrects,

@@ -199,7 +199,10 @@ void main() {
           .go(Routes.vault(app: kitchenly.id, platform: 'ios', env: 'staging'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.bySemanticsLabel('New item'));
+      // The toolbar's New, then Item… in its menu.
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Item…'));
       await tester.pumpAndSettle();
       expect(find.text('New item'), findsOneWidget);
 

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fluent_ui/fluent_ui.dart' as fl;
 import 'package:flutter/material.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
@@ -42,6 +44,11 @@ class DesktopIconButton extends StatelessWidget {
           semanticLabel: tooltip,
           backgroundColor: Colors.transparent,
           hoverColor: colors.innerSeparator,
+          // macos_ui pads by 8 and scales the icon down to fit, which drew
+          // every symbol at 12 pt in its 28 pt box whatever [size] said.
+          padding: EdgeInsets.all(
+            math.max(0, (DesktopMetrics.toolbarSearchHeight - size) / 2),
+          ),
           borderRadius: const BorderRadius.all(
             Radius.circular(DesktopMetrics.fieldRadius),
           ),

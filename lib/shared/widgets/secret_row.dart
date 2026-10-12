@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'mono_text.dart';
+import 'secret_mask.dart';
 
 /// A labelled secret (password, client secret, private key) that stays
 /// masked until the user reveals it.
@@ -25,8 +26,6 @@ class SecretRow extends StatefulWidget {
 
   /// Secondary line under the label, e.g. "Entered by you".
   final String? description;
-
-  static const String mask = '••••••••••••';
 
   @override
   State<SecretRow> createState() => _SecretRowState();
@@ -55,16 +54,9 @@ class _SecretRowState extends State<SecretRow> {
               ),
               _revealed
                   ? MonoText(widget.secret, middleEllipsis: true)
-                  : Semantics(
-                      label: '${widget.label}, hidden',
-                      excludeSemantics: true,
-                      child: Text(
-                        SecretRow.mask,
-                        style: TextStyle(
-                          color: bc.foreground,
-                          letterSpacing: 2,
-                        ),
-                      ),
+                  : SecretMask(
+                      color: bc.foreground,
+                      semanticLabel: '${widget.label}, hidden',
                     ),
             ],
           ),

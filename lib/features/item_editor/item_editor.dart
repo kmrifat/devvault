@@ -734,7 +734,7 @@ class _FieldRowState extends State<_FieldRow> {
       row = _FieldColumns(
         name: Text(field.name),
         value: field.secret
-            ? Text(SecretRow.mask, style: mono)
+            ? SecretMask(color: colors.text)
             : Text(
                 field.value,
                 style: mono,

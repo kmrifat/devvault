@@ -66,7 +66,11 @@ class _DesktopSyncStatusState extends ConsumerState<DesktopSyncStatus> {
             mainAxisSize: MainAxisSize.min,
             spacing: 5,
             children: [
-              DesktopIcon(symbol, size: 14, color: color),
+              DesktopIcon(
+                symbol,
+                size: DesktopMetrics.sidebarIconSize,
+                color: color,
+              ),
               Text(
                 line.text,
                 style: TextStyle(

@@ -759,8 +759,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// One item in the table: its type icon, title and file name (or type),
-/// the type, and when it expires: a badge when that needs attention, the
+/// One item in the table: its type icon, title and file name (or its
+/// platform and environment, or its type), the type, and when it expires: a badge when that needs attention, the
 /// month otherwise. A conflict shows instead of the expiry.
 class VaultTableRow extends StatelessWidget {
   const VaultTableRow({
@@ -790,11 +790,21 @@ class VaultTableRow extends StatelessWidget {
       fontSize: DesktopMetrics.secondarySize,
       color: secondary,
     );
+    // Said in words: the sidebar no longer shows a platform symbol, which
+    // was the same phone for iOS and Android (P7-02).
+    final place = [
+      if (item.platform case final p?) VaultLabels.platform(p),
+      if (item.environment case final e?) VaultLabels.environment(e),
+    ].join(' · ');
 
     return Semantics(
       button: true,
       selected: selected,
-      label: '${item.title}, ${item.typeLabel}',
+      label: [
+        item.title,
+        item.typeLabel,
+        if (place.isNotEmpty) place,
+      ].join(', '),
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -833,11 +843,14 @@ class VaultTableRow extends StatelessWidget {
                           color: text,
                         ),
                       ),
+                      // A file's name, which the narrow table needs in
+                      // full; else where the item belongs, since the Type
+                      // column already says what it is.
                       if (file != null)
                         MonoText(file, middleEllipsis: true, style: small)
                       else
                         Text(
-                          item.typeLabel,
+                          place.isEmpty ? item.typeLabel : place,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: small,

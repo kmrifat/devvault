@@ -227,7 +227,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
                     action: DesktopIconButton(
                       symbol: DesktopSymbol.add,
                       tooltip: 'New app',
-                      size: 12,
+                      size: 14,
                       onPressed: () => createApp(context),
                     ),
                   ),
@@ -509,7 +509,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           onToggle: node.items.isEmpty
               ? null
               : () => setState(() => _appOpen[app.id] = !open),
-          leading: AppBadge(app: app, size: 14),
+          leading: AppBadge(app: app, size: DesktopMetrics.sidebarBadgeSize),
           label: app.name,
           count: node.items.length,
           selected: selected,
@@ -522,13 +522,20 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
         data: app,
         feedback: DragChip(
           label: app.name,
-          leading: AppBadge(app: app, size: 14),
+          leading: AppBadge(app: app, size: DesktopMetrics.sidebarBadgeSize),
         ),
         child: row,
       ),
       if (open)
         for (final item in node.items)
-          _itemRow(item, app.id, tree, parent: key, depth: depth + 1),
+          _itemRow(
+            item,
+            app.id,
+            tree,
+            parent: key,
+            depth: depth + 1,
+            clash: _sharesName(item, node.items),
+          ),
     ];
   }
 
@@ -579,7 +586,10 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
             tree: true,
             expanded: open,
             onToggle: () => setState(() => _appOpen[app] = !open),
-            leading: const AppBadge(app: null, size: 14),
+            leading: const AppBadge(
+              app: null,
+              size: DesktopMetrics.sidebarIconSize,
+            ),
             label: 'No app',
             count: items.length,
             selected: selected,
@@ -589,20 +599,33 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
       ),
       if (open)
         for (final item in items)
-          _itemRow(item, app, tree, parent: key, depth: 1),
+          _itemRow(
+            item,
+            app,
+            tree,
+            parent: key,
+            depth: 1,
+            clash: _sharesName(item, items),
+          ),
     ];
   }
 
-  /// An item, by its type's icon, with its platform and environment at the
-  /// trailing edge. Clicking selects it, in the list as it is when the list
-  /// shows it, else in its app's. It drags like a list row, and an item
-  /// dropped on it moves to its app.
+  /// Whether another of [siblings] has [item]'s name, so the row has to
+  /// say which one it is.
+  static bool _sharesName(Item item, List<Item> siblings) =>
+      siblings.any((other) => other.id != item.id && other.title == item.title);
+
+  /// An item, by its type's icon and name; when it [clash]es with another
+  /// item's name in the same app, its environment too. Clicking selects
+  /// it, in the list as it is when the list shows it, else in its app's.
+  /// It drags like a list row, and an item dropped on it moves to its app.
   Widget _itemRow(
     Item item,
     String appKey,
     _TreeContext tree, {
     required String parent,
     required int depth,
+    required bool clash,
   }) {
     final key = 'item:${item.id}';
     void select() {
@@ -641,7 +664,7 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
           if (item.platform case final p?) VaultLabels.platform(p),
           if (item.environment case final e?) VaultLabels.environment(e),
         ].join(', '),
-        trailing: _ItemPlace(item),
+        trailing: clash ? _ItemEnvironment(item, selected: selected) : null,
         selected: selected,
         onTap: _clicked(key, select),
       ),
@@ -884,36 +907,32 @@ class _TreeContext {
   final Set<String> shown;
 }
 
-/// An item's platform symbol and environment dot, when it has them.
-class _ItemPlace extends StatelessWidget {
-  const _ItemPlace(this.item);
+/// Which of two same-named items a row is: its environment's dot and
+/// name ("staging"). The dot alone was a colour nobody could read; the
+/// platform symbol was the same phone for iOS and Android (P7-02).
+class _ItemEnvironment extends StatelessWidget {
+  const _ItemEnvironment(this.item, {required this.selected});
 
   final Item item;
-
-  static DesktopSymbol _platformSymbol(String platform) => switch (platform) {
-    'ios' || 'macos' => DesktopSymbol.platformApple,
-    'android' => DesktopSymbol.platformAndroid,
-    'web' => DesktopSymbol.platformWeb,
-    'server' => DesktopSymbol.platformServer,
-    'windows' || 'linux' => DesktopSymbol.platformDesktop,
-    _ => DesktopSymbol.platformOther,
-  };
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    final platform = item.platform;
     final env = item.environment;
+    if (env == null) return const SizedBox.shrink();
+    final colors = context.desktopColors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
-        if (platform != null)
-          DesktopIcon(
-            _platformSymbol(platform),
-            size: 11,
-            color: context.desktopColors.tertiaryText,
+        _EnvDot(env),
+        Text(
+          VaultLabels.environment(env),
+          style: TextStyle(
+            fontSize: DesktopMetrics.secondarySize,
+            color: selected ? colors.onSelection : colors.secondaryText,
           ),
-        if (env != null) _EnvDot(env),
+        ),
       ],
     );
   }
@@ -1013,7 +1032,8 @@ class _SourceRow extends StatefulWidget {
   final bool dropHover;
 
   /// Said after the label to screen readers (an item's platform and
-  /// environment, which [trailing] shows as symbols).
+  /// environment, which the row shows only to tell same-named items
+  /// apart).
   final String? description;
 
   /// Shown at the trailing edge instead of a count.
@@ -1095,7 +1115,7 @@ class _SourceRowState extends State<_SourceRow> {
                   // by depth whether or not the row opens.
                   if (tree)
                     SizedBox(
-                      width: 12,
+                      width: DesktopMetrics.disclosureSize + 2,
                       child: onToggle == null
                           ? null
                           : GestureDetector(
@@ -1105,15 +1125,15 @@ class _SourceRowState extends State<_SourceRow> {
                                 widget.expanded
                                     ? DesktopSymbol.chevronDown
                                     : DesktopSymbol.chevronRight,
-                                size: 10,
+                                size: DesktopMetrics.disclosureSize,
                                 color: selected
                                     ? colors.onSelection
-                                    : colors.tertiaryText,
+                                    : colors.secondaryText,
                               ),
                             ),
                     ),
                   SizedBox(
-                    width: 16,
+                    width: DesktopMetrics.sidebarBadgeSize,
                     child: Center(
                       child:
                           widget.leading ??
@@ -1121,7 +1141,7 @@ class _SourceRowState extends State<_SourceRow> {
                               ? null
                               : DesktopIcon(
                                   icon,
-                                  size: 14,
+                                  size: DesktopMetrics.sidebarIconSize,
                                   color: selected
                                       ? colors.onSelection
                                       : widget.iconColor ??

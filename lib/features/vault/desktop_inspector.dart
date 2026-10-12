@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart'
-    show Material, MaterialType, SelectableText, Tooltip;
+    show Material, MaterialType, SelectableText;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:vault_core/vault_core.dart';
@@ -15,11 +15,11 @@ import '../../shared/desktop_ui.dart';
 import '../../shared/ui.dart' show BCToastData, showAppToast;
 import '../../shared/widgets/mono_text.dart';
 import '../../shared/widgets/provenance_label.dart';
-import '../../shared/widgets/secret_row.dart' show SecretRow;
 import '../conflict/conflict_dialog.dart';
 import '../notes/notes.dart' show NoteView, copySecureNote;
 import 'desktop_item_type.dart';
 import 'vault_actions.dart';
+import '../../shared/widgets/secret_mask.dart';
 
 /// When [item] was created and last changed, and where: the line the
 /// window's status bar shows for the selected item.
@@ -652,47 +652,31 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
           children: [
             SizedBox(
               width: 132,
-              child: Row(
-                spacing: 6,
-                children: [
-                  Tooltip(
-                    message: fromFile ? 'From the file' : 'Entered by you',
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: fromFile
-                            ? colors.accentIcon
-                            : colors.tertiaryText,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const SizedBox.square(dimension: 5),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      widget.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: DesktopMetrics.labelSize,
-                        color: colors.secondaryText,
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                widget.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: DesktopMetrics.labelSize,
+                  color: colors.secondaryText,
+                ),
               ),
             ),
             Expanded(
               child: masked
-                  ? Semantics(
-                      label: '${widget.label}, hidden',
-                      excludeSemantics: true,
-                      child: Text(
-                        SecretRow.mask,
-                        style: valueStyle.copyWith(letterSpacing: 1),
+                  ? Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: SecretMask(
+                        color: colors.text,
+                        semanticLabel: '${widget.label}, hidden',
                       ),
                     )
                   : SelectableText(field.value, style: valueStyle),
             ),
+            // Said in words, as the expiry box does; a field you typed is
+            // the usual case and carries nothing. (A blue or grey dot,
+            // explained only on hover, said this before P7-02.)
+            if (fromFile) const _SourcePill(source: ExpirySource.file),
             if (field.secret)
               DesktopIconButton(
                 symbol: _revealed
@@ -701,7 +685,7 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
                 tooltip: _revealed
                     ? 'Hide ${widget.label}'
                     : 'Reveal ${widget.label}',
-                size: 14,
+                size: DesktopMetrics.inlineActionSize,
                 onPressed: () => setState(() => _revealed = !_revealed),
               ),
             if (_copied)
@@ -730,7 +714,7 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
               DesktopIconButton(
                 symbol: DesktopSymbol.copy,
                 tooltip: 'Copy ${widget.label}',
-                size: 14,
+                size: DesktopMetrics.inlineActionSize,
                 onPressed: _copy,
               ),
           ],

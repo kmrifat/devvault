@@ -10,7 +10,7 @@ import 'package:devvault/features/import/import_draft.dart';
 import 'package:devvault/features/import/paste_secret_sheet.dart';
 import 'package:devvault/services/file_import.dart';
 import 'package:devvault/shared/desktop_ui.dart'
-    show DesktopTextField, DesktopTokenField;
+    show DesktopButton, DesktopTextField, DesktopTokenField;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,13 +40,7 @@ void main() {
   Future<void> importFile(WidgetTester tester) async {
     // Desktop has an Import button in the toolbar; phones an icon in the
     // header, then B4a's choice.
-    var button = find.bySemanticsLabel(RegExp('^Import a file'));
-    if (button.evaluate().isEmpty) {
-      // Yaru's icon buttons are named by their tooltip instead.
-      button = find.byWidgetPredicate(
-        (w) => w is Tooltip && (w.message ?? '').startsWith('Import a file'),
-      );
-    }
+    final button = find.widgetWithText(DesktopButton, 'Import');
     if (button.evaluate().isNotEmpty) {
       await tester.tap(button.first);
     } else {
@@ -135,7 +129,7 @@ void main() {
       fileOpenerProvider.overrideWithValue(const _PickOne('legacy.p12')),
     ],
     interact: (tester) async {
-      await tester.tap(find.bySemanticsLabel(RegExp('^Import a file')).first);
+      await tester.tap(find.widgetWithText(DesktopButton, 'Import'));
       Future<void> waitFor(Finder finder) async {
         for (var i = 0; i < 1000 && finder.evaluate().isEmpty; i++) {
           await tester.runAsync(

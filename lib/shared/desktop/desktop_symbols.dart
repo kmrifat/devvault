@@ -104,7 +104,7 @@ enum DesktopSymbol {
     conflicts => CupertinoIcons.arrow_merge,
     unreadable => CupertinoIcons.exclamationmark_shield,
     add => CupertinoIcons.plus,
-    importFile => CupertinoIcons.tray_arrow_down,
+    importFile => CupertinoIcons.arrow_down_doc,
     tag => CupertinoIcons.tag,
     settings => CupertinoIcons.gear,
     timer => CupertinoIcons.timer,
