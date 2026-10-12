@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.0.1 (not released yet)
+## 1.0.1 (2026-10-11)
+
+[v1.0.1](https://github.com/kmrifat/devvault/releases/tag/v1.0.1), macOS and Linux.
 
 - New app icon on every platform: a stack of credential files sealed by a
   lock, white on rose. The 16 and 32 px macOS sizes use a simpler mark
