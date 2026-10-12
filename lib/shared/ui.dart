@@ -13,6 +13,7 @@ export 'widgets/app_mark.dart';
 export 'widgets/app_toast.dart';
 export 'widgets/confirm_dialog.dart';
 export 'widgets/mono_text.dart';
+export 'widgets/native_phone_header.dart';
 export 'widgets/password_field.dart';
 export 'widgets/provenance_label.dart';
 export 'widgets/secret_mask.dart';

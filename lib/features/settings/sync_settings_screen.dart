@@ -155,9 +155,18 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
       );
     }
     final bc = context.bcTheme;
+    // On iPhone the title and back are in UIKit's header.
+    final native = ref.watch(nativeBarsProvider);
 
     return Scaffold(
       backgroundColor: bc.background,
+      extendBodyBehindAppBar: native,
+      appBar: native
+          ? NativePhoneHeader(
+              title: 'Sync storage',
+              onBack: context.canPop() ? () => context.pop() : null,
+            )
+          : null,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -170,7 +179,9 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Phones have no sidebar to go back with.
-                  if (SettingsLayout.isNarrow(context) && context.canPop())
+                  if (!native &&
+                      SettingsLayout.isNarrow(context) &&
+                      context.canPop())
                     Align(
                       alignment: Alignment.centerLeft,
                       child: BCButton(
@@ -184,8 +195,10 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
                         child: const Text('Settings'),
                       ),
                     ),
-                  const BCText('Sync storage', type: BCTextType.h2),
-                  const SizedBox(height: BCSpacing.sm),
+                  if (!native) ...[
+                    const BCText('Sync storage', type: BCTextType.h2),
+                    const SizedBox(height: BCSpacing.sm),
+                  ],
                   const BCText(
                     'Sync through an S3-compatible bucket you own. Everything is '
                     'encrypted on this device first: the bucket only ever sees '

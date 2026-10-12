@@ -115,26 +115,40 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
 
     final syncing = ref.watch(syncControllerProvider) is! SyncOff;
 
+    // On iPhone the header is UIKit's, over the list (Scaffold below).
+    final native = ref.watch(nativeBarsProvider);
     final list = CustomScrollView(
       // Pull to refresh needs a list that scrolls even when it's short.
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        BCSliverAppHeader(
-          largeTitle: const Text('Vault'),
-          actions: [
-            // 48 px: the touch-target minimum (bc_ui's default is 40).
-            BCHeaderIconButton(
-              size: 48,
-              icon: const Icon(LucideIcons.filePlus2, semanticLabel: 'Import'),
-              onPressed: () => showPhoneImport(context),
+        if (native)
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height:
+                  MediaQuery.paddingOf(context).top +
+                  NativePhoneHeader.barHeight,
             ),
-            BCHeaderIconButton(
-              size: 48,
-              icon: const Icon(LucideIcons.plus, semanticLabel: 'New item'),
-              onPressed: () => createItem(context, filter),
-            ),
-          ],
-        ),
+          )
+        else
+          BCSliverAppHeader(
+            largeTitle: const Text('Vault'),
+            actions: [
+              // 48 px: the touch-target minimum (bc_ui's default is 40).
+              BCHeaderIconButton(
+                size: 48,
+                icon: const Icon(
+                  LucideIcons.filePlus2,
+                  semanticLabel: 'Import',
+                ),
+                onPressed: () => showPhoneImport(context),
+              ),
+              BCHeaderIconButton(
+                size: 48,
+                icon: const Icon(LucideIcons.plus, semanticLabel: 'New item'),
+                onPressed: () => createItem(context, filter),
+              ),
+            ],
+          ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           sliver: SliverList.list(
@@ -311,6 +325,26 @@ class _MobileVaultScreenState extends ConsumerState<MobileVaultScreen> {
 
     return Scaffold(
       backgroundColor: bc.background,
+      extendBodyBehindAppBar: native,
+      appBar: native
+          ? NativePhoneHeader(
+              title: 'Vault',
+              actions: [
+                NativeHeaderAction(
+                  id: 'import',
+                  symbol: 'square.and.arrow.down',
+                  label: 'Import',
+                  onPressed: () => showPhoneImport(context),
+                ),
+                NativeHeaderAction(
+                  id: 'new',
+                  symbol: 'plus',
+                  label: 'New item',
+                  onPressed: () => createItem(context, filter),
+                ),
+              ],
+            )
+          : null,
       body: syncing
           ? RefreshIndicator.adaptive(
               color: bc.accent,

@@ -53,8 +53,13 @@ class SettingsScreen extends ConsumerWidget {
     final revealer = ref.watch(folderRevealerProvider);
     final syncSetup = ref.watch(syncSetupProvider);
 
+    // On iPhone the title is in UIKit's header; the safe area below it then
+    // includes the header (extendBodyBehindAppBar).
+    final native = ref.watch(nativeBarsProvider);
     return Scaffold(
       backgroundColor: bc.background,
+      extendBodyBehindAppBar: native,
+      appBar: native ? const NativePhoneHeader(title: 'Settings') : null,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -66,7 +71,7 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const BCText('Settings', type: BCTextType.h2),
+                  if (!native) const BCText('Settings', type: BCTextType.h2),
                   const _Section('General'),
                   BCListGroup(
                     children: [
