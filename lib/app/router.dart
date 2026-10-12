@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/expiry/expiry_screen.dart';
+import '../features/search/search_screen.dart';
 import '../features/pairing/pair_screen.dart';
 import '../features/create_vault/create_vault_screen.dart';
 import '../features/create_vault/join_vault_screen.dart';
@@ -108,7 +109,7 @@ GoRouter buildRouter({
           state,
           desktop
               ? DesktopShell(navigationShell: shell, uri: state.uri)
-              : MobileShell(navigationShell: shell),
+              : MobileShell(navigationShell: shell, uri: state.uri),
         ),
         branches: [
           StatefulShellBranch(
@@ -161,6 +162,12 @@ GoRouter buildRouter({
                     ),
                   ],
           ),
+          // Phones have a Search tab; desktop searches from the vault list
+          // and quick-open.
+          if (!desktop)
+            StatefulShellBranch(
+              routes: [tab(Routes.searchRoot, (s) => SearchScreen(uri: s.uri))],
+            ),
         ],
       ),
     ],

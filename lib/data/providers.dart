@@ -62,8 +62,9 @@ final kdfMemLimitProvider = Provider<int>((ref) => KdfParams.defaultMemLimit);
 final lockInBackgroundProvider = Provider<bool>((ref) => false);
 
 /// Whether the iPhone's tab bar and screen headers are UIKit's own
-/// (`native_liquid_glass`). main() turns it on for iOS; tests can't draw a
-/// native view, so they keep bc_ui's.
+/// (`native_liquid_glass`). main() turns it on for iOS 26 and later (the
+/// package draws nothing before); tests can't draw a native view, so they
+/// keep bc_ui's.
 final nativeBarsProvider = Provider<bool>((ref) => false);
 
 /// The system clipboard. main() swaps in [ChannelSensitiveClipboard] on
