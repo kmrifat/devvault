@@ -268,7 +268,7 @@ void main() {
   );
 
   shot(
-    'B3-item',
+    'I5-item',
     Routes.vault(),
     device: ShotDevice.mobile,
     sample: true,

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart'
+    show LiquidGlassAlert, LiquidGlassAlertAction, LiquidGlassAlertStyle;
 import 'package:vault_core/vault_core.dart';
 
 import '../../core/expiry.dart';
@@ -9,12 +11,13 @@ import '../../core/format.dart';
 import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
+
 import '../../shared/ui.dart';
 import '../conflict/conflict_dialog.dart';
 import '../notes/notes.dart' show NoteView, copySecureNote;
 import 'vault_actions.dart';
 
-/// Design frame B3's item detail on a phone: one item's type, place in the
+/// Design frame I5's item detail on a phone: one item's type, place in the
 /// tree, expiry with where it came from, its fields (secrets masked until
 /// revealed), its files, and when it was created and changed.
 class ItemDetailPane extends ConsumerWidget {
@@ -73,9 +76,16 @@ class ItemDetailPane extends ConsumerWidget {
             _SecureNoteCard(markdown: item.notes ?? '')
           else
             _ExpiryCard(item: item, now: now),
-          if (item.fields.isNotEmpty) _Fields(fields: item.fields),
+          if (item.fields.isNotEmpty)
+            _Section(
+              title: 'Fields',
+              child: _Fields(fields: item.fields),
+            ),
           if (item.attachments.isNotEmpty)
-            _Files(item: item, attachments: item.attachments),
+            _Section(
+              title: item.attachments.length == 1 ? 'File' : 'Files',
+              child: _Files(item: item, attachments: item.attachments),
+            ),
           if (item.notes case final notes?
               when notes.trim().isNotEmpty && item.type != ItemType.secureNote)
             _NotesCard(notes: notes),
@@ -86,6 +96,9 @@ class ItemDetailPane extends ConsumerWidget {
   }
 }
 
+/// The item's tile, title and type, where it sits in the tree, its tags,
+/// and its main actions (design frame I5): Export for a file, Copy for its
+/// first secret. Edit and the rest are in the screen's bar (`ItemScreen`).
 class _Header extends ConsumerWidget {
   const _Header({required this.item, required this.app});
 
@@ -110,132 +123,167 @@ class _Header extends ConsumerWidget {
       if (item.environment != null) VaultLabels.environment(item.environment),
     ].join(' · ');
     final file = item.attachments.firstOrNull;
+    final secret = item.fields.entries.where((e) => e.value.secret).firstOrNull;
 
-    final details = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 8,
+    final title = Row(
+      spacing: 14,
       children: [
-        Text(
-          item.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 24,
-            height: 1.2,
-            fontWeight: BCTypography.semiBold,
-            color: bc.foreground,
+        TypeIconTile(type: type ?? ItemType.genericFile, size: 60),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 6,
+            children: [
+              Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: BCTypography.size2xl,
+                  height: 1.2,
+                  fontWeight: BCTypography.bold,
+                  letterSpacing: BCTypography.trackingTight(
+                    BCTypography.size2xl,
+                  ),
+                  color: bc.foreground,
+                ),
+              ),
+              BCChip(
+                size: BCChipSize.sm,
+                variant: BCChipVariant.soft,
+                color: _typeColor(type),
+                child: Text(type?.label ?? item.typeName),
+              ),
+            ],
           ),
-        ),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            BCChip(
-              size: BCChipSize.sm,
-              variant: BCChipVariant.soft,
-              color: _typeColor(type),
-              child: Text(type?.label ?? item.typeName),
-            ),
-            if (place.isNotEmpty)
-              BCChip(
-                size: BCChipSize.sm,
-                variant: BCChipVariant.secondary,
-                color: BCChipColor.defaultColor,
-                startContent: app == null
-                    ? null
-                    : DecoratedBox(
-                        decoration: ShapeDecoration(
-                          color: AppBadge.colorFor(app),
-                          shape: BCShapes.continuous(3),
-                        ),
-                        child: const SizedBox.square(dimension: 10),
-                      ),
-                child: Text(place),
-              ),
-            for (final tag in item.tags)
-              BCChip(
-                size: BCChipSize.sm,
-                variant: BCChipVariant.tertiary,
-                color: BCChipColor.defaultColor,
-                child: Text('#$tag'),
-              ),
-          ],
         ),
       ],
     );
 
-    final actions = <Widget>[
+    final meta = Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        if (place.isNotEmpty)
+          BCChip(
+            variant: BCChipVariant.secondary,
+            color: BCChipColor.defaultColor,
+            startContent: app == null ? null : AppBadge(app: app, size: 18),
+            child: Text(place),
+          ),
+        for (final tag in item.tags)
+          BCChip(
+            variant: BCChipVariant.tertiary,
+            color: BCChipColor.defaultColor,
+            child: Text('#$tag'),
+          ),
+      ],
+    );
+
+    final main = [
       if (file != null)
         BCButton(
-          size: BCButtonSize.sm,
           onPressed: () => exportFile(context, ref, item, file),
-          startContent: const Icon(LucideIcons.share, size: 15),
+          startContent: const Icon(LucideIcons.share, size: 17),
           child: const Text('Export'),
         ),
-      if (!item.isReadOnly)
+      if (secret != null)
         BCButton(
-          size: BCButtonSize.sm,
-          variant: BCButtonVariant.secondary,
-          isIconOnly: true,
-          onPressed: () => editItem(context, item),
-          child: const Icon(
-            LucideIcons.pencil,
-            size: 16,
-            semanticLabel: 'Edit',
+          variant: file == null
+              ? BCButtonVariant.primary
+              : BCButtonVariant.secondary,
+          onPressed: () => copyItemField(
+            context,
+            ref,
+            Format.fieldLabel(secret.key),
+            secret.value,
+          ),
+          startContent: const Icon(LucideIcons.copy, size: 17),
+          child: Text(
+            'Copy ${Format.fieldLabel(secret.key).toLowerCase()}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-      BCMenu(
-        alignment: BCOverlayAlignment.end,
-        trigger: (context, controller) => BCButton(
-          size: BCButtonSize.sm,
-          variant: BCButtonVariant.secondary,
-          isIconOnly: true,
-          onPressed: controller.toggle,
-          child: const Icon(
-            LucideIcons.ellipsis,
-            size: 16,
-            semanticLabel: 'More actions',
-          ),
-        ),
-        children: [
-          if (!item.isReadOnly && item.attachments.isNotEmpty)
-            BCMenuItem(
-              title: 'Replace file…',
-              icon: const Icon(LucideIcons.fileUp),
-              onSelected: () => replaceFile(context, item),
-            ),
-          BCMenuItem(
-            title: 'Delete item…',
-            icon: const Icon(LucideIcons.trash2),
-            variant: BCMenuItemVariant.danger,
-            onSelected: () => deleteItem(context, ref, item),
-          ),
-        ],
-      ),
     ];
-
-    final tile = TypeIconTile(type: type ?? ItemType.genericFile, size: 48);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 14,
       children: [
-        Row(
-          spacing: 14,
-          children: [
-            tile,
-            Expanded(child: details),
-          ],
-        ),
-        Row(
-          spacing: 8,
-          children: [
-            if (actions.length > 2) Expanded(child: actions.first),
-            if (actions.length <= 2) const Spacer(),
-            ...actions.skip(actions.length > 2 ? 1 : 0),
-          ],
-        ),
+        title,
+        if (place.isNotEmpty || item.tags.isNotEmpty) meta,
+        if (main.isNotEmpty)
+          Row(
+            spacing: 10,
+            children: [
+              // Export keeps its size; Copy takes the rest for its label.
+              for (final (i, button) in main.indexed)
+                if (i == main.length - 1) Expanded(child: button) else button,
+            ],
+          ),
       ],
     );
+  }
+}
+
+/// Copies [field] of an item through the clipboard guard: a secret comes
+/// off the clipboard again (Settings: 30 s by default) and says so; a
+/// plain fact stays.
+Future<void> copyItemField(
+  BuildContext context,
+  WidgetRef ref,
+  String label,
+  ItemField field,
+) async {
+  final guard = ref.read(clipboardGuardProvider);
+  if (field.secret) {
+    await guard.copySecret(field.value);
+  } else {
+    await guard.clipboard.write(field.value);
+  }
+  if (!context.mounted || !field.secret) return;
+  showAppToast(
+    context,
+    BCToastData(
+      title: '$label copied',
+      description:
+          'Clears from the clipboard in ${guard.clearAfter.inSeconds} seconds.',
+    ),
+  );
+}
+
+/// The item's other actions as UIKit's action sheet (iPhone's ⋯ button):
+/// Replace file… and Delete item….
+Future<void> showItemMoreActions(
+  BuildContext context,
+  WidgetRef ref,
+  Item item,
+) async {
+  final choice = await LiquidGlassAlert.show(
+    context: context,
+    title: item.title,
+    style: LiquidGlassAlertStyle.actionSheet,
+    actions: [
+      if (!item.isReadOnly && item.attachments.isNotEmpty)
+        const LiquidGlassAlertAction(id: 'replace', title: 'Replace file…'),
+      const LiquidGlassAlertAction(
+        id: 'delete',
+        title: 'Delete item…',
+        isDestructive: true,
+      ),
+      const LiquidGlassAlertAction(
+        id: 'cancel',
+        title: 'Cancel',
+        isCancel: true,
+      ),
+    ],
+  );
+  if (!context.mounted) return;
+  switch (choice) {
+    case 'replace':
+      await replaceFile(context, item);
+    case 'delete':
+      await deleteItem(context, ref, item);
   }
 }
 
@@ -254,81 +302,65 @@ class _ExpiryCard extends StatelessWidget {
     final date = expiresAt == null
         ? ''
         : DateFormat.yMMMd().format(expiresAt.toLocal());
-    final (icon, tint, title, detail) = switch (state) {
+    final (icon, tint, soft, title, detail) = switch (state) {
       ExpiryState.none => (
         LucideIcons.calendar,
         bc.muted,
+        bc.defaultColor,
         'No expiry date',
-        null,
+        'Nothing in the file says when it expires.',
       ),
       ExpiryState.valid => (
         LucideIcons.calendarCheck2,
-        bc.success,
+        bc.successSoftForeground,
+        bc.successSoft,
         'Valid until $date',
         '${timeLeft(expiresAt!, now)} left',
       ),
       ExpiryState.soon => (
         LucideIcons.calendarClock,
-        bc.warning,
+        bc.warningSoftForeground,
+        bc.warningSoft,
         'Expires $date',
         '${daysLeft(expiresAt!, now)} left',
       ),
       ExpiryState.expired => (
         LucideIcons.calendarX2,
-        bc.danger,
+        bc.dangerSoftForeground,
+        bc.dangerSoft,
         'Expired $date',
         timeAgo(expiresAt!, now),
       ),
     };
-    final explanation = switch (item.expiresSource) {
-      ExpirySource.file => 'Read from the file itself.',
-      ExpirySource.user => 'Entered by you.',
-      null => 'Nothing in the file says when it expires.',
-    };
 
     return _Surface(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Row(
-        spacing: 14,
+        spacing: 12,
         children: [
           DecoratedBox(
-            decoration: BoxDecoration(
-              color: bc.defaultColor,
-              shape: BoxShape.circle,
+            decoration: ShapeDecoration(
+              color: soft,
+              shape: const CircleBorder(),
             ),
             child: SizedBox.square(
               dimension: 40,
-              child: Icon(icon, size: 19, color: tint),
+              child: Icon(icon, size: 20, color: tint),
             ),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 3,
+              spacing: 2,
               children: [
-                Text.rich(
-                  TextSpan(
-                    text: title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: BCTypography.semiBold,
-                      color: bc.foreground,
-                    ),
-                    children: [
-                      if (detail != null)
-                        TextSpan(
-                          text: '  ·  $detail',
-                          style: BCTypography.textSm.copyWith(
-                            fontWeight: BCTypography.regular,
-                            color: bc.muted,
-                          ),
-                        ),
-                    ],
-                  ),
+                BCText(
+                  title,
+                  type: BCTextType.bodySm,
+                  weight: BCTextWeight.semibold,
                 ),
                 BCText(
-                  explanation,
-                  type: BCTextType.bodySm,
+                  detail,
+                  type: BCTextType.bodyXs,
                   color: BCTextColor.muted,
                 ),
               ],
@@ -337,6 +369,37 @@ class _ExpiryCard extends StatelessWidget {
           if (expiresAt != null) ProvenanceLabel(source: item.expiresSource),
         ],
       ),
+    );
+  }
+}
+
+/// A section's name over its surface: "FIELDS", "FILE".
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 8,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Semantics(
+            header: true,
+            child: BCText(
+              title.toUpperCase(),
+              type: BCTextType.bodyXs,
+              weight: BCTextWeight.semibold,
+              color: BCTextColor.muted,
+            ),
+          ),
+        ),
+        child,
+      ],
     );
   }
 }
@@ -391,27 +454,8 @@ class _FieldRowState extends ConsumerState<_FieldRow> {
   }
 
   Future<void> _copy() async {
-    final guard = ref.read(clipboardGuardProvider);
-    final value = widget.field.value;
-    // Secrets come off the clipboard again (Settings: 30 s by default);
-    // plain facts stay.
-    if (widget.field.secret) {
-      await guard.copySecret(value);
-    } else {
-      await guard.clipboard.write(value);
-    }
+    await copyItemField(context, ref, widget.label, widget.field);
     if (!mounted) return;
-    if (widget.field.secret) {
-      showAppToast(
-        context,
-        BCToastData(
-          title: '${widget.label} copied',
-          description:
-              'Clears from the clipboard in '
-              '${guard.clearAfter.inSeconds} seconds.',
-        ),
-      );
-    }
     setState(() => _copied = true);
     _copiedTimer?.cancel();
     _copiedTimer = Timer(const Duration(seconds: 2), () {
