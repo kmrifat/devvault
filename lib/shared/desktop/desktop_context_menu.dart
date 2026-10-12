@@ -5,6 +5,7 @@ import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 
 import 'desktop_macos_menu.dart';
 import 'desktop_menu_focus.dart';
+import 'desktop_native_menu.dart';
 import 'desktop_pull_down_button.dart';
 import 'desktop_theme.dart';
 import 'desktop_yaru_menu.dart';
@@ -12,12 +13,14 @@ import 'desktop_yaru_menu.dart';
 /// Opens a menu of [actions] where [child] is right-clicked (or
 /// long-pressed on a touch screen): a sidebar row's "New item…", "Edit app…" …
 ///
-/// - macOS: DevVault's macOS menu ([MacosMenuStyle]) at the pointer.
+/// - macOS: AppKit's own menu ([DesktopNativeMenu]) at the pointer; in
+///   tests, which have no window, DevVault's drawn macOS menu
+///   ([MacosMenuStyle]).
+/// - Windows: a Fluent `MenuFlyout` at the pointer.
+/// - Linux: a GNOME-style menu in the Yaru theme ([YaruMenuStyle]).
 ///
 /// Commands that [DesktopMenuAction.startsGroup] sit below a separator, as
 /// the system's menus group theirs.
-/// - Windows: a Fluent `MenuFlyout` at the pointer.
-/// - Linux: a GNOME-style menu in the Yaru theme ([YaruMenuStyle]).
 ///
 /// Each action is also a custom semantics action on [child], so assistive
 /// tech reaches the commands without a pointer. With a
@@ -69,6 +72,10 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
   void _open(Offset global, {bool fromKeyboard = false}) {
     final actions = widget.actions;
     if (actions.isEmpty) return;
+    if (DesktopNativeMenu.usedIn(context)) {
+      DesktopNativeMenu.show(actions, global);
+      return;
+    }
     _focus.opened(count: actions.length, fromKeyboard: fromKeyboard);
     switch (context.desktopKit) {
       case DesktopKit.fluent:
@@ -131,6 +138,7 @@ class DesktopContextMenuState extends State<DesktopContextMenu> {
         ),
       ),
     );
+    if (DesktopNativeMenu.usedIn(context)) return target;
     if (context.desktopKit == DesktopKit.fluent) {
       return fl.FlyoutTarget(controller: _flyout, child: target);
     }

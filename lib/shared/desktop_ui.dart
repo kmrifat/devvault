@@ -19,6 +19,7 @@ export 'desktop/desktop_link.dart';
 export 'desktop/desktop_lock_window.dart';
 export 'desktop/desktop_menu_bar.dart';
 export 'desktop/desktop_metrics.dart';
+export 'desktop/desktop_native_menu.dart';
 export 'desktop/desktop_panel.dart';
 export 'desktop/desktop_popup.dart';
 export 'desktop/desktop_progress.dart';
