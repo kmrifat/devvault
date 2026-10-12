@@ -52,6 +52,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
 
   void _go(SearchQuery query) => context.go(query.location());
 
+  /// A pick from Browse or a scope removed: the keyboard goes away, since
+  /// it's the list that changed.
+  void _pick(SearchQuery query) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    _go(query);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
@@ -105,7 +112,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
               alignment: Alignment.centerLeft,
               child: _ScopeChip(
                 label: _scopeLabel(index, query),
-                onRemove: () => _go(query.unscoped),
+                onRemove: () => _pick(query.unscoped),
               ),
             ),
           ),
@@ -200,7 +207,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
                       child: _TypeTile(
                         typeName: name,
                         count: byType[name]!,
-                        onPressed: () => _go(SearchQuery(type: name)),
+                        onPressed: () => _pick(SearchQuery(type: name)),
                       ),
                     ),
                   if (i + 1 >= types.length) const Expanded(child: SizedBox()),
@@ -219,7 +226,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
                   prefix: AppBadge(app: app, size: 28),
                   title: app.name,
                   suffix: _Count(countFor(app), chevron: true),
-                  onPressed: () => _go(SearchQuery(app: app.id)),
+                  onPressed: () => _pick(SearchQuery(app: app.id)),
                 ),
             ],
           ),
@@ -235,19 +242,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
                 _CountChip(
                   label: key,
                   count: value,
-                  onPressed: () => _go(SearchQuery(platform: key)),
+                  onPressed: () => _pick(SearchQuery(platform: key)),
                 ),
               for (final MapEntry(:key, :value) in envs.entries)
                 _CountChip(
                   label: key,
                   count: value,
-                  onPressed: () => _go(SearchQuery(env: key)),
+                  onPressed: () => _pick(SearchQuery(env: key)),
                 ),
               for (final MapEntry(:key, :value) in tags.entries)
                 _CountChip(
                   label: '#$key',
                   count: value,
-                  onPressed: () => _go(SearchQuery(tag: key)),
+                  onPressed: () => _pick(SearchQuery(tag: key)),
                 ),
             ],
           ),

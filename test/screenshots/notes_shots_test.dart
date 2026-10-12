@@ -163,7 +163,7 @@ void main() {
     },
   );
   shot(
-    'B3-item-markdown',
+    'I5-item-markdown',
     Routes.vault(),
     device: ShotDevice.mobile,
     sample: true,

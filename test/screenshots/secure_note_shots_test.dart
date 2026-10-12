@@ -146,7 +146,7 @@ void main() {
     },
   );
   shot(
-    'B3-secure-note',
+    'I5-secure-note',
     Routes.vault(),
     device: ShotDevice.mobile,
     sample: true,

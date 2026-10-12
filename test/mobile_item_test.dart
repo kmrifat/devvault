@@ -11,6 +11,7 @@ import 'package:devvault/services/share_sheet_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'clipboard_guard_test.dart' show FakeClipboard;
 import 'test_overrides.dart';
 
 void main() {
@@ -80,6 +81,7 @@ void main() {
   group('screen', () {
     late Directory temp;
     late List<List<int>> shared;
+    late FakeClipboard clipboard;
 
     Future<void> open(WidgetTester tester) async {
       tester.view
@@ -89,12 +91,14 @@ void main() {
       temp = Directory.systemTemp.createTempSync('share_screen_');
       addTearDown(() => temp.deleteSync(recursive: true));
       shared = [];
+      clipboard = FakeClipboard();
       await pumpUnlockedApp(
         tester,
         location: Routes.vault(),
         vault: TestVault.sample,
         layout: AppLayout.mobile,
         overrides: [
+          clipboardAccessProvider.overrideWithValue(clipboard),
           fileSaverProvider.overrideWithValue(
             ShareSheetSaver(
               tempRoot: temp,
@@ -127,6 +131,18 @@ void main() {
       expect(inItem('Store password'), findsOneWidget);
       expect(find.textContaining('kitchenly-store-pass'), findsNothing);
       expect(inItem('Export'), findsOneWidget);
+    });
+
+    testWidgets('copies the first secret from the header, as a secret', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(inItem('Copy key password'));
+      await tester.pumpAndSettle();
+      expect(clipboard.text, 'kitchenly-key-pass');
+      expect(find.text('Key password copied'), findsOneWidget);
+      expect(find.textContaining('kitchenly-key-pass'), findsNothing);
+      await tester.pumpAndSettle(const Duration(seconds: 40));
     });
 
     testWidgets('export goes through the share sheet, byte for byte', (

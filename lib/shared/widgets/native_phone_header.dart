@@ -90,8 +90,10 @@ class NativePhoneHeader extends StatelessWidget implements PreferredSizeWidget {
                   icon: NativeLiquidGlassIcon.sfSymbol('chevron.left'),
                 ),
             ],
+            // UIKit lays trailing items out from the right edge; [actions]
+            // read left to right.
             trailingItems: [
-              for (final action in actions)
+              for (final action in actions.reversed)
                 switch (action.symbol) {
                   final symbol? => LiquidGlassNavBarItem(
                     id: action.id,
