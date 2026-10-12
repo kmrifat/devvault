@@ -36,6 +36,9 @@ dependencies:
   lucide_icons_flutter: ^3.1.21
   markdown: ^7.3.1
   mobile_scanner: ^7.4.2
+  # Exact: native code in a vault app; read it again before moving (owner
+  # decision, 2026-10-12).
+  native_liquid_glass: 0.3.1
   package_info_plus: ^10.2.2
   path_provider: ^2.1.6
   pdf: ^3.13.1
