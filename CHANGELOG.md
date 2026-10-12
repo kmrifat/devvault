@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.1.1 (not released yet)
+## 1.1.1 (2026-10-12)
+
+[v1.1.1](https://github.com/kmrifat/devvault/releases/tag/v1.1.1), macOS and Linux.
 
 Fixes to the item editor and the inspector, from a look at 1.1.0.
 
