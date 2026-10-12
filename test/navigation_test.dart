@@ -267,7 +267,8 @@ void main() {
       final router = GoRouter.of(tester.element(find.byType(Scaffold).first));
       router.go(Routes.expiry);
       await tester.pumpAndSettle();
-      expect(header().title, 'Expiry');
+      expect(header().title, '');
+      expect(find.byType(PhoneLargeTitle), findsOneWidget);
       // The title is the header's, not a heading in the page too.
       expect(
         find.byWidgetPredicate((w) => w is BCText && w.data == 'Expiry'),

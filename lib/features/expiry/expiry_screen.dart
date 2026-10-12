@@ -45,7 +45,7 @@ class ExpiryGroups {
 /// [DesktopExpiryTable]), the Expiry tab on phones. `?show=expired`
 /// narrows it to the expired items, which is where the sidebar's "Expired"
 /// row lands.
-class ExpiryScreen extends ConsumerWidget {
+class ExpiryScreen extends ConsumerStatefulWidget {
   const ExpiryScreen({super.key, required this.uri, required this.desktop});
 
   final Uri uri;
@@ -55,11 +55,22 @@ class ExpiryScreen extends ConsumerWidget {
   final bool desktop;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExpiryScreen> createState() => _ExpiryScreenState();
+}
+
+class _ExpiryScreenState extends ConsumerState<ExpiryScreen>
+    with LargeTitleScroll {
+  @override
+  Widget build(BuildContext context) {
+    final desktop = widget.desktop;
+    final uri = widget.uri;
     final bc = context.bcTheme;
     final now = ref.watch(clockProvider)();
     final session = ref.watch(vaultSessionProvider);
     final items = session is Unlocked ? session.index.all : const <Item>[];
+    final apps = session is Unlocked
+        ? session.index.apps
+        : const <String, AppRecord>{};
     final groups = ExpiryGroups(items, now);
     final onlyExpired = uri.queryParameters['show'] == 'expired';
 
@@ -87,6 +98,7 @@ class ExpiryScreen extends ConsumerWidget {
           count: groups.expired.length,
           color: BCChipColor.danger,
           entries: groups.expired,
+          apps: apps,
           now: now,
           onOpen: open,
           empty: 'Nothing has expired.',
@@ -98,6 +110,7 @@ class ExpiryScreen extends ConsumerWidget {
             count: groups.soon.length,
             color: BCChipColor.warning,
             entries: groups.soon,
+            apps: apps,
             now: now,
             onOpen: open,
           ),
@@ -107,6 +120,7 @@ class ExpiryScreen extends ConsumerWidget {
             count: groups.later.length,
             color: BCChipColor.defaultColor,
             entries: groups.later,
+            apps: apps,
             now: now,
             onOpen: open,
           ),
@@ -118,14 +132,21 @@ class ExpiryScreen extends ConsumerWidget {
       ],
     ];
 
-    // On iPhone the title (and Show all) is in UIKit's header instead.
+    // On iPhone the title is large, in the page, and moves into UIKit's
+    // header (with Show all) once it scrolls under it.
     final native = !desktop && ref.watch(nativeBarsProvider);
+    const facts = BCText(
+      'Every date here was read from a file or entered by you. '
+      'Nothing is guessed.',
+      type: BCTextType.bodySm,
+      color: BCTextColor.muted,
+    );
     return Scaffold(
       backgroundColor: bc.background,
       extendBodyBehindAppBar: native,
       appBar: native
           ? NativePhoneHeader(
-              title: 'Expiry',
+              title: titleInBar ? 'Expiry' : '',
               actions: [
                 if (onlyExpired)
                   NativeHeaderAction(
@@ -137,16 +158,16 @@ class ExpiryScreen extends ConsumerWidget {
             )
           : null,
       body: SingleChildScrollView(
+        controller: titleScroll,
         padding: desktop
             ? const EdgeInsets.fromLTRB(32, 24, 32, 32)
             : EdgeInsets.fromLTRB(
-                16,
-                16 +
-                    (native
-                        ? MediaQuery.paddingOf(context).top +
-                              NativePhoneHeader.barHeight
-                        : 0),
-                16,
+                native ? 0 : 16,
+                native
+                    ? MediaQuery.paddingOf(context).top +
+                          NativePhoneHeader.barHeight
+                    : 16,
+                native ? 0 : 16,
                 120,
               ),
         child: Align(
@@ -156,7 +177,9 @@ class ExpiryScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!native)
+                if (native)
+                  const PhoneLargeTitle('Expiry', subtitle: facts)
+                else ...[
                   Row(
                     children: [
                       const Expanded(
@@ -171,16 +194,12 @@ class ExpiryScreen extends ConsumerWidget {
                         ),
                     ],
                   ),
-                const SizedBox(height: BCSpacing.xs),
-                const BCText(
-                  'Every date here was read from a file or entered by you. '
-                  'Nothing is guessed.',
-                  type: BCTextType.bodySm,
-                  color: BCTextColor.muted,
-                ),
+                  const SizedBox(height: BCSpacing.xs),
+                  facts,
+                ],
                 if (items.isEmpty)
                   const Padding(
-                    padding: EdgeInsets.only(top: 64),
+                    padding: EdgeInsets.fromLTRB(16, 64, 16, 0),
                     child: BCEmptyState(
                       icon: Icon(LucideIcons.calendarCheck2),
                       title: 'Nothing to track yet',
@@ -189,17 +208,102 @@ class ExpiryScreen extends ConsumerWidget {
                           'expiry date shows up here.',
                     ),
                   )
-                else ...[
-                  if (!onlyExpired &&
-                      groups.expired.isEmpty &&
-                      groups.soon.isEmpty)
-                    const _AllClear(),
-                  ...sections,
-                ],
+                else
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: native ? 16 : 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (!onlyExpired)
+                          _Summary(
+                            expired: groups.expired.length,
+                            soon: groups.soon.length,
+                            later: groups.later.length,
+                          ),
+                        if (!onlyExpired &&
+                            groups.expired.isEmpty &&
+                            groups.soon.isEmpty)
+                          const _AllClear(),
+                        ...sections,
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// How many items have expired, expire within 30 days and later
+/// (design frame I6), over the groups.
+class _Summary extends StatelessWidget {
+  const _Summary({
+    required this.expired,
+    required this.soon,
+    required this.later,
+  });
+
+  final int expired;
+  final int soon;
+  final int later;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    Widget tile(int count, String label, Color background, Color foreground) =>
+        Expanded(
+          child: Semantics(
+            label: '$count $label',
+            excludeSemantics: true,
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: background,
+                shape: BCShapes.continuous(BCRadius.xxl),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 2,
+                  children: [
+                    Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: BCTypography.size2xl,
+                        height: 1.2,
+                        fontWeight: BCTypography.bold,
+                        color: foreground,
+                      ),
+                    ),
+                    BCText(
+                      label,
+                      type: BCTextType.bodyXs,
+                      weight: BCTextWeight.medium,
+                      style: TextStyle(color: foreground),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Row(
+        spacing: BCSpacing.sm,
+        children: [
+          tile(expired, 'Expired', bc.dangerSoft, bc.dangerSoftForeground),
+          tile(
+            soon,
+            'In ${ExpiryState.expiryWindow.inDays} days',
+            bc.warningSoft,
+            bc.warningSoftForeground,
+          ),
+          tile(later, 'Later', bc.surface, bc.foreground),
+        ],
       ),
     );
   }
@@ -211,6 +315,7 @@ class _Section extends StatelessWidget {
     required this.count,
     required this.color,
     required this.entries,
+    required this.apps,
     required this.now,
     required this.onOpen,
     this.empty,
@@ -220,6 +325,7 @@ class _Section extends StatelessWidget {
   final int count;
   final BCChipColor color;
   final List<(Item, ExpiryStatus)> entries;
+  final Map<String, AppRecord> apps;
   final DateTime now;
   final ValueChanged<Item> onOpen;
 
@@ -228,27 +334,36 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    final dot = switch (color) {
+      BCChipColor.danger => bc.danger,
+      BCChipColor.warning => bc.warning,
+      _ => bc.separator,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(6, 28, 6, 8),
-          child: Row(
-            spacing: BCSpacing.sm,
-            children: [
-              BCText(
-                title,
-                type: BCTextType.bodySm,
-                weight: BCTextWeight.medium,
-                color: BCTextColor.muted,
-              ),
-              BCChip(
-                size: BCChipSize.sm,
-                variant: BCChipVariant.soft,
-                color: color,
-                child: Text('$count'),
-              ),
-            ],
+          padding: const EdgeInsets.fromLTRB(4, 24, 4, 8),
+          child: Semantics(
+            header: true,
+            label: '$title, $count',
+            excludeSemantics: true,
+            child: Row(
+              spacing: BCSpacing.sm,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                  child: const SizedBox.square(dimension: 8),
+                ),
+                BCText(
+                  title.toUpperCase(),
+                  type: BCTextType.bodyXs,
+                  weight: BCTextWeight.semibold,
+                  color: BCTextColor.muted,
+                ),
+              ],
+            ),
           ),
         ),
         if (entries.isEmpty && empty != null)
@@ -259,6 +374,7 @@ class _Section extends StatelessWidget {
               for (final (item, status) in entries)
                 _ExpiryRow(
                   item: item,
+                  app: apps[item.appId],
                   status: status,
                   now: now,
                   onTap: () => onOpen(item),
@@ -270,17 +386,19 @@ class _Section extends StatelessWidget {
   }
 }
 
-/// One item: what it is, when it expires, how far off that is, and where
-/// the date came from.
+/// One item: what it is, which app, where the date came from, and when
+/// it expires and how far off that is (design frame I6).
 class _ExpiryRow extends StatelessWidget {
   const _ExpiryRow({
     required this.item,
+    required this.app,
     required this.status,
     required this.now,
     required this.onTap,
   });
 
   final Item item;
+  final AppRecord? app;
   final ExpiryStatus status;
   final DateTime now;
   final VoidCallback onTap;
@@ -294,85 +412,84 @@ class _ExpiryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bc = context.bcTheme;
     final expiresAt = status.expiresAt!;
     final type = item.type ?? ItemType.genericFile;
-    final file = item.attachments.firstOrNull?.filename;
     final date = DateFormat.yMMMd().format(expiresAt.toLocal());
     final when = relative(expiresAt, now);
+    final source = ProvenanceLabel.textFor(status.source);
+    final whenColor = switch (status.state) {
+      ExpiryState.expired => bc.dangerSoftForeground,
+      ExpiryState.soon => bc.warningSoftForeground,
+      _ => bc.muted,
+    };
     return Semantics(
       button: true,
       label:
           '${item.title}, ${type.label}, '
           '${status.state == ExpiryState.expired ? 'expired' : 'expires'} '
           '$date, $when, '
-          '${ProvenanceLabel.textFor(status.source).toLowerCase()}',
+          '${source.toLowerCase()}',
       excludeSemantics: true,
       child: BCListGroupItem(
         onPressed: onTap,
-        prefix: TypeIconTile(type: type, size: 36),
-        content: LayoutBuilder(
-          builder: (context, constraints) {
-            final name = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 2,
-              children: [
-                BCText(item.title, weight: BCTextWeight.semibold, maxLines: 2),
-                if (file != null)
-                  MonoText(file, middleEllipsis: true)
-                else
-                  BCText(
-                    type.label,
-                    type: BCTextType.bodyXs,
-                    color: BCTextColor.muted,
-                  ),
-              ],
-            );
-            final source = ProvenanceLabel(source: status.source);
-            final relative = BCText(
-              when,
-              type: BCTextType.bodyXs,
-              color: BCTextColor.muted,
-            );
-            // Phones: the date goes under the name, so the name keeps the
-            // width.
-            if (constraints.maxWidth < 420) {
-              return Column(
+        prefix: TypeIconTile(type: type),
+        content: Row(
+          spacing: BCSpacing.md,
+          children: [
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: BCSpacing.sm,
+                spacing: 2,
                 children: [
-                  name,
-                  Wrap(
-                    spacing: BCSpacing.sm,
-                    runSpacing: BCSpacing.xs,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  BCText(
+                    item.title,
+                    weight: BCTextWeight.semibold,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    spacing: 4,
                     children: [
-                      BCText(date, type: BCTextType.bodySm),
-                      relative,
-                      source,
+                      Icon(
+                        status.source == ExpirySource.user
+                            ? LucideIcons.userPen
+                            : LucideIcons.fileCheck,
+                        size: 12,
+                        color: bc.muted,
+                      ),
+                      Flexible(
+                        child: BCText(
+                          [?app?.name, source.toLowerCase()].join(' · '),
+                          type: BCTextType.bodyXs,
+                          color: BCTextColor.muted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ],
-              );
-            }
-            return Row(
-              spacing: BCSpacing.md,
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              spacing: 2,
               children: [
-                Expanded(child: name),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  spacing: 4,
-                  children: [
-                    BCText(date, type: BCTextType.bodySm),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      spacing: BCSpacing.sm,
-                      children: [relative, source],
-                    ),
-                  ],
+                BCText(
+                  date,
+                  type: BCTextType.bodySm,
+                  weight: BCTextWeight.medium,
+                ),
+                BCText(
+                  when,
+                  type: BCTextType.bodyXs,
+                  weight: BCTextWeight.medium,
+                  style: TextStyle(color: whenColor),
                 ),
               ],
-            );
-          },
+            ),
+          ],
         ),
       ),
     );

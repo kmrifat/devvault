@@ -26,5 +26,5 @@ void main() {
       kit: kit,
     );
   }
-  shot('B-expiry', Routes.expiry, sample: true, device: ShotDevice.mobile);
+  shot('I6-expiry', Routes.expiry, sample: true, device: ShotDevice.mobile);
 }
