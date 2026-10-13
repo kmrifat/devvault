@@ -96,13 +96,24 @@ class BiometricKeyPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    private fun biometry(): String? {
+    /** `{kind, unavailable?}`, or null without strong biometric hardware. */
+    private fun biometry(): Map<String, String>? {
         val status = BiometricManager.from(context).canAuthenticate(BIOMETRIC_STRONG)
-        if (status != BiometricManager.BIOMETRIC_SUCCESS) return null
-        return if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)) {
+        val unavailable = when (status) {
+            BiometricManager.BIOMETRIC_SUCCESS -> null
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "notEnrolled"
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "unavailable"
+            else -> return null
+        }
+        val kind = if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)) {
             "fingerprint"
         } else {
             "biometrics"
+        }
+        return if (unavailable == null) {
+            mapOf("kind" to kind)
+        } else {
+            mapOf("kind" to kind, "unavailable" to unavailable)
         }
     }
 

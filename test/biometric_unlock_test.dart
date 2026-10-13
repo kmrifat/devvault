@@ -7,6 +7,7 @@ import 'package:devvault/features/settings/desktop_settings.dart';
 import 'package:devvault/shared/desktop_ui.dart' show DesktopSwitch;
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/services/biometric_key_store.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -130,13 +131,18 @@ void main() {
     Future<MemoryBiometricKeyStore> open(
       WidgetTester tester, {
       Biometry? kind = Biometry.faceId,
+      BiometryUnavailable? unavailable,
       bool storable = true,
     }) async {
       tester.view
         ..physicalSize = const Size(1440, 1100)
         ..devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      final keys = MemoryBiometricKeyStore(kind: kind, storable: storable);
+      final keys = MemoryBiometricKeyStore(
+        kind: kind,
+        unavailable: unavailable,
+        storable: storable,
+      );
       await pumpUnlockedApp(
         tester,
         location: Routes.settingsSecurity,
@@ -193,6 +199,51 @@ void main() {
       await tester.tap(find.text('Unlock with Touch ID'));
       await tester.pumpAndSettle();
       expect(keys.keys, isEmpty);
+    });
+
+    testWidgets('Touch ID unavailable right now: disabled, with the reason', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final keys = await open(
+        tester,
+        kind: Biometry.touchId,
+        unavailable: BiometryUnavailable.unavailable,
+      );
+      expect(find.text('Unlock with Touch ID'), findsOneWidget);
+      expect(
+        find.textContaining("isn't available right now. A MacBook's sensor"),
+        findsOneWidget,
+      );
+      final toggle = tester.widget<DesktopSwitch>(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Unlock with Touch ID'),
+            matching: find.byType(DesktopSettingsRow),
+          ),
+          matching: find.byType(DesktopSwitch),
+        ),
+      );
+      expect(toggle.onChanged, isNull);
+      await tester.tap(find.text('Unlock with Touch ID'));
+      await tester.pumpAndSettle();
+      expect(keys.keys, isEmpty);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('nothing enrolled: disabled, says to set it up', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        kind: Biometry.touchId,
+        unavailable: BiometryUnavailable.notEnrolled,
+      );
+      expect(
+        find.textContaining("Touch ID isn't set up on this device"),
+        findsOneWidget,
+      );
     });
 
     testWidgets('no row without biometrics', (tester) async {

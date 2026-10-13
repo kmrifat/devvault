@@ -61,15 +61,29 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
 
   // MARK: - Calls
 
-  private func biometry() -> String? {
+  /// `{kind, unavailable?}`, or nil without biometric hardware. The type is
+  /// known even when it can't be used right now (nothing enrolled, locked
+  /// out, a MacBook's lid closed); `unavailable` says which.
+  private func biometry() -> [String: String]? {
     let context = LAContext()
-    guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
-    else { return nil }
+    var failure: NSError?
+    let ready = context.canEvaluatePolicy(
+      .deviceOwnerAuthenticationWithBiometrics, error: &failure)
+    var reply: [String: String]
     switch context.biometryType {
-    case .faceID: return "faceId"
-    case .touchID: return "touchId"
-    default: return "biometrics"
+    case LABiometryType.none: return nil
+    case .faceID: reply = ["kind": "faceId"]
+    case .touchID: reply = ["kind": "touchId"]
+    default: reply = ["kind": "biometrics"]
     }
+    if !ready {
+      switch failure.flatMap({ LAError.Code(rawValue: $0.code) }) {
+      case .biometryNotEnrolled: reply["unavailable"] = "notEnrolled"
+      case .biometryLockout: reply["unavailable"] = "lockedOut"
+      default: reply["unavailable"] = "unavailable"
+      }
+    }
+    return reply
   }
 
   /// Biometric Keychain items need the data protection keychain, which a

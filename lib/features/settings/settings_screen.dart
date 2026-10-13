@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:native_liquid_glass/native_liquid_glass.dart'
@@ -36,6 +37,32 @@ class SettingsScreen extends ConsumerWidget {
     Duration(inMinutes: 1) => '1 minute',
     Duration(:final inMinutes) => '$inMinutes minutes',
   };
+
+  /// What the "Unlock with Face ID" row says: what turning it on does, or
+  /// why it can't be turned on right now.
+  static String biometricNote(BiometricUnlock status, Biometry biometry) {
+    final label = biometry.label;
+    if (!status.storable) {
+      return "This copy of DevVault isn't signed to keep a key behind "
+          '$label. Unlock with the master password.';
+    }
+    return switch (status.unavailable) {
+      null =>
+        'The vault key stays on this device, behind $label. Changing the '
+            'master password turns this off.',
+      BiometryUnavailable.notEnrolled =>
+        "$label isn't set up on this device. Set it up in the system "
+            'settings first.',
+      BiometryUnavailable.lockedOut =>
+        '$label is locked after too many tries. Unlock the device with its '
+            'password, then try again.',
+      BiometryUnavailable.unavailable =>
+        defaultTargetPlatform == TargetPlatform.macOS
+            ? "$label isn't available right now. A MacBook's sensor is off "
+                  'while its lid is closed.'
+            : "$label isn't available right now.",
+    };
+  }
 
   static String _themeLabel(ThemeMode mode) => switch (mode) {
     ThemeMode.system => 'Match system',
@@ -387,8 +414,9 @@ class _RowIcon extends StatelessWidget {
   }
 }
 
-/// "Unlock with Face ID" (SPEC §9.1): shown only where the device offers
-/// biometrics, without its switch when this build can't keep the key.
+/// "Unlock with Face ID" (SPEC §9.1): shown only where the device has
+/// biometrics, without its switch when they can't be used right now or this
+/// build can't keep the key.
 abstract final class _BiometricRow {
   static List<Widget> rows(
     BuildContext context,
@@ -432,12 +460,10 @@ abstract final class _BiometricRow {
           bc.successSoftForeground,
         ),
         title: 'Unlock with ${biometry.label}',
-        description: status!.storable
-            ? 'The vault key stays on this device, behind ${biometry.label}. '
-                  'Changing the master password turns this off.'
-            : "This copy of DevVault isn't signed to keep a key behind "
-                  '${biometry.label}. Unlock with the master password.',
-        suffix: status.storable ? toggle(status.enabled, setBiometric) : null,
+        description: SettingsScreen.biometricNote(status!, biometry),
+        suffix: status.storable && status.unavailable == null
+            ? toggle(status.enabled, setBiometric)
+            : null,
       ),
     ];
   }
