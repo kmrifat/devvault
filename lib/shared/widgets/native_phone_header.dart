@@ -34,11 +34,16 @@ class NativePhoneHeader extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.title,
     this.onBack,
+    this.backSymbol = 'chevron.left',
     this.actions = const [],
   });
 
   final String title;
   final VoidCallback? onBack;
+
+  /// The leading button's SF Symbol: a back chevron, or `xmark` for a
+  /// form's Cancel.
+  final String backSymbol;
   final List<NativeHeaderAction> actions;
 
   static const double barHeight = 44;
@@ -85,9 +90,9 @@ class NativePhoneHeader extends StatelessWidget implements PreferredSizeWidget {
             brightness: Theme.of(context).brightness,
             leadingItems: [
               if (onBack != null)
-                const LiquidGlassNavBarItem(
+                LiquidGlassNavBarItem(
                   id: 'back',
-                  icon: NativeLiquidGlassIcon.sfSymbol('chevron.left'),
+                  icon: NativeLiquidGlassIcon.sfSymbol(backSymbol),
                 ),
             ],
             // UIKit lays trailing items out from the right edge; [actions]

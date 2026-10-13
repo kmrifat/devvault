@@ -314,4 +314,41 @@ void main() {
       );
     },
   );
+
+  // Design frames I10 and I11: the item form as a page.
+  shot(
+    'I10-new-item',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      await tester.tap(find.bySemanticsLabel('New item'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'e.g. Upload keystore',
+        ),
+        'Stripe secret key',
+      );
+      // No caret blinking in the image.
+      FocusManager.instance.primaryFocus?.unfocus();
+    },
+  );
+  shot(
+    'I11-edit-item',
+    Routes.vault(),
+    device: ShotDevice.mobile,
+    sample: true,
+    interact: (tester) async {
+      final session =
+          appContainer(tester).read(vaultSessionProvider) as Unlocked;
+      final keystore = session.index.all.firstWhere(
+        (i) => i.title == 'Upload keystore',
+      );
+      GoRouter.of(tester.element(find.byType(MobileVaultScreen)))
+          .push(Routes.editItem(keystore.id));
+    },
+  );
 }

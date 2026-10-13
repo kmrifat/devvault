@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/expiry/expiry_screen.dart';
+import '../features/item_editor/item_editor_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/pairing/pair_screen.dart';
 import '../features/create_vault/create_vault_screen.dart';
@@ -103,6 +104,20 @@ GoRouter buildRouter({
         '/vault/item/:id',
         (s) => ItemScreen(itemId: s.pathParameters['id']!),
       ),
+
+      // The item form: a page of its own on phones, a sheet on desktop.
+      if (!desktop) ...[
+        page(
+          '/item/new',
+          (s) => ItemEditorScreen.create(query: s.uri.queryParameters),
+          fullscreenDialog: true,
+        ),
+        page(
+          '/item/:id/edit',
+          (s) => ItemEditorScreen.edit(itemId: s.pathParameters['id']!),
+          fullscreenDialog: true,
+        ),
+      ],
 
       StatefulShellRoute.indexedStack(
         pageBuilder: (context, state, shell) => materialPage(

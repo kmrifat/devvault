@@ -1,11 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:native_liquid_glass/native_liquid_glass.dart'
-    show
-        LiquidGlassAlert,
-        LiquidGlassAlertAction,
-        LiquidGlassAlertStyle,
-        LiquidGlassToggle;
+    show LiquidGlassToggle;
 import 'package:vault_core/vault_core.dart';
 
 import '../../app/routes.dart';
@@ -158,7 +154,7 @@ class _PhoneSettingsState extends ConsumerState<_PhoneSettings>
                   const _Section('General'),
                   BCListGroup(
                     children: [
-                      _ChoiceRow<ThemeMode>(
+                      ChoiceRow<ThemeMode>(
                         native: native,
                         icon: _RowIcon(
                           LucideIcons.sunMoon,
@@ -202,7 +198,7 @@ class _PhoneSettingsState extends ConsumerState<_PhoneSettings>
                     children: [
                       if (vault != null)
                         ..._BiometricRow.rows(context, ref, toggle: toggle),
-                      _ChoiceRow<Duration?>(
+                      ChoiceRow<Duration?>(
                         native: native,
                         icon: _RowIcon(
                           LucideIcons.timer,
@@ -221,7 +217,7 @@ class _PhoneSettingsState extends ConsumerState<_PhoneSettings>
                         },
                         onChanged: notifier.setAutoLock,
                       ),
-                      _ChoiceRow<Duration>(
+                      ChoiceRow<Duration>(
                         native: native,
                         icon: _RowIcon(
                           LucideIcons.clipboardX,
@@ -391,93 +387,6 @@ class _RowIcon extends StatelessWidget {
   }
 }
 
-/// A setting with a few choices. On iPhone the row shows the current one
-/// and opens UIKit's action sheet of the choices; elsewhere a bc_ui select
-/// sits under the row's text.
-///
-/// Not a pull-down `UIMenu`: `native_liquid_glass` supports one menu
-/// trigger per screen, and Settings has three.
-class _ChoiceRow<T> extends StatelessWidget {
-  const _ChoiceRow({
-    required this.native,
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-    this.description,
-  });
-
-  final bool native;
-  final Widget icon;
-  final String title;
-  final String? description;
-  final T value;
-  final Map<T, String> options;
-  final ValueChanged<T> onChanged;
-
-  Future<void> _choose(BuildContext context) async {
-    final keys = options.keys.toList();
-    final id = await LiquidGlassAlert.show(
-      context: context,
-      // UIKit's action sheet shows no checkmark, so the title says which
-      // choice is set.
-      title: '$title: ${options[value]}',
-      message: description,
-      style: LiquidGlassAlertStyle.actionSheet,
-      actions: [
-        for (final (i, key) in keys.indexed)
-          LiquidGlassAlertAction(id: '$i', title: options[key]!),
-        const LiquidGlassAlertAction(
-          id: 'cancel',
-          title: 'Cancel',
-          isCancel: true,
-        ),
-      ],
-    );
-    final index = int.tryParse(id ?? '');
-    if (index != null) onChanged(keys[index]);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bc = context.bcTheme;
-    if (!native) {
-      return _pickerItem(
-        context,
-        prefix: icon,
-        title: title,
-        description: description,
-        picker: _Picker<T>(
-          label: title,
-          value: value,
-          options: options,
-          onChanged: onChanged,
-        ),
-      );
-    }
-    return Semantics(
-      button: true,
-      label: '$title, ${options[value]}',
-      excludeSemantics: true,
-      child: BCListGroupItem(
-        prefix: icon,
-        title: title,
-        description: description,
-        onPressed: () => _choose(context),
-        suffix: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 4,
-          children: [
-            BCText(options[value]!, color: BCTextColor.muted),
-            Icon(LucideIcons.chevronsUpDown, size: 15, color: bc.muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// "Unlock with Face ID" (SPEC §9.1): shown only where the device offers
 /// biometrics.
 abstract final class _BiometricRow {
@@ -546,74 +455,6 @@ class _Section extends StatelessWidget {
         type: BCTextType.bodySm,
         weight: BCTextWeight.medium,
         color: BCTextColor.muted,
-      ),
-    );
-  }
-}
-
-/// A settings row with a select: beside the text where there's room,
-/// under it on a phone, where a 190-wide select would squeeze the title.
-BCListGroupItem _pickerItem(
-  BuildContext context, {
-  required Widget prefix,
-  required String title,
-  String? description,
-  required Widget picker,
-}) {
-  if (!SettingsLayout.isNarrow(context)) {
-    return BCListGroupItem(
-      prefix: prefix,
-      title: title,
-      description: description,
-      suffix: picker,
-    );
-  }
-  return BCListGroupItem(
-    prefix: prefix,
-    content: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 2,
-      children: [
-        BCText(title),
-        if (description != null)
-          BCText(
-            description,
-            type: BCTextType.bodySm,
-            color: BCTextColor.muted,
-          ),
-        const SizedBox(height: BCSpacing.xs),
-        picker,
-      ],
-    ),
-  );
-}
-
-/// A compact select for a settings row (full width on a phone).
-class _Picker<T> extends StatelessWidget {
-  const _Picker({
-    required this.label,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T value;
-  final Map<T, String> options;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: SettingsLayout.isNarrow(context) ? double.infinity : 190,
-      child: BCSelect<T>(
-        listLabel: label,
-        value: value,
-        items: [
-          for (final MapEntry(:key, value: text) in options.entries)
-            BCSelectItem(value: key, label: text),
-        ],
-        onValueChange: onChanged,
       ),
     );
   }
