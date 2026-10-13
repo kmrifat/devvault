@@ -74,16 +74,7 @@ class ItemDetailPane extends ConsumerWidget {
               ),
             ),
           if (item.type == ItemType.secureNote)
-            _SecureNoteCard(markdown: item.notes ?? '')
-          else
-            _ExpiryCard(
-              item: item,
-              now: now,
-              // A date the file gave is a fact; one it didn't can be set.
-              onEdit: item.isReadOnly || item.expiresSource == ExpirySource.file
-                  ? null
-                  : () => showExpiryDateSheet(context, item),
-            ),
+            _SecureNoteCard(markdown: item.notes ?? ''),
           if (item.fields.isNotEmpty)
             _Section(
               title: 'Fields',
@@ -94,31 +85,44 @@ class ItemDetailPane extends ConsumerWidget {
               title: item.attachments.length == 1 ? 'File' : 'Files',
               child: _Files(item: item, attachments: item.attachments),
             ),
+          if (item.type != ItemType.secureNote)
+            _Section(
+              title: 'Expiry',
+              child: _ExpiryCard(
+                item: item,
+                now: now,
+                // A date the file gave is a fact; one it didn't can be set.
+                onEdit:
+                    item.isReadOnly || item.expiresSource == ExpirySource.file
+                    ? null
+                    : () => showExpiryDateSheet(context, item),
+              ),
+            ),
           if (item.notes case final notes?
               when notes.trim().isNotEmpty && item.type != ItemType.secureNote)
             _NotesCard(notes: notes),
-          _Meta(item: item, onThisDevice: item.deviceId == thisDevice),
+          _Section(
+            title: 'Details',
+            child: _Details(
+              item: item,
+              onThisDevice: item.deviceId == thisDevice,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// The item's tile, title and type, where it sits in the tree, its tags,
-/// and its main actions (design frame I5): Export for a file, Copy for its
-/// first secret. Edit and the rest are in the screen's bar (`ItemScreen`).
+/// The item's tile, title and type, centred, then where it sits in the
+/// tree and its tags, then its main actions as tiles (design frame I5 v2):
+/// Export for a file, Copy for its first secret, Edit. The rest (Replace
+/// file…, Delete item…) is behind ⋯ in the bar (`ItemScreen`).
 class _Header extends ConsumerWidget {
   const _Header({required this.item, required this.app});
 
   final Item item;
   final AppRecord? app;
-
-  static BCChipColor _typeColor(ItemType? type) => switch (type) {
-    ItemType.androidKeystore => BCChipColor.success,
-    ItemType.firebaseConfig => BCChipColor.warning,
-    ItemType.appleAuthKey || ItemType.gcpServiceAccount => BCChipColor.accent,
-    _ => BCChipColor.defaultColor,
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -133,103 +137,157 @@ class _Header extends ConsumerWidget {
     final file = item.attachments.firstOrNull;
     final secret = item.fields.entries.where((e) => e.value.secret).firstOrNull;
 
-    final title = Row(
-      spacing: 14,
-      children: [
-        TypeIconTile(type: type ?? ItemType.genericFile, size: 60),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 6,
-            children: [
-              Text(
-                item.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: BCTypography.size2xl,
-                  height: 1.2,
-                  fontWeight: BCTypography.bold,
-                  letterSpacing: BCTypography.trackingTight(
-                    BCTypography.size2xl,
-                  ),
-                  color: bc.foreground,
-                ),
-              ),
-              BCChip(
-                size: BCChipSize.sm,
-                variant: BCChipVariant.soft,
-                color: _typeColor(type),
-                child: Text(type?.label ?? item.typeName),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    final meta = Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        if (place.isNotEmpty)
-          BCChip(
-            variant: BCChipVariant.secondary,
-            color: BCChipColor.defaultColor,
-            startContent: app == null ? null : AppBadge(app: app, size: 18),
-            child: Text(place),
-          ),
-        for (final tag in item.tags)
-          BCChip(
-            variant: BCChipVariant.tertiary,
-            color: BCChipColor.defaultColor,
-            child: Text('#$tag'),
-          ),
-      ],
-    );
-
-    final main = [
+    final tiles = [
       if (file != null)
-        BCButton(
+        _ActionTile(
+          icon: LucideIcons.share,
+          label: 'Export',
+          primary: true,
           onPressed: () => exportFile(context, ref, item, file),
-          startContent: const Icon(LucideIcons.share, size: 17),
-          child: const Text('Export'),
         ),
       if (secret != null)
-        BCButton(
-          variant: file == null
-              ? BCButtonVariant.primary
-              : BCButtonVariant.secondary,
+        _ActionTile(
+          icon: LucideIcons.copy,
+          label: 'Copy',
+          semanticLabel: 'Copy ${Format.fieldLabel(secret.key)}',
+          primary: file == null,
           onPressed: () => copyItemField(
             context,
             ref,
             Format.fieldLabel(secret.key),
             secret.value,
           ),
-          startContent: const Icon(LucideIcons.copy, size: 17),
-          child: Text(
-            'Copy ${Format.fieldLabel(secret.key).toLowerCase()}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        ),
+      if (!item.isReadOnly)
+        _ActionTile(
+          icon: LucideIcons.pencil,
+          label: 'Edit',
+          onPressed: () => editItem(context, item),
         ),
     ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 14,
       children: [
-        title,
-        if (place.isNotEmpty || item.tags.isNotEmpty) meta,
-        if (main.isNotEmpty)
-          Row(
-            spacing: 10,
+        Center(
+          child: TypeIconTile(type: type ?? ItemType.genericFile, size: 72),
+        ),
+        const SizedBox(height: BCSpacing.sm + 4),
+        Text(
+          item.title,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: BCTypography.size2xl,
+            height: 1.2,
+            fontWeight: BCTypography.bold,
+            letterSpacing: BCTypography.trackingTight(BCTypography.size2xl),
+            color: bc.foreground,
+          ),
+        ),
+        const SizedBox(height: BCSpacing.xs + 2),
+        BCText(
+          type?.label ?? item.typeName,
+          type: BCTextType.bodySm,
+          color: BCTextColor.muted,
+          align: TextAlign.center,
+        ),
+        if (place.isNotEmpty || item.tags.isNotEmpty) ...[
+          const SizedBox(height: BCSpacing.sm + 4),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              // Export keeps its size; Copy takes the rest for its label.
-              for (final (i, button) in main.indexed)
-                if (i == main.length - 1) Expanded(child: button) else button,
+              if (place.isNotEmpty)
+                BCChip(
+                  variant: BCChipVariant.secondary,
+                  color: BCChipColor.defaultColor,
+                  startContent: app == null
+                      ? null
+                      : AppBadge(app: app, size: 18),
+                  child: Text(place),
+                ),
+              for (final tag in item.tags)
+                BCChip(
+                  variant: BCChipVariant.secondary,
+                  color: BCChipColor.defaultColor,
+                  child: Text('#$tag'),
+                ),
             ],
           ),
+        ],
+        if (tiles.isNotEmpty) ...[
+          const SizedBox(height: BCSpacing.lg - 4),
+          Row(
+            spacing: 10,
+            children: [for (final tile in tiles) Expanded(child: tile)],
+          ),
+        ],
       ],
+    );
+  }
+}
+
+/// One of the item's main actions: an icon over its name, on a tile.
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.semanticLabel,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? semanticLabel;
+  final VoidCallback onPressed;
+
+  /// The accent tile: the action the item is mostly for.
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    final shape = BCShapes.continuous(BCRadius.xxl + 2);
+    final foreground = primary ? bc.accentForeground : bc.foreground;
+    return Semantics(
+      button: true,
+      label: semanticLabel ?? label,
+      excludeSemantics: true,
+      child: BCPressable(
+        onPressed: onPressed,
+        shape: shape,
+        background: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: primary ? bc.accent : bc.surface,
+            shape: shape,
+          ),
+        ),
+        child: SizedBox(
+          height: 68,
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 6,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: primary ? foreground : bc.accentSoftForeground,
+              ),
+              BCText(
+                label,
+                type: BCTextType.bodySm,
+                weight: BCTextWeight.semibold,
+                style: TextStyle(color: foreground),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -319,7 +377,9 @@ class _ExpiryCard extends StatelessWidget {
         bc.muted,
         bc.defaultColor,
         'No expiry date',
-        'Nothing in the file says when it expires.',
+        item.attachments.isEmpty
+            ? 'None was entered'
+            : 'The file doesn’t state one',
       ),
       ExpiryState.valid => (
         LucideIcons.calendarCheck2,
@@ -383,7 +443,7 @@ class _ExpiryCard extends StatelessWidget {
             if (expiresAt == null)
               BCButton(
                 size: BCButtonSize.sm,
-                variant: BCButtonVariant.secondary,
+                variant: BCButtonVariant.ghost,
                 onPressed: onEdit,
                 child: const Text('Set date'),
               )
@@ -601,7 +661,8 @@ class _IconAction extends StatelessWidget {
   }
 }
 
-/// The original files, stored encrypted and exported byte for byte.
+/// The original files, stored encrypted and exported byte for byte: the
+/// whole name, its size and hash, and Export.
 class _Files extends ConsumerWidget {
   const _Files({required this.item, required this.attachments});
 
@@ -621,7 +682,7 @@ class _Files extends ConsumerWidget {
                 child: Divider(height: 1, thickness: 1, color: bc.separator),
               ),
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
               child: Row(
                 spacing: 12,
                 children: [
@@ -642,25 +703,30 @@ class _Files extends ConsumerWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 3,
+                      spacing: 4,
                       children: [
-                        MonoText(attachment.filename, middleEllipsis: true),
-                        BCText(
-                          '${Format.bytes(attachment.size)} · sha256 '
+                        Text(
+                          attachment.filename,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.mono(context),
+                        ),
+                        Text(
+                          '${Format.bytes(attachment.size)} · SHA-256 '
                           '${Format.shortHash(attachment.sha256)}',
-                          type: BCTextType.bodyXs,
-                          color: BCTextColor.muted,
-                          maxLines: 1,
+                          style: AppText.mono(
+                            context,
+                            fontSize: BCTypography.sizeXs,
+                            color: bc.muted,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  BCButton(
-                    size: BCButtonSize.sm,
-                    variant: BCButtonVariant.tertiary,
+                  _IconAction(
+                    icon: LucideIcons.share,
+                    label: 'Export ${attachment.filename}',
                     onPressed: () => exportFile(context, ref, item, attachment),
-                    startContent: const Icon(LucideIcons.download, size: 14),
-                    child: const Text('Save as…'),
                   ),
                 ],
               ),
@@ -742,8 +808,10 @@ class _NotesCard extends StatelessWidget {
   }
 }
 
-class _Meta extends StatelessWidget {
-  const _Meta({required this.item, required this.onThisDevice});
+/// Facts about the record: when it was created and changed, which device
+/// saved it last, and that it's encrypted end to end.
+class _Details extends StatelessWidget {
+  const _Details({required this.item, required this.onThisDevice});
 
   final Item item;
   final bool onThisDevice;
@@ -752,32 +820,51 @@ class _Meta extends StatelessWidget {
   Widget build(BuildContext context) {
     final bc = context.bcTheme;
     final date = DateFormat.yMMMd();
-    final updated = item.updatedAt == item.createdAt
-        ? ''
-        : ' · Updated ${date.format(item.updatedAt.toLocal())}';
-    return Row(
-      spacing: 16,
-      children: [
-        Expanded(
-          child: BCText(
-            'Created ${date.format(item.createdAt.toLocal())}$updated'
-            '${onThisDevice ? ' on this device' : ' on another device'}',
-            type: BCTextType.bodyXs,
-            color: BCTextColor.muted,
+    Widget row(String label, Widget value) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(
+        spacing: BCSpacing.sm,
+        children: [
+          BCText(label, color: BCTextColor.muted),
+          Expanded(
+            child: Align(alignment: Alignment.centerRight, child: value),
           ),
-        ),
+        ],
+      ),
+    );
+    final rows = [
+      row('Created', BCText(date.format(item.createdAt.toLocal()))),
+      if (item.updatedAt != item.createdAt)
+        row('Changed', BCText(date.format(item.updatedAt.toLocal()))),
+      row(
+        'Last saved on',
+        BCText(onThisDevice ? 'This device' : 'Another device'),
+      ),
+      row(
+        'Encryption',
         Row(
+          mainAxisSize: MainAxisSize.min,
           spacing: 6,
           children: [
-            Icon(LucideIcons.lockKeyhole, size: 13, color: bc.muted),
-            const BCText(
-              'End-to-end encrypted',
-              type: BCTextType.bodyXs,
-              color: BCTextColor.muted,
-            ),
+            Icon(LucideIcons.lockKeyhole, size: 14, color: bc.success),
+            const BCText('End-to-end'),
           ],
         ),
-      ],
+      ),
+    ];
+    return _Surface(
+      child: Column(
+        children: [
+          for (final (i, r) in rows.indexed) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Divider(height: 1, thickness: 1, color: bc.separator),
+              ),
+            r,
+          ],
+        ],
+      ),
     );
   }
 }
