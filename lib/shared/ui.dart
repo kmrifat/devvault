@@ -11,6 +11,7 @@ export '../app/theme.dart' show AppColors, AppColorsContext, AppText, AppTheme;
 export 'widgets/app_badge.dart';
 export 'widgets/app_mark.dart';
 export 'widgets/app_toast.dart';
+export 'widgets/choice_row.dart';
 export 'widgets/confirm_dialog.dart';
 export 'widgets/mono_text.dart';
 export 'widgets/native_phone_header.dart';

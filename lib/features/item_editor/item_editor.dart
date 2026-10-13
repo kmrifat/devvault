@@ -1,8 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart'
+    show
+        LiquidGlassAlert,
+        LiquidGlassAlertAction,
+        LiquidGlassAlertStyle,
+        LiquidGlassToggle;
 import 'package:vault_core/vault_core.dart';
 
+import '../../app/routes.dart';
+import '../../core/format.dart';
 import '../../core/item_templates.dart';
+import '../../data/providers.dart';
 import '../../data/vault_filter.dart';
 import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart'
@@ -57,13 +67,16 @@ Future<String?> showItemEditor(
       builder: (_) => ItemEditor(draft: draft),
     );
   }
-  return BCDialog.show<String>(
-    context,
-    builder: (_) => BCDialogContent(
-      width: 640,
-      showCloseButton: true,
-      child: ItemEditor(draft: draft),
-    ),
+  // Phones: a page of its own (design frames I10, I11).
+  return GoRouter.of(context).push<String>(
+    item == null
+        ? Routes.newItem(
+            type: type.wireName,
+            app: app,
+            platform: platform,
+            env: env,
+          )
+        : Routes.editItem(item.id),
   );
 }
 
@@ -134,7 +147,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     // tag still being typed is added here.
     _draft.tags = _desktop
         ? _tagInput.commit(_draft.tagList).join(', ')
-        : _tags.text;
+        : [..._tagChips, _tags.text].join(', ');
     final expiryError = _desktop && !_draft.expiryFromFile
         ? switch (_expiryProblem) {
             DesktopDateProblem.unreadable =>
@@ -153,7 +166,7 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
     final session = ref.read(vaultSessionProvider.notifier);
     try {
       final saved = await session.saveItem(_draft.toItem(session.newItem));
-      if (mounted) Navigator.of(context).pop(saved.id);
+      if (mounted) _close(saved.id);
     } on Object {
       if (mounted) {
         setState(() {
@@ -167,6 +180,34 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
   @override
   Widget build(BuildContext context) {
     if (_desktop) return _sheet(context);
+    return _page(context);
+  }
+
+  /// Tags typed so far on a phone, as chips; the tag field adds to them.
+  late final List<String> _tagChips = [..._draft.tagList];
+
+  void _addTags(String text) {
+    final added = [
+      for (final tag in text.split(','))
+        if (tag.trim().replaceFirst('#', '').isNotEmpty)
+          tag.trim().replaceFirst('#', ''),
+    ];
+    if (added.isEmpty) return;
+    setState(() {
+      for (final tag in added) {
+        if (!_tagChips.contains(tag)) _tagChips.add(tag);
+      }
+      _tags.clear();
+    });
+  }
+
+  /// The form as a page of its own on a phone (design frames I10, I11):
+  /// Cancel and Add / Save in the bar, then the type, the name, where it
+  /// belongs, expiry, fields (the file's locked, the user's as cards),
+  /// tags and notes.
+  Widget _page(BuildContext context) {
+    final bc = context.bcTheme;
+    final native = ref.watch(nativeBarsProvider);
     final session = ref.watch(vaultSessionProvider);
     final apps = session is Unlocked
         ? (session.index.apps.values.toList()..sort(
@@ -174,39 +215,63 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
           ))
         : <AppRecord>[];
     final draft = _draft;
+    final title = switch ((draft.isNew, _isNote)) {
+      (true, true) => 'New secure note',
+      (true, false) => 'New item',
+      (false, true) => 'Edit note',
+      (false, false) => 'Edit item',
+    };
+    final saveLabel = draft.isNew
+        ? (_isNote ? 'Add note' : 'Add item')
+        : 'Save';
+    void cancel() => _close();
+    final app = apps.where((a) => a.id == draft.appId).firstOrNull;
+    final fileFields = [
+      for (final field in draft.fields)
+        if (field.fromFile) field,
+    ];
+    final ownFields = [
+      for (final (i, field) in draft.fields.indexed)
+        if (!field.fromFile) (i, field),
+    ];
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        BCDialogTitle(switch ((draft.isNew, _isNote)) {
-          (true, true) => 'New secure note',
-          (true, false) => 'New item',
-          (false, true) => 'Edit note',
-          (false, false) => 'Edit item',
-        }),
-        const SizedBox(height: BCSpacing.lg),
-        if (draft.isNew) ...[
-          const _Label('Type'),
-          BCSelect<ItemType>(
-            value: draft.type,
-            items: [
-              for (final type in ItemType.values)
-                BCSelectItem(
-                  value: type,
-                  label: type.label,
-                  leading: TypeIconTile(type: type, size: 24),
+    final form = <Widget>[
+      if (draft.isNew)
+        _PageSection(
+          title: 'Type',
+          child: native
+              ? _TypeRow(
+                  type: draft.type,
+                  onPressed: () => _chooseType(context),
+                )
+              : BCSelect<ItemType>(
+                  value: draft.type,
+                  items: [
+                    for (final type in ItemType.values)
+                      BCSelectItem(
+                        value: type,
+                        label: type.label,
+                        leading: TypeIconTile(type: type, size: 24),
+                      ),
+                  ],
+                  onValueChange: _changeType,
                 ),
-            ],
-            onValueChange: _changeType,
-          ),
-          const SizedBox(height: BCSpacing.md),
-        ],
-        BCTextField(
+        )
+      else
+        _TypeRow(
+          type: draft.type,
+          detail: switch (draft.base?.attachments.firstOrNull) {
+            final file? => '${file.filename} · ${Format.bytes(file.size)}',
+            null => null,
+          },
+        ),
+      _PageSection(
+        title: 'Name',
+        required: true,
+        child: BCTextField(
           isRequired: true,
           isInvalid: _errors.containsKey('title'),
           children: [
-            const BCTextFieldLabel('Name'),
             BCTextFieldInput(
               controller: _title,
               autofocus: draft.isNew,
@@ -215,139 +280,217 @@ class _ItemEditorState extends ConsumerState<ItemEditor> {
             if (_errors['title'] case final error?) BCTextFieldError(error),
           ],
         ),
-        const SizedBox(height: BCSpacing.md),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: BCSpacing.sm,
+      ),
+      _PageSection(
+        title: 'Where it belongs',
+        child: BCListGroup(
           children: [
-            Expanded(
-              child: _Choice(
-                label: 'App',
-                none: 'No app',
-                // An app deleted since shows as no app, as in the sidebar.
-                value: apps.any((a) => a.id == draft.appId)
-                    ? draft.appId
-                    : null,
-                options: {for (final app in apps) app.id: app.label},
-                onChanged: (v) => setState(() => draft.appId = v),
-              ),
+            ChoiceRow<String?>(
+              native: native,
+              compact: true,
+              title: 'App',
+              value: app?.id,
+              leading: app == null ? null : AppBadge(app: app, size: 20),
+              options: {null: 'No app', for (final a in apps) a.id: a.label},
+              onChanged: (v) => setState(() => draft.appId = v),
             ),
-            Expanded(
-              child: _Choice(
-                label: 'Platform',
-                none: 'None',
-                value: draft.platform,
-                options: {
-                  for (final p in {...ItemTemplates.platforms, ?draft.platform})
-                    p: VaultLabels.platform(p),
-                },
-                onChanged: (v) => setState(() => draft.platform = v),
-              ),
+            ChoiceRow<String?>(
+              native: native,
+              compact: true,
+              title: 'Platform',
+              value: draft.platform,
+              options: {
+                null: 'None',
+                for (final p in {...ItemTemplates.platforms, ?draft.platform})
+                  p: VaultLabels.platform(p),
+              },
+              onChanged: (v) => setState(() => draft.platform = v),
             ),
-            Expanded(
-              child: _Choice(
-                label: 'Environment',
-                none: 'None',
-                value: draft.environment,
-                options: {
-                  for (final e in {
-                    ...ItemTemplates.environments,
-                    ?draft.environment,
-                  })
-                    e: VaultLabels.environment(e),
-                },
-                onChanged: (v) => setState(() => draft.environment = v),
-              ),
+            ChoiceRow<String?>(
+              native: native,
+              compact: true,
+              title: 'Environment',
+              value: draft.environment,
+              options: {
+                null: 'None',
+                for (final e in {
+                  ...ItemTemplates.environments,
+                  ?draft.environment,
+                })
+                  e: VaultLabels.environment(e),
+              },
+              onChanged: (v) => setState(() => draft.environment = v),
             ),
           ],
         ),
-        const SizedBox(height: BCSpacing.md),
-        BCTextField(
-          children: [
-            const BCTextFieldLabel('Tags'),
-            BCTextFieldInput(controller: _tags, hintText: 'release, signing'),
-            const BCTextFieldDescription('Separate tags with commas'),
-          ],
-        ),
-        const SizedBox(height: BCSpacing.md),
-        if (_isNote) ...[
-          const _Label('Note'),
-          SecureNoteEditor(
+      ),
+      if (_isNote)
+        _PageSection(
+          title: 'Note',
+          child: SecureNoteEditor(
             key: const ValueKey('secure-note-body'),
             initialMarkdown: _body,
             minHeight: 220,
             onChanged: (markdown) => _body = markdown,
           ),
-        ] else ...[
-          _Expiry(
+        )
+      else ...[
+        _PageSection(
+          title: 'Expiry',
+          child: _Expiry(
             draft: draft,
             onChanged: (date) => setState(() => draft.expiresAt = date),
           ),
-          const SizedBox(height: BCSpacing.lg),
-          const _Label('Fields'),
-          for (final (i, field) in draft.fields.indexed)
-            _FieldEditor(
-              key: ObjectKey(field),
-              field: field,
-              error: _errors['$i'],
-              onRemove: () => setState(() => draft.fields.remove(field)),
-              onChanged: () => setState(() {}),
-            ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: BCButton(
-              size: BCButtonSize.sm,
-              variant: BCButtonVariant.ghost,
-              onPressed: () => setState(() => draft.fields.add(DraftField())),
-              startContent: const Icon(LucideIcons.plus, size: 15),
-              child: const Text('Add field'),
-            ),
+        ),
+        if (fileFields.isNotEmpty)
+          _PageSection(
+            title: 'From the file',
+            locked: true,
+            child: _LockedFields(fields: fileFields),
           ),
-          const SizedBox(height: BCSpacing.md),
-          const _Label('Notes'),
-          PhoneNotesField(
+        _PageSection(
+          title: draft.isNew || fileFields.isEmpty ? 'Fields' : 'Your fields',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: BCSpacing.sm,
+            children: [
+              for (final (i, field) in ownFields)
+                _FieldCard(
+                  key: ObjectKey(field),
+                  field: field,
+                  native: native,
+                  error: _errors['$i'],
+                  onRemove: () => setState(() => draft.fields.remove(field)),
+                  onChanged: () => setState(() {}),
+                ),
+              BCButton(
+                variant: BCButtonVariant.secondary,
+                fullWidth: true,
+                onPressed: () => setState(() => draft.fields.add(DraftField())),
+                startContent: const Icon(LucideIcons.plus, size: 17),
+                child: const Text('Add field'),
+              ),
+            ],
+          ),
+        ),
+      ],
+      _PageSection(
+        title: 'Tags',
+        child: _TagsField(
+          tags: _tagChips,
+          controller: _tags,
+          onAdd: _addTags,
+          onRemove: (tag) => setState(() => _tagChips.remove(tag)),
+        ),
+      ),
+      if (!_isNote)
+        _PageSection(
+          title: 'Notes',
+          child: PhoneNotesField(
             controller: _notes,
             fieldKey: const ValueKey('item-notes'),
           ),
-        ],
-        if (_saveError case final error?) ...[
-          const SizedBox(height: BCSpacing.md),
-          BCText(
-            error,
-            type: BCTextType.bodySm,
-            style: TextStyle(color: context.bcTheme.danger),
-          ),
-        ],
-        const SizedBox(height: BCSpacing.lg),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          spacing: BCSpacing.sm,
-          children: [
-            BCButton(
-              variant: BCButtonVariant.secondary,
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            BCButton(
-              isDisabled: _saving,
-              onPressed: _save,
-              startContent: _saving
-                  ? const BCSpinner(size: BCSpinnerSize.sm)
-                  : null,
-              child: Text(
-                draft.isNew ? (_isNote ? 'Add note' : 'Add item') : 'Save',
-              ),
-            ),
-          ],
         ),
-      ],
+      if (_saveError case final error?)
+        BCText(
+          error,
+          type: BCTextType.bodySm,
+          style: TextStyle(color: bc.danger),
+        ),
+    ];
+
+    return Scaffold(
+      backgroundColor: bc.background,
+      extendBodyBehindAppBar: native,
+      appBar: native
+          ? NativePhoneHeader(
+              title: title,
+              onBack: cancel,
+              backSymbol: 'xmark',
+              actions: [
+                NativeHeaderAction(
+                  id: 'save',
+                  label: draft.isNew ? 'Add' : 'Save',
+                  onPressed: _saving ? () {} : _save,
+                ),
+              ],
+            )
+          : BCAppHeader(
+              variant: BCAppHeaderVariant.solid,
+              automaticallyImplyLeading: false,
+              leading: BCHeaderIconButton(
+                size: 48,
+                icon: const Icon(LucideIcons.x, semanticLabel: 'Cancel'),
+                onPressed: cancel,
+              ),
+              title: Text(title),
+              actions: [
+                BCButton(
+                  size: BCButtonSize.sm,
+                  isDisabled: _saving,
+                  onPressed: _save,
+                  startContent: _saving
+                      ? const BCSpinner(size: BCSpinnerSize.sm)
+                      : null,
+                  child: Text(saveLabel),
+                ),
+              ],
+            ),
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          16,
+          (native
+                  ? MediaQuery.paddingOf(context).top +
+                        NativePhoneHeader.barHeight
+                  : 0) +
+              12,
+          16,
+          48 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 20,
+          children: form,
+        ),
+      ),
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Desktop (N03e): a sheet with a classic form. Same fields and rules as
-  // the phone form above.
-  // -------------------------------------------------------------------------
+  /// Closes the form with the saved item's [id], or nothing. On a phone
+  /// it's one of the router's pages. Saving changes the vault, which makes
+  /// the router rebuild its pages; a pop already under way then has its
+  /// page put back. So the page pops after that frame.
+  void _close([String? id]) {
+    if (_desktop) {
+      Navigator.of(context).pop(id);
+      return;
+    }
+    WidgetsBinding.instance
+      ..addPostFrameCallback((_) {
+        if (mounted) context.pop(id);
+      })
+      ..ensureVisualUpdate();
+  }
+
+  /// iPhone: the new item's type from UIKit's action sheet.
+  Future<void> _chooseType(BuildContext context) async {
+    final id = await LiquidGlassAlert.show(
+      context: context,
+      title: 'Type: ${_draft.type.label}',
+      style: LiquidGlassAlertStyle.actionSheet,
+      actions: [
+        for (final type in ItemType.values)
+          LiquidGlassAlertAction(id: type.wireName, title: type.label),
+        const LiquidGlassAlertAction(
+          id: 'cancel',
+          title: 'Cancel',
+          isCancel: true,
+        ),
+      ],
+    );
+    if (ItemType.fromWireName(id ?? '') case final type?) _changeType(type);
+  }
 
   static const double _labelWidth = 100;
 
@@ -863,58 +1006,6 @@ class _FieldRowState extends State<_FieldRow> {
   }
 }
 
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      // Lines up with bc_ui's own field labels.
-      padding: const EdgeInsets.only(left: 6, bottom: BCSpacing.xs),
-      child: BCText(text, type: BCTextType.bodySm, weight: BCTextWeight.medium),
-    );
-  }
-}
-
-/// A select over [options] (value → label) with a "none" choice first.
-class _Choice extends StatelessWidget {
-  const _Choice({
-    required this.label,
-    required this.none,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String none;
-  final String? value;
-  final Map<String, String> options;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Label(label),
-        BCSelect<String>(
-          listLabel: label,
-          value: value ?? '',
-          items: [
-            BCSelectItem(value: '', label: none),
-            for (final MapEntry(:key, value: text) in options.entries)
-              BCSelectItem(value: key, label: text),
-          ],
-          onValueChange: (v) => onChanged(v.isEmpty ? null : v),
-        ),
-      ],
-    );
-  }
-}
-
 /// The expiry date: picked by the user (and marked as theirs), or shown
 /// locked when it was read from the file.
 class _Expiry extends StatelessWidget {
@@ -925,74 +1016,220 @@ class _Expiry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bc = context.bcTheme;
     final expiresAt = draft.expiresAt;
     if (draft.expiryFromFile && expiresAt != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      return BCListGroup(
         children: [
-          const _Label('Expires'),
-          Row(
-            spacing: BCSpacing.sm,
-            children: [
-              BCText(DateFormat.yMMMd().format(expiresAt.toLocal())),
-              const ProvenanceLabel(source: ExpirySource.file),
-            ],
+          BCListGroupItem(
+            title: DateFormat.yMMMd().format(expiresAt.toLocal()),
+            suffix: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: BCSpacing.sm,
+              children: [
+                const ProvenanceLabel(source: ExpirySource.file),
+                Icon(LucideIcons.lock, size: 15, color: bc.muted),
+              ],
+            ),
           ),
         ],
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      spacing: BCSpacing.sm,
       children: [
-        const _Label('Expires'),
-        Row(
-          spacing: BCSpacing.sm,
-          children: [
-            Expanded(
-              child: BCDateField(
-                value: expiresAt?.toLocal(),
-                placeholder: 'No expiry date',
-                presentation: BCPickerPresentation.popover,
-                formatDate: DateFormat.yMMMd().format,
-                onChanged: (date) =>
-                    onChanged(DateTime.utc(date.year, date.month, date.day)),
-              ),
+        Expanded(
+          child: Semantics(
+            label: 'Expiry date',
+            child: BCDateField(
+              value: expiresAt?.toLocal(),
+              placeholder: 'No expiry date',
+              presentation: BCPickerPresentation.bottomSheet,
+              formatDate: DateFormat.yMMMd().format,
+              onChanged: (date) =>
+                  onChanged(DateTime.utc(date.year, date.month, date.day)),
             ),
-            if (expiresAt != null)
-              BCButton(
-                size: BCButtonSize.sm,
-                variant: BCButtonVariant.ghost,
-                onPressed: () => onChanged(null),
-                child: const Text('Clear'),
-              ),
-          ],
+          ),
         ),
+        if (expiresAt != null)
+          BCButton(
+            variant: BCButtonVariant.ghost,
+            onPressed: () => onChanged(null),
+            child: const Text('Clear'),
+          ),
       ],
     );
   }
 }
 
-/// One field row: name, value, secret toggle, remove. A field read from a
-/// file is shown locked.
-class _FieldEditor extends StatefulWidget {
-  const _FieldEditor({
+/// A section of the phone form: its name over its content.
+class _PageSection extends StatelessWidget {
+  const _PageSection({
+    required this.title,
+    required this.child,
+    this.required = false,
+    this.locked = false,
+  });
+
+  final String title;
+  final Widget child;
+  final bool required;
+
+  /// The values under it came from the file and can't change.
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: BCSpacing.sm,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Semantics(
+            header: true,
+            child: Row(
+              spacing: 4,
+              children: [
+                BCText(
+                  title.toUpperCase(),
+                  type: BCTextType.bodyXs,
+                  weight: BCTextWeight.semibold,
+                  color: BCTextColor.muted,
+                ),
+                if (required)
+                  BCText(
+                    '*',
+                    type: BCTextType.bodyXs,
+                    weight: BCTextWeight.semibold,
+                    style: TextStyle(color: bc.dangerSoftForeground),
+                  ),
+                if (locked) Icon(LucideIcons.lock, size: 11, color: bc.muted),
+              ],
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+/// The item's type: a row that opens the choice for a new item on iPhone
+/// ([onPressed]), or a fixed one, with its file, when editing.
+class _TypeRow extends StatelessWidget {
+  const _TypeRow({required this.type, this.onPressed, this.detail});
+
+  final ItemType type;
+  final VoidCallback? onPressed;
+
+  /// Under the type's name instead of what it's for, e.g. the file.
+  final String? detail;
+
+  /// What each type is for, under its name.
+  static String about(ItemType type) => switch (type) {
+    ItemType.appleAuthKey => 'A .p8 key for APNs or App Store Connect',
+    ItemType.appleCertificate => 'A signing certificate, .cer or .p12',
+    ItemType.provisioningProfile => 'A .mobileprovision profile',
+    ItemType.androidKeystore => 'A .jks or .keystore for signing',
+    ItemType.firebaseConfig => 'google-services.json or a GoogleService plist',
+    ItemType.gcpServiceAccount => 'A service account key, .json',
+    ItemType.oauthClient => 'A client ID and its secret',
+    ItemType.sshKey => 'A private key and its passphrase',
+    ItemType.genericFile => 'Any other file',
+    ItemType.genericSecret => 'An API key, token or password',
+    ItemType.secureNote => 'A Markdown note, encrypted',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    return Semantics(
+      button: onPressed != null,
+      label: 'Type, ${type.label}',
+      excludeSemantics: true,
+      child: BCListGroup(
+        children: [
+          BCListGroupItem(
+            prefix: TypeIconTile(type: type),
+            title: type.label,
+            description: detail ?? about(type),
+            onPressed: onPressed,
+            suffix: Icon(
+              onPressed == null ? LucideIcons.lock : LucideIcons.chevronsUpDown,
+              size: 15,
+              color: bc.muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fields read from the file: shown, never edited (secrets masked).
+class _LockedFields extends StatelessWidget {
+  const _LockedFields({required this.fields});
+
+  final List<DraftField> fields;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = context.bcTheme;
+    return BCListGroup(
+      children: [
+        for (final field in fields)
+          BCListGroupItem(
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 3,
+              children: [
+                BCText(
+                  Format.fieldLabel(field.name),
+                  type: BCTextType.bodySm,
+                  color: BCTextColor.muted,
+                ),
+                if (field.secret)
+                  SecretMask(color: bc.foreground)
+                else
+                  Text(
+                    field.value,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.mono(context),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// One of the user's own fields as a card: its name, its value (hidden
+/// when secret, with show / hide), whether it's secret, and remove.
+class _FieldCard extends StatefulWidget {
+  const _FieldCard({
     super.key,
     required this.field,
+    required this.native,
     required this.onRemove,
     required this.onChanged,
     this.error,
   });
 
   final DraftField field;
+  final bool native;
   final VoidCallback onRemove;
   final VoidCallback onChanged;
   final String? error;
 
   @override
-  State<_FieldEditor> createState() => _FieldEditorState();
+  State<_FieldCard> createState() => _FieldCardState();
 }
 
-class _FieldEditorState extends State<_FieldEditor> {
+class _FieldCardState extends State<_FieldCard> {
   late final _name = TextEditingController(text: widget.field.name);
   late final _value = TextEditingController(text: widget.field.value);
   bool _revealed = false;
@@ -1004,102 +1241,180 @@ class _FieldEditorState extends State<_FieldEditor> {
     super.dispose();
   }
 
+  void _setSecret(bool secret) {
+    setState(() => widget.field.secret = secret);
+    widget.onChanged();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bc = context.bcTheme;
     final field = widget.field;
-    final locked = field.fromFile;
     final hidden = field.secret && !_revealed;
+    final name = field.name.isEmpty ? 'field' : field.name;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: BCSpacing.sm),
+    return BCCard(
+      padding: const EdgeInsets.all(BCSpacing.sm + 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: BCSpacing.xs,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: BCSpacing.sm,
         children: [
           Row(
             spacing: BCSpacing.sm,
             children: [
-              SizedBox(
-                width: 170,
+              Expanded(
                 child: Semantics(
                   label: 'Field name',
                   child: BCInput(
                     controller: _name,
-                    isDisabled: locked,
                     isInvalid: widget.error != null,
-                    placeholder: 'Name',
-                    onChanged: (v) => field.name = v,
+                    placeholder: 'Name, e.g. API key',
+                    onChanged: (v) => setState(() => field.name = v),
                   ),
                 ),
               ),
+              BCButton(
+                variant: BCButtonVariant.ghost,
+                isIconOnly: true,
+                onPressed: widget.onRemove,
+                child: Icon(
+                  LucideIcons.trash2,
+                  size: 18,
+                  color: bc.danger,
+                  semanticLabel: 'Remove $name',
+                ),
+              ),
+            ],
+          ),
+          Row(
+            spacing: BCSpacing.sm,
+            children: [
               Expanded(
                 child: Semantics(
                   label: '${field.name.isEmpty ? 'Field' : field.name} value',
                   child: BCInput(
                     controller: _value,
-                    isDisabled: locked,
                     obscureText: hidden,
                     placeholder: field.secret ? 'Secret value' : 'Value',
+                    // Keys and IDs aren't words.
+                    autocorrect: false,
+                    enableSuggestions: false,
                     onChanged: (v) => field.value = v,
                   ),
                 ),
               ),
-              if (field.secret && !locked)
+              if (field.secret)
                 BCButton(
-                  size: BCButtonSize.sm,
                   variant: BCButtonVariant.ghost,
                   isIconOnly: true,
                   onPressed: () => setState(() => _revealed = !_revealed),
                   child: Icon(
                     _revealed ? LucideIcons.eyeOff : LucideIcons.eye,
-                    size: 16,
+                    size: 18,
                     semanticLabel: _revealed ? 'Hide value' : 'Show value',
                   ),
                 ),
-              if (locked)
-                const ProvenanceLabel(source: ExpirySource.file)
-              else ...[
-                BCToggleButton(
-                  size: BCToggleButtonSize.sm,
-                  isIconOnly: true,
-                  isSelected: field.secret,
-                  onSelectedChange: (secret) {
-                    setState(() => field.secret = secret);
-                    widget.onChanged();
-                  },
-                  icon: Icon(
-                    LucideIcons.lockOpen,
-                    size: 15,
-                    semanticLabel: 'Mark ${field.name} secret',
-                  ),
-                  selectedIcon: Icon(
-                    LucideIcons.lock,
-                    size: 15,
-                    semanticLabel: 'Secret: masked, never searched',
-                  ),
-                ),
-                BCButton(
-                  size: BCButtonSize.sm,
-                  variant: BCButtonVariant.ghost,
-                  isIconOnly: true,
-                  onPressed: widget.onRemove,
-                  child: Icon(
-                    LucideIcons.x,
-                    size: 16,
-                    semanticLabel: 'Remove ${field.name}',
-                  ),
-                ),
-              ],
             ],
           ),
           if (widget.error case final error?)
             BCText(
               error,
               type: BCTextType.bodyXs,
-              style: TextStyle(color: context.bcTheme.danger),
+              style: TextStyle(color: bc.danger),
             ),
+          MergeSemantics(
+            child: Row(
+              spacing: BCSpacing.sm + 2,
+              children: [
+                Icon(LucideIcons.lock, size: 16, color: bc.muted),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 1,
+                    children: [
+                      BCText('Secret'),
+                      BCText(
+                        'Hidden until revealed, never searched',
+                        type: BCTextType.bodyXs,
+                        color: BCTextColor.muted,
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.native)
+                  LiquidGlassToggle(
+                    value: field.secret,
+                    onChanged: _setSecret,
+                    color: bc.accent,
+                    height: 32,
+                  )
+                else
+                  BCSwitch(
+                    isSelected: field.secret,
+                    onSelectedChange: _setSecret,
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Tags as chips, removable, and a field that adds more (Return or a
+/// comma).
+class _TagsField extends StatelessWidget {
+  const _TagsField({
+    required this.tags,
+    required this.controller,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final List<String> tags;
+  final TextEditingController controller;
+  final ValueChanged<String> onAdd;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: BCSpacing.sm,
+      children: [
+        if (tags.isNotEmpty)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final tag in tags)
+                Semantics(
+                  button: true,
+                  label: 'Remove tag $tag',
+                  excludeSemantics: true,
+                  child: BCChip(
+                    variant: BCChipVariant.soft,
+                    color: BCChipColor.accent,
+                    endContent: const Icon(LucideIcons.x, size: 13),
+                    onPressed: () => onRemove(tag),
+                    child: Text('#$tag'),
+                  ),
+                ),
+            ],
+          ),
+        Semantics(
+          label: 'Add tag',
+          child: BCInput(
+            controller: controller,
+            placeholder: 'Add tag, e.g. release',
+            onChanged: (text) {
+              if (text.contains(',')) onAdd(text);
+            },
+            onSubmitted: onAdd,
+          ),
+        ),
+      ],
     );
   }
 }

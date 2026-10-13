@@ -95,6 +95,26 @@ abstract final class Routes {
     ).toString();
   }
 
+  /// The item form as its own screen (phones): a new item of [type] (its
+  /// wire name), placed in [app], [platform] and [env].
+  static String newItem({
+    required String type,
+    String? app,
+    String? platform,
+    String? env,
+  }) => Uri(
+    path: '/item/new',
+    queryParameters: {
+      'type': type,
+      'app': ?app,
+      'platform': ?platform,
+      'env': ?env,
+    },
+  ).toString();
+
+  /// The item form for item [id] (phones).
+  static String editItem(String id) => '/item/$id/edit';
+
   /// A single item as its own screen (mobile). On desktop this redirects to
   /// [vault] with the item selected.
   static String item(String id) => '/vault/item/$id';
