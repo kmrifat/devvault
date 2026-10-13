@@ -53,6 +53,10 @@ class BiometricKeyUnavailable implements Exception {
   /// The platform's error code; never contains key material.
   final String code;
 
+  /// Whether the biometric check itself failed (no match), rather than the
+  /// key store.
+  bool get failedCheck => code.startsWith('auth-');
+
   @override
   String toString() => 'BiometricKeyUnavailable($code)';
 }
@@ -178,12 +182,16 @@ class ChannelBiometricKeyStore implements BiometricKeyStore {
       });
 
   @override
-  Future<Uint8List?> read(String vaultId, {required String reason}) => _call(
-    () => _channel.invokeMethod<Uint8List>('read', {
-      'vault': vaultId,
-      'reason': reason,
-    }),
-  );
+  Future<Uint8List?> read(String vaultId, {required String reason}) =>
+      _call(() async {
+        final reply = await _channel.invokeMethod<Uint8List>('read', {
+          'vault': vaultId,
+          'reason': reason,
+        });
+        // A reply is a read-only view of the platform's message, so the
+        // caller couldn't wipe it: hand over a copy it can.
+        return reply == null ? null : Uint8List.fromList(reply);
+      });
 
   @override
   Future<void> delete(String vaultId) async {

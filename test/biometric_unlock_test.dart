@@ -8,7 +8,7 @@ import 'package:devvault/shared/desktop_ui.dart' show DesktopSwitch;
 import 'package:devvault/data/vault_session.dart';
 import 'package:devvault/services/biometric_key_store.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -125,6 +125,26 @@ void main() {
       await session().disableBiometricUnlock();
       expect(keys.keys, isEmpty);
     });
+  });
+
+  test('a key read over the channel can be wiped', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const name = 'devvault/biometric_key';
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMessageHandler(name, (message) async {
+      final reply = const StandardMethodCodec().encodeSuccessEnvelope(
+        Uint8List.fromList([1, 2, 3]),
+      );
+      // As from the engine: a platform's reply arrives read-only.
+      return reply.asUnmodifiableView();
+    });
+    addTearDown(() => messenger.setMockMessageHandler(name, null));
+
+    final key = await const ChannelBiometricKeyStore().read('v', reason: 'r');
+    expect(key, [1, 2, 3]);
+    key!.fillRange(0, key.length, 0);
+    expect(key, [0, 0, 0]);
   });
 
   group('settings', () {

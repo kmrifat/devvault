@@ -434,15 +434,16 @@ abstract final class _BiometricRow {
         await session.enableBiometricUnlock(
           reason: 'Turn on unlocking DevVault with ${biometry.label}',
         );
-      } on BiometricKeyUnavailable {
+      } on BiometricKeyUnavailable catch (e) {
         if (!context.mounted) return;
         showAppToast(
           context,
           BCToastData(
             title: "Couldn't turn on ${biometry.label}",
-            description:
-                'This device refused to keep the key. Use the '
-                'master password to unlock.',
+            description: e.failedCheck
+                ? "${biometry.label} didn't recognise you. Try again."
+                : 'This device refused to keep the key. Use the master '
+                      'password to unlock.',
             variant: BCToastVariant.danger,
           ),
         );
