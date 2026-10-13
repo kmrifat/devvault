@@ -511,7 +511,8 @@ class _SecurityPane extends ConsumerWidget {
 }
 
 /// "Unlock with Touch ID" (SPEC §9.1): shown only where the device offers
-/// biometrics.
+/// biometrics, and switched off with the reason when this build can't keep
+/// the key.
 class _BiometricRow extends ConsumerWidget {
   const _BiometricRow();
 
@@ -520,6 +521,19 @@ class _BiometricRow extends ConsumerWidget {
     final status = ref.watch(biometricUnlockProvider).value;
     final biometry = status?.biometry;
     if (status == null || biometry == null) return const SizedBox.shrink();
+    if (!status.storable) {
+      return DesktopSettingsRow(
+        title: 'Unlock with ${biometry.label}',
+        description:
+            "This copy of DevVault isn't signed to keep a key behind "
+            '${biometry.label}. Unlock with the master password.',
+        trailing: DesktopSwitch(
+          value: false,
+          onChanged: null,
+          semanticLabel: 'Unlock with ${biometry.label}',
+        ),
+      );
+    }
     final session = ref.read(vaultSessionProvider.notifier);
 
     Future<void> toggle(bool on) async {

@@ -42,6 +42,11 @@ abstract interface class BiometricKeyStore {
   /// nothing is enrolled.
   Future<Biometry?> biometry();
 
+  /// Whether this build can keep a key behind biometrics at all. False on a
+  /// macOS build signed without a keychain access group: the data
+  /// protection keychain refuses it. Never prompts.
+  Future<bool> canStore();
+
   /// Whether a key for [vaultId] is stored. Never prompts.
   Future<bool> has(String vaultId);
 
@@ -63,6 +68,9 @@ class NoBiometricKeyStore implements BiometricKeyStore {
 
   @override
   Future<Biometry?> biometry() async => null;
+
+  @override
+  Future<bool> canStore() async => false;
 
   @override
   Future<bool> has(String vaultId) async => false;
@@ -95,6 +103,17 @@ class ChannelBiometricKeyStore implements BiometricKeyStore {
       return null;
     } on MissingPluginException {
       return null;
+    }
+  }
+
+  @override
+  Future<bool> canStore() async {
+    try {
+      return await _channel.invokeMethod<bool>('canStore') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
     }
   }
 
@@ -155,9 +174,12 @@ class ChannelBiometricKeyStore implements BiometricKeyStore {
 /// An in-memory store for tests: [nextRead] decides what the "prompt"
 /// does.
 class MemoryBiometricKeyStore implements BiometricKeyStore {
-  MemoryBiometricKeyStore({this.kind = Biometry.faceId});
+  MemoryBiometricKeyStore({this.kind = Biometry.faceId, this.storable = true});
 
   Biometry? kind;
+
+  /// False plays a build that can't keep a key (see [canStore]).
+  bool storable;
   final keys = <String, Uint8List>{};
 
   /// What the next prompt does: `true` succeeds, `false` is a cancel.
@@ -170,6 +192,9 @@ class MemoryBiometricKeyStore implements BiometricKeyStore {
   Future<Biometry?> biometry() async => kind;
 
   @override
+  Future<bool> canStore() async => storable;
+
+  @override
   Future<bool> has(String vaultId) async => keys.containsKey(vaultId);
 
   @override
@@ -179,6 +204,7 @@ class MemoryBiometricKeyStore implements BiometricKeyStore {
     required String reason,
   }) async {
     if (kind == null) throw const BiometricKeyUnavailable('none');
+    if (!storable) throw const BiometricKeyUnavailable('keychain--34018');
     keys[vaultId] = Uint8List.fromList(key);
     return true;
   }

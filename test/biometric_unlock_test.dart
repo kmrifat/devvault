@@ -107,6 +107,18 @@ void main() {
       );
     });
 
+    test('a build that cannot keep the key is not storable', () async {
+      keys.storable = false;
+      final status = await container.read(biometricUnlockProvider.future);
+      expect(status.biometry, Biometry.faceId);
+      expect(status.storable, isFalse);
+      expect(status.enabled, isFalse);
+      await expectLater(
+        session().enableBiometricUnlock(reason: 'r'),
+        throwsA(isA<BiometricKeyUnavailable>()),
+      );
+    });
+
     test('turning it off deletes the key', () async {
       await session().enableBiometricUnlock(reason: 'r');
       await session().disableBiometricUnlock();
@@ -118,12 +130,13 @@ void main() {
     Future<MemoryBiometricKeyStore> open(
       WidgetTester tester, {
       Biometry? kind = Biometry.faceId,
+      bool storable = true,
     }) async {
       tester.view
         ..physicalSize = const Size(1440, 1100)
         ..devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      final keys = MemoryBiometricKeyStore(kind: kind);
+      final keys = MemoryBiometricKeyStore(kind: kind, storable: storable);
       await pumpUnlockedApp(
         tester,
         location: Routes.settingsSecurity,
@@ -155,6 +168,29 @@ void main() {
         await tester.tap(toggle);
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
+      await tester.pumpAndSettle();
+      expect(keys.keys, isEmpty);
+    });
+
+    testWidgets('a build that cannot keep the key says so, switched off', (
+      tester,
+    ) async {
+      final keys = await open(tester, kind: Biometry.touchId, storable: false);
+      expect(find.text('Unlock with Touch ID'), findsOneWidget);
+      expect(find.textContaining("isn't signed to keep a key"), findsOneWidget);
+      final toggle = tester.widget<DesktopSwitch>(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Unlock with Touch ID'),
+            matching: find.byType(DesktopSettingsRow),
+          ),
+          matching: find.byType(DesktopSwitch),
+        ),
+      );
+      expect(toggle.value, isFalse);
+      expect(toggle.onChanged, isNull);
+
+      await tester.tap(find.text('Unlock with Touch ID'));
       await tester.pumpAndSettle();
       expect(keys.keys, isEmpty);
     });

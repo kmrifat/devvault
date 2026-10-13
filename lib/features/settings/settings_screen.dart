@@ -388,7 +388,7 @@ class _RowIcon extends StatelessWidget {
 }
 
 /// "Unlock with Face ID" (SPEC §9.1): shown only where the device offers
-/// biometrics.
+/// biometrics, without its switch when this build can't keep the key.
 abstract final class _BiometricRow {
   static List<Widget> rows(
     BuildContext context,
@@ -432,10 +432,12 @@ abstract final class _BiometricRow {
           bc.successSoftForeground,
         ),
         title: 'Unlock with ${biometry.label}',
-        description:
-            'The vault key stays on this device, behind ${biometry.label}. '
-            'Changing the master password turns this off.',
-        suffix: toggle(status!.enabled, setBiometric),
+        description: status!.storable
+            ? 'The vault key stays on this device, behind ${biometry.label}. '
+                  'Changing the master password turns this off.'
+            : "This copy of DevVault isn't signed to keep a key behind "
+                  '${biometry.label}. Unlock with the master password.',
+        suffix: status.storable ? toggle(status.enabled, setBiometric) : null,
       ),
     ];
   }

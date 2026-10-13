@@ -40,6 +40,8 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
       switch call.method {
       case "biometry":
         reply = self.biometry()
+      case "canStore":
+        reply = self.canStore()
       case "has":
         reply = vault.map(self.has) ?? false
       case "save":
@@ -63,16 +65,22 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
     let context = LAContext()
     guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
     else { return nil }
-    #if os(macOS)
-      // Biometric Keychain items need the data protection keychain, which an
-      // unsigned build (no keychain-access-groups entitlement) can't use.
-      guard dataProtectionKeychainUsable() else { return nil }
-    #endif
     switch context.biometryType {
     case .faceID: return "faceId"
     case .touchID: return "touchId"
     default: return "biometrics"
     }
+  }
+
+  /// Biometric Keychain items need the data protection keychain, which a
+  /// macOS build signed without a keychain access group (ad hoc, or
+  /// Developer ID without its provisioning profile) can't use.
+  private func canStore() -> Bool {
+    #if os(macOS)
+      return dataProtectionKeychainUsable()
+    #else
+      return true
+    #endif
   }
 
   /// Never prompts: attributes aren't behind the access control.

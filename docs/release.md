@@ -81,6 +81,7 @@ whose secrets are missing still builds, and its file is named
 |---|---|
 | `MACOS_CERT_P12_BASE64` | A **Developer ID Application** certificate with its private key, exported from Keychain Access as `.p12`, then `base64 -i cert.p12 \| pbcopy`. |
 | `MACOS_CERT_PASSWORD` | The password chosen when exporting it. |
+| `MACOS_PROVISION_PROFILE_BASE64` | A **Developer ID** provisioning profile for `com.binarycastle.devvault`, then `base64 -i DevVault.provisionprofile \| pbcopy`. Made below. |
 | `APPLE_TEAM_ID` | The 10-character Team ID (developer.apple.com › Membership). |
 | `APPLE_ID` | The Apple ID that notarizes. |
 | `APPLE_APP_PASSWORD` | An app-specific password for that Apple ID (appleid.apple.com › Sign-In and Security). |
@@ -91,6 +92,32 @@ the hardened runtime and `macos/Runner/Release.entitlements` (sandbox,
 network client, user-selected files), wraps it in a DMG, signs that,
 notarizes it with `notarytool`, staples the ticket and checks it with
 `spctl`. The keychain and the decoded certificate are deleted afterwards.
+
+Touch ID keeps the vault key in the data protection keychain (SPEC §9.1),
+which a Developer ID signature alone can't use. The script adds
+`com.apple.application-identifier`, `com.apple.developer.team-identifier`
+and `keychain-access-groups` (all `<team>.com.binarycastle.devvault`) to
+the app's entitlements and embeds the profile as
+`Contents/embedded.provisionprofile`, which is what lets those
+entitlements run. They stay out of `Release.entitlements`: a build signed
+ad hoc with them wouldn't launch. The script stops when the secret is
+missing, names another app id, or isn't a Developer ID profile, and checks
+the signed app carries the entitlements. Without them the app works, but
+Settings shows Touch ID switched off, "isn't signed to keep a key".
+
+To make the profile, at developer.apple.com › Certificates, IDs &
+Profiles:
+
+1. **Identifiers**: the App ID `com.binarycastle.devvault` (explicit, not
+   a wildcard) exists for macOS. No capability needs ticking.
+2. **Profiles** › + › **Developer ID** (under Distribution) › that App ID ›
+   the Developer ID Application certificate in `MACOS_CERT_P12_BASE64` ›
+   name it `DevVault Developer ID` › download.
+3. Check it: `security cms -D -i DevVault.provisionprofile` shows
+   `ProvisionsAllDevices` true and
+   `<team>.com.binarycastle.devvault` as `com.apple.application-identifier`.
+
+Make a new one when the certificate is replaced or the profile expires.
 
 ### macOS: in-place updates (Sparkle)
 

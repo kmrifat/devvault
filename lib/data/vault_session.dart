@@ -529,11 +529,19 @@ final vaultSessionProvider =
 /// Device-bound unlock for this device's vault: what the device offers and
 /// whether the vault key is stored behind it.
 class BiometricUnlock {
-  const BiometricUnlock(this.biometry, {required this.enabled});
+  const BiometricUnlock(
+    this.biometry, {
+    required this.enabled,
+    required this.storable,
+  });
 
   /// Null when the device has no biometrics (or none enrolled).
   final Biometry? biometry;
   final bool enabled;
+
+  /// False when the device has biometrics but this build can't keep a key
+  /// behind them (a macOS build without the keychain entitlement).
+  final bool storable;
 
   bool get available => biometry != null;
 }
@@ -562,9 +570,9 @@ final biometricUnlockProvider = FutureProvider<BiometricUnlock>((ref) async {
     ),
   );
   final biometry = await store.biometry();
-  final enabled =
-      biometry != null && vaultId != null && await store.has(vaultId);
-  return BiometricUnlock(biometry, enabled: enabled);
+  final storable = biometry != null && await store.canStore();
+  final enabled = storable && vaultId != null && await store.has(vaultId);
+  return BiometricUnlock(biometry, enabled: enabled, storable: storable);
 });
 
 /// The recovery key of a vault created moments ago, held until the user

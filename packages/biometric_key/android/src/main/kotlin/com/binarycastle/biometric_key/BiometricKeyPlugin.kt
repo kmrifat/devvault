@@ -76,6 +76,8 @@ class BiometricKeyPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val reason = call.argument<String>("reason") ?: ""
         when (call.method) {
             "biometry" -> result.success(biometry())
+            // The Keystore needs no entitlement: any build can keep the key.
+            "canStore" -> result.success(true)
             "has" -> result.success(vault != null && has(vault))
             "save" -> {
                 val key = call.argument<ByteArray>("key")
