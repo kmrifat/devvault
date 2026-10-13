@@ -131,13 +131,24 @@ void main() {
       expect(inItem('Store password'), findsOneWidget);
       expect(find.textContaining('kitchenly-store-pass'), findsNothing);
       expect(inItem('Export'), findsOneWidget);
+      // The file's whole name, and its size and hash on their own line.
+      expect(inItem('kitchenly-upload.jks'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ItemScreen),
+          matching: find.textContaining('KB · SHA-256'),
+        ),
+        findsOneWidget,
+      );
+      expect(inItem('Last saved on'), findsOneWidget);
     });
 
     testWidgets('copies the first secret from the header, as a secret', (
       tester,
     ) async {
       await open(tester);
-      await tester.tap(inItem('Copy key password'));
+      // The header's tile (the field's own button has the same name).
+      await tester.tap(find.bySemanticsLabel('Copy Key password').first);
       await tester.pumpAndSettle();
       expect(clipboard.text, 'kitchenly-key-pass');
       expect(find.text('Key password copied'), findsOneWidget);

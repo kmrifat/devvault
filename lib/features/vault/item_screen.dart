@@ -19,8 +19,8 @@ class ItemScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(vaultSessionProvider);
     final item = session is Unlocked ? session.index.items[itemId] : null;
-    // The item's own header carries the title; the bar goes back and holds
-    // Edit and ⋯. On iPhone the bar is UIKit's, and ⋯ its action sheet.
+    // The item's own header carries the title and Edit; the bar goes back
+    // and holds ⋯. On iPhone the bar is UIKit's, and ⋯ its action sheet.
     return Scaffold(
       backgroundColor: context.bcTheme.background,
       appBar: ref.watch(nativeBarsProvider)
@@ -29,13 +29,6 @@ class ItemScreen extends ConsumerWidget {
               onBack: () =>
                   context.canPop() ? context.pop() : context.go(Routes.vault()),
               actions: [
-                if (item != null && !item.isReadOnly)
-                  NativeHeaderAction(
-                    id: 'edit',
-                    symbol: 'pencil',
-                    label: 'Edit',
-                    onPressed: () => editItem(context, item),
-                  ),
                 if (item != null)
                   NativeHeaderAction(
                     id: 'more',
@@ -48,12 +41,6 @@ class ItemScreen extends ConsumerWidget {
           : BCAppHeader(
               variant: BCAppHeaderVariant.solid,
               actions: [
-                if (item != null && !item.isReadOnly)
-                  BCHeaderIconButton(
-                    size: 48,
-                    icon: const Icon(LucideIcons.pencil, semanticLabel: 'Edit'),
-                    onPressed: () => editItem(context, item),
-                  ),
                 if (item != null)
                   BCMenu(
                     alignment: BCOverlayAlignment.end,
