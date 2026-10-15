@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Touch ID works on a Mac. Earlier Mac releases were signed without the
+  keychain entitlement it needs, so the setting never appeared, although
+  1.0.0 listed it. Settings › Security now has *Unlock with Touch ID*;
+  in a copy of DevVault that can't keep the key, the row says so instead
+  of being hidden.
+
 ## 1.1.1 (2026-10-12)
 
 [v1.1.1](https://github.com/kmrifat/devvault/releases/tag/v1.1.1), macOS and Linux.

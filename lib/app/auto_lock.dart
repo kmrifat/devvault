@@ -45,7 +45,7 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     HardwareKeyboard.instance.addHandler(_onKey);
     _ticker = Timer.periodic(AutoLock.checkEvery, (_) => _check());
     _lifecycle = AppLifecycleListener(
-      onResume: _check,
+      onResume: _resumed,
       // Hidden, not inactive: Face ID and the app switcher only make the
       // app inactive.
       onHide: _inBackground,
@@ -69,6 +69,13 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     _lifecycle.dispose();
     ExternalUi.open.removeListener(_externalUiChanged);
     super.dispose();
+  }
+
+  void _resumed() {
+    _check();
+    // Biometrics may have come or gone while away (a MacBook's lid opened
+    // or closed): ask the platform again.
+    ref.invalidate(biometricUnlockProvider);
   }
 
   void _inBackground() {

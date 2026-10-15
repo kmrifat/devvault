@@ -510,8 +510,9 @@ class _SecurityPane extends ConsumerWidget {
   }
 }
 
-/// "Unlock with Touch ID" (SPEC §9.1): shown only where the device offers
-/// biometrics.
+/// "Unlock with Touch ID" (SPEC §9.1): shown only where the device has
+/// biometrics, and disabled with the reason when they can't be used right
+/// now (a MacBook's lid closed) or this build can't keep the key.
 class _BiometricRow extends ConsumerWidget {
   const _BiometricRow();
 
@@ -520,6 +521,7 @@ class _BiometricRow extends ConsumerWidget {
     final status = ref.watch(biometricUnlockProvider).value;
     final biometry = status?.biometry;
     if (status == null || biometry == null) return const SizedBox.shrink();
+    final canToggle = status.storable && status.unavailable == null;
     final session = ref.read(vaultSessionProvider.notifier);
 
     Future<void> toggle(bool on) async {
@@ -528,15 +530,16 @@ class _BiometricRow extends ConsumerWidget {
         await session.enableBiometricUnlock(
           reason: 'Turn on unlocking DevVault with ${biometry.label}',
         );
-      } on BiometricKeyUnavailable {
+      } on BiometricKeyUnavailable catch (e) {
         if (!context.mounted) return;
         showAppToast(
           context,
           BCToastData(
             title: "Couldn't turn on ${biometry.label}",
-            description:
-                'This device refused to keep the key. Use the master '
-                'password to unlock.',
+            description: e.failedCheck
+                ? "${biometry.label} didn't recognise you. Try again."
+                : 'This device refused to keep the key. Use the master '
+                      'password to unlock.',
             variant: BCToastVariant.danger,
           ),
         );
@@ -545,13 +548,11 @@ class _BiometricRow extends ConsumerWidget {
 
     return DesktopSettingsRow(
       title: 'Unlock with ${biometry.label}',
-      onTap: () => toggle(!status.enabled),
-      description:
-          'The vault key stays on this device, behind ${biometry.label}. '
-          'Changing the master password turns this off.',
+      onTap: canToggle ? () => toggle(!status.enabled) : null,
+      description: SettingsScreen.biometricNote(status, biometry),
       trailing: DesktopSwitch(
         value: status.enabled,
-        onChanged: toggle,
+        onChanged: canToggle ? toggle : null,
         semanticLabel: 'Unlock with ${biometry.label}',
       ),
     );

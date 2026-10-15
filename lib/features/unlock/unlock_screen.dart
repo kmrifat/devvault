@@ -76,7 +76,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     if (_prompted || !mounted) return;
     final status = await ref.read(biometricUnlockProvider.future);
     if (!mounted || _prompted) return;
-    if (!status.enabled) return _focus.requestFocus();
+    if (!status.usable) return _focus.requestFocus();
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
     _prompted = true;
@@ -166,7 +166,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final header = session is Locked ? session.header : null;
     final waiting = _wait > Duration.zero;
     final biometric = ref.watch(biometricUnlockProvider).value;
-    final biometry = biometric != null && biometric.enabled
+    final biometry = biometric != null && biometric.usable
         ? biometric.biometry
         : null;
 
