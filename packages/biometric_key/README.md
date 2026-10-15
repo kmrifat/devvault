@@ -5,7 +5,7 @@ The native half of DevVault's device-bound unlock (SPEC §9.1). The Dart API is
 
 | Platform | Where the vault key lives |
 |---|---|
-| iOS, macOS | A Keychain item with `.biometryCurrentSet` and `WhenPasscodeSetThisDeviceOnly`. The enrolment state is saved with it, so a changed enrolment reads as `gone`. |
+| iOS, macOS | A Keychain item with `.biometryCurrentSet` and `WhenPasscodeSetThisDeviceOnly`. Beside it, an unprotected marker item (`…biometric-key.state`) holds the enrolment state the key was stored under, so `has` and a changed enrolment (read as `gone`) never need the protected item, which a device's Secure Enclave won't show without a prompt. |
 | Android | An AES-256-GCM Keystore key (StrongBox when available) with per-use `BIOMETRIC_STRONG` auth and `setInvalidatedByBiometricEnrollment(true)`. It wraps the vault key; the ciphertext lives in app-private shared preferences. |
 
 macOS needs the data protection keychain, which needs a build signed with
