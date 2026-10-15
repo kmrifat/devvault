@@ -16,12 +16,21 @@ import 'desktop_theme.dart';
 class DesktopScrollView extends StatefulWidget {
   const DesktopScrollView({
     super.key,
-    required this.child,
+    required Widget this.child,
     this.padding,
     this.fadeInto,
-  });
+  }) : children = null;
 
-  final Widget child;
+  /// A list of rows, laid out as a [ListView] (a sidebar's source list).
+  const DesktopScrollView.list({
+    super.key,
+    required List<Widget> this.children,
+    this.padding,
+    this.fadeInto,
+  }) : child = null;
+
+  final Widget? child;
+  final List<Widget>? children;
 
   /// Inside the scrolled area, so content scrolls through it up to the
   /// edges.
@@ -85,11 +94,24 @@ class _DesktopScrollViewState extends State<DesktopScrollView> {
       behavior: behavior.copyWith(scrollbars: false),
       child: NotificationListener<Notification>(
         onNotification: _onNotification,
-        child: SingleChildScrollView(
-          controller: _controller,
-          padding: widget.padding,
-          child: ScrollConfiguration(behavior: behavior, child: widget.child),
-        ),
+        child: switch (widget.children) {
+          final children? => ListView(
+            controller: _controller,
+            padding: widget.padding,
+            children: [
+              for (final row in children)
+                ScrollConfiguration(behavior: behavior, child: row),
+            ],
+          ),
+          null => SingleChildScrollView(
+            controller: _controller,
+            padding: widget.padding,
+            child: ScrollConfiguration(
+              behavior: behavior,
+              child: widget.child!,
+            ),
+          ),
+        },
       ),
     );
     final stack = Stack(

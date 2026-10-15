@@ -12,6 +12,11 @@ import 'desktop_theme.dart';
 /// vibrancy behind it, and can be resized. Windows and Linux keep their own
 /// title bar and get a fixed sidebar in the sidebar colour; so do tests on
 /// every kit ([DesktopTheme.nativeWindow]).
+///
+/// macos_ui's `Sidebar` lays one scroll bar over the whole sidebar, header
+/// and footer included, though only the list between them scrolls. The
+/// sidebar brings its own ([DesktopScrollView] around its list), so that
+/// one is left without a controller and hears no scrolling.
 class DesktopWindow extends StatelessWidget {
   const DesktopWindow({
     super.key,
@@ -19,10 +24,8 @@ class DesktopWindow extends StatelessWidget {
     required this.child,
   });
 
-  /// Builds the sidebar's content. macOS hands it a scroll controller for
-  /// its list; elsewhere it gets null.
-  final Widget Function(BuildContext context, ScrollController? scroll)
-  sidebarBuilder;
+  /// Builds the sidebar's content.
+  final WidgetBuilder sidebarBuilder;
 
   final Widget child;
 
@@ -37,7 +40,12 @@ class DesktopWindow extends StatelessWidget {
           startWidth: DesktopMetrics.sidebarWidth,
           maxWidth: DesktopMetrics.sidebarWidth + 100,
           dragClosed: false,
-          builder: sidebarBuilder,
+          builder: (context, _) => NotificationListener<Notification>(
+            // Kept from macos_ui's scroll bar over the whole sidebar.
+            onNotification: (n) =>
+                n is ScrollNotification || n is ScrollMetricsNotification,
+            child: sidebarBuilder(context),
+          ),
         ),
         child: child,
       );
@@ -53,7 +61,7 @@ class DesktopWindow extends StatelessWidget {
               color: colors.sidebar,
               child: Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: sidebarBuilder(context, null),
+                child: sidebarBuilder(context),
               ),
             ),
           ),

@@ -48,18 +48,10 @@ enum ShellSection { vault, expiry, settings }
 /// [uri], and every row is a link, so back and forward and a reload all
 /// keep the sidebar in step with the list.
 class VaultSidebar extends ConsumerStatefulWidget {
-  const VaultSidebar({
-    super.key,
-    required this.section,
-    required this.uri,
-    this.scrollController,
-  });
+  const VaultSidebar({super.key, required this.section, required this.uri});
 
   final ShellSection section;
   final Uri uri;
-
-  /// macos_ui's sidebar hands one over; elsewhere the list makes its own.
-  final ScrollController? scrollController;
 
   @override
   ConsumerState<VaultSidebar> createState() => _VaultSidebarState();
@@ -150,8 +142,9 @@ class _VaultSidebarState extends ConsumerState<VaultSidebar> {
             child: Focus(
               focusNode: _treeFocus,
               onKeyEvent: _onKey,
-              child: ListView(
-                controller: widget.scrollController,
+              // Its own scroll bar, over the list only, and a hairline where
+              // rows are cut off (above New app).
+              child: DesktopScrollView.list(
                 padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
                 children: [
                   _SourceRow(

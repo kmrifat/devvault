@@ -188,11 +188,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
       backgroundColor: colors.window,
       body: ImportDropTarget(
         child: DesktopWindow(
-          sidebarBuilder: (context, scroll) => VaultSidebar(
-            section: section,
-            uri: uri,
-            scrollController: scroll,
-          ),
+          sidebarBuilder: (context) => VaultSidebar(section: section, uri: uri),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
