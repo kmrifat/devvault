@@ -1,12 +1,20 @@
 # Changelog
 
-## Unreleased
+## 1.1.2 (not released yet)
+
+Touch ID, which 1.0.0 listed but no Mac release could turn on.
 
 - Touch ID works on a Mac. Earlier Mac releases were signed without the
-  keychain entitlement it needs, so the setting never appeared, although
-  1.0.0 listed it. Settings › Security now has *Unlock with Touch ID*;
-  in a copy of DevVault that can't keep the key, the row says so instead
-  of being hidden.
+  keychain entitlement it needs, so the setting never appeared. Settings ›
+  Security now has *Unlock with Touch ID*; turn it on, and a locked vault
+  asks for your finger by itself, with the master password beside it.
+- When Touch ID can't be used right now, the setting stays in view,
+  switched off, and says why: a MacBook's sensor is off while its lid is
+  closed, no fingerprint is set up, or this copy of DevVault isn't signed
+  to keep the key. Opening the lid brings it back without a restart.
+- The sidebar's scroll bar covers only the list, and a line above *New
+  app* marks where rows are cut off. Before, the bar ran the sidebar's
+  full height and the last row slid under New app.
 
 ## 1.1.1 (2026-10-12)
 
