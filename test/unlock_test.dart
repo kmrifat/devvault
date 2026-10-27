@@ -182,6 +182,7 @@ void main() {
       WidgetTester tester, {
       bool succeeds = true,
       bool stale = false,
+      BiometryUnavailable? unavailable,
       AppLayout layout = AppLayout.mobile,
     }) async {
       final desktop = layout == AppLayout.desktop;
@@ -193,6 +194,7 @@ void main() {
       addTearDown(tester.view.reset);
       final keys = MemoryBiometricKeyStore(
         kind: desktop ? Biometry.touchId : Biometry.faceId,
+        unavailable: unavailable,
       )..nextPromptSucceeds = succeeds;
       final dir = (await tester.runAsync(() async {
         final dir = await testSupportDir(TestVault.locked);
@@ -308,6 +310,21 @@ void main() {
         expect(session(tester), isA<Locked>());
         expect(keys.keys, isEmpty);
         expect(find.textContaining('Touch ID was turned off'), findsOneWidget);
+        expect(find.text('Unlock with Touch ID'), findsNothing);
+      });
+
+      testWidgets('Touch ID unavailable (lid closed): only the password', (
+        tester,
+      ) async {
+        final keys = await openWithFaceId(
+          tester,
+          unavailable: BiometryUnavailable.unavailable,
+          layout: AppLayout.desktop,
+        );
+        await settle(tester);
+        expect(keys.prompts, 0);
+        expect(keys.keys, hasLength(1), reason: 'the key is kept for later');
+        expect(session(tester), isA<Locked>());
         expect(find.text('Unlock with Touch ID'), findsNothing);
       });
     });

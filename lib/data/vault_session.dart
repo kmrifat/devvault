@@ -529,13 +529,31 @@ final vaultSessionProvider =
 /// Device-bound unlock for this device's vault: what the device offers and
 /// whether the vault key is stored behind it.
 class BiometricUnlock {
-  const BiometricUnlock(this.biometry, {required this.enabled});
+  const BiometricUnlock(
+    this.biometry, {
+    this.unavailable,
+    required this.enabled,
+    required this.storable,
+  });
 
-  /// Null when the device has no biometrics (or none enrolled).
+  /// Null when the device has no biometrics.
   final Biometry? biometry;
+
+  /// Why [biometry] can't be used right now (nothing enrolled, a MacBook's
+  /// lid closed), or null when it can.
+  final BiometryUnavailable? unavailable;
+
+  /// Whether the vault key is stored behind [biometry].
   final bool enabled;
 
+  /// False when the device has biometrics but this build can't keep a key
+  /// behind them (a macOS build without the keychain entitlement).
+  final bool storable;
+
   bool get available => biometry != null;
+
+  /// Whether unlocking with [biometry] can be offered right now.
+  bool get usable => enabled && unavailable == null;
 }
 
 /// Bumped when the stored key changes, so [biometricUnlockProvider] asks
@@ -561,10 +579,15 @@ final biometricUnlockProvider = FutureProvider<BiometricUnlock>((ref) async {
       },
     ),
   );
-  final biometry = await store.biometry();
-  final enabled =
-      biometry != null && vaultId != null && await store.has(vaultId);
-  return BiometricUnlock(biometry, enabled: enabled);
+  final state = await store.biometry();
+  final storable = state != null && await store.canStore();
+  final enabled = storable && vaultId != null && await store.has(vaultId);
+  return BiometricUnlock(
+    state?.kind,
+    unavailable: state?.unavailable,
+    enabled: enabled,
+    storable: storable,
+  );
 });
 
 /// The recovery key of a vault created moments ago, held until the user

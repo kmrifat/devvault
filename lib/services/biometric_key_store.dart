@@ -12,6 +12,30 @@ enum Biometry {
   final String label;
 }
 
+/// Why biometrics the device has can't be used right now, as the platform
+/// reports it.
+enum BiometryUnavailable {
+  /// Nothing is enrolled (no fingerprint, no face).
+  notEnrolled,
+
+  /// Locked after too many failed tries until the device password is used.
+  lockedOut,
+
+  /// Anything else, such as a MacBook's sensor while its lid is closed.
+  unavailable,
+}
+
+/// The biometric the device has, and why it can't be used right now, if
+/// it can't.
+class BiometryState {
+  const BiometryState(this.kind, {this.unavailable});
+
+  final Biometry kind;
+  final BiometryUnavailable? unavailable;
+
+  bool get ready => unavailable == null;
+}
+
 /// The stored key is gone: the enrolled biometrics changed (which
 /// invalidates it by design), or it was deleted. Use the master password.
 class BiometricKeyGone implements Exception {
@@ -29,6 +53,10 @@ class BiometricKeyUnavailable implements Exception {
   /// The platform's error code; never contains key material.
   final String code;
 
+  /// Whether the biometric check itself failed (no match), rather than the
+  /// key store.
+  bool get failedCheck => code.startsWith('auth-');
+
   @override
   String toString() => 'BiometricKeyUnavailable($code)';
 }
@@ -38,9 +66,14 @@ class BiometricKeyUnavailable implements Exception {
 /// set on Apple platforms, a Keystore key with per-use strong biometric
 /// authentication wrapping it on Android. Never synced or backed up.
 abstract interface class BiometricKeyStore {
-  /// What this device offers, or null when there's no biometric hardware or
-  /// nothing is enrolled.
-  Future<Biometry?> biometry();
+  /// The biometric this device has, ready or not, or null when it has none.
+  /// Never prompts.
+  Future<BiometryState?> biometry();
+
+  /// Whether this build can keep a key behind biometrics at all. False on a
+  /// macOS build signed without a keychain access group: the data
+  /// protection keychain refuses it. Never prompts.
+  Future<bool> canStore();
 
   /// Whether a key for [vaultId] is stored. Never prompts.
   Future<bool> has(String vaultId);
@@ -62,7 +95,10 @@ class NoBiometricKeyStore implements BiometricKeyStore {
   const NoBiometricKeyStore();
 
   @override
-  Future<Biometry?> biometry() async => null;
+  Future<BiometryState?> biometry() async => null;
+
+  @override
+  Future<bool> canStore() async => false;
 
   @override
   Future<bool> has(String vaultId) async => false;
@@ -87,14 +123,38 @@ class ChannelBiometricKeyStore implements BiometricKeyStore {
   static const _channel = MethodChannel('devvault/biometric_key');
 
   @override
-  Future<Biometry?> biometry() async {
+  Future<BiometryState?> biometry() async {
     try {
-      final kind = await _channel.invokeMethod<String>('biometry');
-      return Biometry.values.where((b) => b.name == kind).firstOrNull;
+      final reply = await _channel.invokeMapMethod<String, String>('biometry');
+      final kind = Biometry.values
+          .where((b) => b.name == reply?['kind'])
+          .firstOrNull;
+      if (kind == null) return null;
+      final why = reply?['unavailable'];
+      return BiometryState(
+        kind,
+        unavailable: why == null
+            ? null
+            : BiometryUnavailable.values
+                      .where((u) => u.name == why)
+                      .firstOrNull ??
+                  BiometryUnavailable.unavailable,
+      );
     } on PlatformException {
       return null;
     } on MissingPluginException {
       return null;
+    }
+  }
+
+  @override
+  Future<bool> canStore() async {
+    try {
+      return await _channel.invokeMethod<bool>('canStore') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
     }
   }
 
@@ -122,12 +182,16 @@ class ChannelBiometricKeyStore implements BiometricKeyStore {
       });
 
   @override
-  Future<Uint8List?> read(String vaultId, {required String reason}) => _call(
-    () => _channel.invokeMethod<Uint8List>('read', {
-      'vault': vaultId,
-      'reason': reason,
-    }),
-  );
+  Future<Uint8List?> read(String vaultId, {required String reason}) =>
+      _call(() async {
+        final reply = await _channel.invokeMethod<Uint8List>('read', {
+          'vault': vaultId,
+          'reason': reason,
+        });
+        // A reply is a read-only view of the platform's message, so the
+        // caller couldn't wipe it: hand over a copy it can.
+        return reply == null ? null : Uint8List.fromList(reply);
+      });
 
   @override
   Future<void> delete(String vaultId) async {
@@ -155,9 +219,19 @@ class ChannelBiometricKeyStore implements BiometricKeyStore {
 /// An in-memory store for tests: [nextRead] decides what the "prompt"
 /// does.
 class MemoryBiometricKeyStore implements BiometricKeyStore {
-  MemoryBiometricKeyStore({this.kind = Biometry.faceId});
+  MemoryBiometricKeyStore({
+    this.kind = Biometry.faceId,
+    this.unavailable,
+    this.storable = true,
+  });
 
   Biometry? kind;
+
+  /// Set to play biometrics the device has but can't use right now.
+  BiometryUnavailable? unavailable;
+
+  /// False plays a build that can't keep a key (see [canStore]).
+  bool storable;
   final keys = <String, Uint8List>{};
 
   /// What the next prompt does: `true` succeeds, `false` is a cancel.
@@ -167,7 +241,13 @@ class MemoryBiometricKeyStore implements BiometricKeyStore {
   int prompts = 0;
 
   @override
-  Future<Biometry?> biometry() async => kind;
+  Future<BiometryState?> biometry() async {
+    final kind = this.kind;
+    return kind == null ? null : BiometryState(kind, unavailable: unavailable);
+  }
+
+  @override
+  Future<bool> canStore() async => storable;
 
   @override
   Future<bool> has(String vaultId) async => keys.containsKey(vaultId);
@@ -179,6 +259,7 @@ class MemoryBiometricKeyStore implements BiometricKeyStore {
     required String reason,
   }) async {
     if (kind == null) throw const BiometricKeyUnavailable('none');
+    if (!storable) throw const BiometricKeyUnavailable('keychain--34018');
     keys[vaultId] = Uint8List.fromList(key);
     return true;
   }

@@ -13,10 +13,17 @@ import Security
 /// only while a passcode is set. The bytes go to Dart only after a
 /// successful prompt, and are never logged.
 ///
+/// Beside it, an unprotected marker item holds the enrolment state the key
+/// was stored under (no secret). Whether a key is stored, and whether the
+/// enrolment changed since, are read from the marker: the protected item
+/// can't be queried without a prompt on a device's Secure Enclave, even for
+/// its attributes.
+///
 /// Channel `devvault/biometric_key`. Errors carry a code and nothing else:
 /// `gone` (enrolment changed or no key), `cancelled`, `keychain-<status>`.
 public class BiometricKeyPlugin: NSObject, FlutterPlugin {
   private static let service = "com.binarycastle.devvault.biometric-key"
+  private static let stateService = service + ".state"
   private let queue = DispatchQueue(label: "devvault.biometric-key")
 
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -40,6 +47,8 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
       switch call.method {
       case "biometry":
         reply = self.biometry()
+      case "canStore":
+        reply = self.canStore()
       case "has":
         reply = vault.map(self.has) ?? false
       case "save":
@@ -59,20 +68,40 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
 
   // MARK: - Calls
 
-  private func biometry() -> String? {
+  /// `{kind, unavailable?}`, or nil without biometric hardware. The type is
+  /// known even when it can't be used right now (nothing enrolled, locked
+  /// out, a MacBook's lid closed); `unavailable` says which.
+  private func biometry() -> [String: String]? {
     let context = LAContext()
-    guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
-    else { return nil }
-    #if os(macOS)
-      // Biometric Keychain items need the data protection keychain, which an
-      // unsigned build (no keychain-access-groups entitlement) can't use.
-      guard dataProtectionKeychainUsable() else { return nil }
-    #endif
+    var failure: NSError?
+    let ready = context.canEvaluatePolicy(
+      .deviceOwnerAuthenticationWithBiometrics, error: &failure)
+    var reply: [String: String]
     switch context.biometryType {
-    case .faceID: return "faceId"
-    case .touchID: return "touchId"
-    default: return "biometrics"
+    case LABiometryType.none: return nil
+    case .faceID: reply = ["kind": "faceId"]
+    case .touchID: reply = ["kind": "touchId"]
+    default: reply = ["kind": "biometrics"]
     }
+    if !ready {
+      switch failure.flatMap({ LAError.Code(rawValue: $0.code) }) {
+      case .biometryNotEnrolled: reply["unavailable"] = "notEnrolled"
+      case .biometryLockout: reply["unavailable"] = "lockedOut"
+      default: reply["unavailable"] = "unavailable"
+      }
+    }
+    return reply
+  }
+
+  /// Biometric Keychain items need the data protection keychain, which a
+  /// macOS build signed without a keychain access group (ad hoc, or
+  /// Developer ID without its provisioning profile) can't use.
+  private func canStore() -> Bool {
+    #if os(macOS)
+      return dataProtectionKeychainUsable()
+    #else
+      return true
+    #endif
   }
 
   /// Never prompts: attributes aren't behind the access control.
@@ -102,10 +131,18 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
     var query = baseQuery(vault)
     query[kSecAttrAccessControl as String] = access
     query[kSecValueData as String] = key
-    // Remembered so a changed enrolment is told apart from a failed scan.
-    query[kSecAttrGeneric as String] = domainState ?? Data()
     let status = SecItemAdd(query as CFDictionary, nil)
-    return status == errSecSuccess ? true : error("keychain-\(status)")
+    guard status == errSecSuccess else { return error("keychain-\(status)") }
+    // Remembered so a changed enrolment is told apart from a failed scan.
+    var marker = baseQuery(vault, service: Self.stateService)
+    marker[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+    marker[kSecValueData as String] = domainState ?? Data()
+    let markerStatus = SecItemAdd(marker as CFDictionary, nil)
+    guard markerStatus == errSecSuccess else {
+      delete(vault)
+      return error("keychain-\(markerStatus)")
+    }
+    return true
   }
 
   private func read(_ vault: String?, reason: String) -> Any? {
@@ -142,6 +179,7 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
 
   private func delete(_ vault: String) {
     SecItemDelete(baseQuery(vault) as CFDictionary)
+    SecItemDelete(baseQuery(vault, service: Self.stateService) as CFDictionary)
   }
 
   // MARK: - Helpers
@@ -158,19 +196,16 @@ public class BiometricKeyPlugin: NSObject, FlutterPlugin {
     return query
   }
 
-  /// The enrolment state saved with the key, or nil when there's no key.
+  /// The enrolment state saved with the key (its marker), or nil when
+  /// there's no key. Never prompts.
   private func storedDomainState(_ vault: String) -> Data? {
-    let context = LAContext()
-    context.interactionNotAllowed = true
-    var query = baseQuery(vault)
-    query[kSecReturnAttributes as String] = true
+    var query = baseQuery(vault, service: Self.stateService)
+    query[kSecReturnData as String] = true
     query[kSecMatchLimit as String] = kSecMatchLimitOne
-    query[kSecUseAuthenticationContext as String] = context
     var item: CFTypeRef?
-    guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-      let attributes = item as? [String: Any]
+    guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess
     else { return nil }
-    return attributes[kSecAttrGeneric as String] as? Data ?? Data()
+    return item as? Data ?? Data()
   }
 
   /// Whether the enrolled biometrics differ from [stored]. Unknown (no
