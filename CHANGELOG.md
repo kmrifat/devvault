@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.1.2 (not released yet)
+## 1.1.2 (2026-10-27)
+
+[v1.1.2](https://github.com/kmrifat/devvault/releases/tag/v1.1.2), macOS and Linux.
 
 Touch ID, which 1.0.0 listed but no Mac release could turn on.
 
