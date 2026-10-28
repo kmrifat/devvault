@@ -1,10 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 (not released yet)
 
-- On a Mac, Settings opens in its own window (⌘,), as in other Mac apps,
-  titled with the pane on show. Locking the vault closes it. Windows and
-  Linux keep Settings as a page in the main window.
+Settings in a window of its own on a Mac.
+
+- On a Mac, Settings opens in its own window (⌘,), as in other Mac apps:
+  General, Security, Sync and AI Agents as tabs under its title, which
+  names the pane on show. The sidebar's Settings and the sync status open
+  it too. Its title bar follows DevVault's Appearance. Locking the vault
+  closes it, and ⌘W does. Windows and Linux keep Settings as a page in
+  the main window.
 
 ## 1.1.2 (2026-10-27)
 
