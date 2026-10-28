@@ -361,8 +361,22 @@ and Linux get a menu bar along the top of the window (File, Edit, View,
 Vault, Help; Settings and Quit in File, About in Help) and keep their key
 handlers. The vault window binds the commands only it can run (New Item,
 Import, Find, Quick Open) through `DesktopCommands`. Help opens its pages
-through `linkOpenerProvider`. Settings opens in the main window until it
-gets its own (⌘,).
+through `linkOpenerProvider`.
+
+On macOS, Settings is its own window (⌘,, the sidebar's Settings, the
+sync status when sync is off), like other Mac apps; on Windows and Linux
+it is a page in the main window. The window is a second Flutter engine
+(desktop_multi_window), so it has none of the main window's memory and
+never opens the vault. The main window keeps the session, sync, updates and
+the agent bridge, and talks to it over `lib/app/settings_bridge.dart`: it
+sends a snapshot of what Settings shows whenever that changes, and runs
+what the window asks (a setting, a password check or change, a new
+recovery key, Touch ID, a storage test, Sync Now, revoking an agent). The
+window runs the same Settings UI on providers that mirror the main
+window's (`settingsWindowOverrides`). Input in it counts against
+auto-lock, and it closes when the vault locks. `SettingsWindow.swift`
+makes it a preferences window: 680 pt wide, its title (the pane's name)
+over the pane tabs, where it was last left.
 
 ## Per OS
 

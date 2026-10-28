@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- On a Mac, Settings opens in its own window (⌘,), as in other Mac apps,
+  titled with the pane on show. Locking the vault closes it. Windows and
+  Linux keep Settings as a page in the main window.
+
 ## 1.1.2 (2026-10-27)
 
 [v1.1.2](https://github.com/kmrifat/devvault/releases/tag/v1.1.2), macOS and Linux.

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 // Desktop settings still use bc_ui's toasts: the desktop layer has none
 // yet, and the app's toast overlay is bc_ui's.
 import 'package:bc_ui/bc_ui.dart' show BCToastData, BCToastVariant;
@@ -29,12 +31,23 @@ import 'sync_settings_screen.dart';
 /// along the top (General, Security, Sync, AI Agents), each a link to its path, and the
 /// pane's group boxes below.
 ///
-/// The design draws Settings as its own window (⌘,); until it has one, it
-/// is this page in the main window's content area.
+/// On macOS it fills Settings' own window (⌘,, `SettingsWindowApp`); on
+/// Windows and Linux it is a page in the main window's content area.
 class DesktopSettingsPage extends StatelessWidget {
-  const DesktopSettingsPage({super.key, required this.pane});
+  const DesktopSettingsPage({
+    super.key,
+    required this.pane,
+    this.onSelect,
+    this.titleBarInset = 0,
+  });
 
   final SettingsPane pane;
+
+  /// Shows another pane. Null goes to its path in the main window.
+  final ValueChanged<SettingsPane>? onSelect;
+
+  /// Room above the tabs for a window title drawn over them.
+  final double titleBarInset;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +55,11 @@ class DesktopSettingsPage extends StatelessWidget {
     final page = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SettingsTabs(selected: pane),
+        _SettingsTabs(
+          selected: pane,
+          onSelect: onSelect ?? (pane) => context.go(pane.route),
+          topInset: titleBarInset,
+        ),
         Expanded(
           child: ColoredBox(
             color: colors.groupBox,
@@ -76,9 +93,15 @@ class DesktopSettingsPage extends StatelessWidget {
 
 /// The tab strip: an icon over a label per pane, the current one tinted.
 class _SettingsTabs extends StatelessWidget {
-  const _SettingsTabs({required this.selected});
+  const _SettingsTabs({
+    required this.selected,
+    required this.onSelect,
+    required this.topInset,
+  });
 
   final SettingsPane selected;
+  final ValueChanged<SettingsPane> onSelect;
+  final double topInset;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +112,7 @@ class _SettingsTabs extends StatelessWidget {
         border: Border(bottom: BorderSide(color: colors.separator, width: 0.5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.only(top: 4 + topInset, bottom: 4),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           spacing: 4,
@@ -98,7 +121,7 @@ class _SettingsTabs extends StatelessWidget {
               _SettingsTab(
                 pane: pane,
                 selected: pane == selected,
-                onTap: () => context.go(pane.route),
+                onTap: () => onSelect(pane),
               ),
           ],
         ),
@@ -410,8 +433,7 @@ class _SecurityPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final session = ref.watch(vaultSessionProvider);
-    final vault = session is Unlocked ? session.vault : null;
+    final vault = ref.watch(vaultFactsProvider);
     final lockKey = defaultTargetPlatform == TargetPlatform.macOS
         ? '⌘L'
         : 'Ctrl+L';
@@ -522,7 +544,7 @@ class _BiometricRow extends ConsumerWidget {
     final biometry = status?.biometry;
     if (status == null || biometry == null) return const SizedBox.shrink();
     final canToggle = status.storable && status.unavailable == null;
-    final session = ref.read(vaultSessionProvider.notifier);
+    final session = ref.read(vaultActionsProvider);
 
     Future<void> toggle(bool on) async {
       try {
@@ -564,18 +586,17 @@ class _BiometricRow extends ConsumerWidget {
 class _VaultFacts extends ConsumerWidget {
   const _VaultFacts({required this.vault});
 
-  final Vault vault;
+  final VaultFacts vault;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final revealer = ref.watch(folderRevealerProvider);
-    final kdf = vault.header.kdf;
-    final folder = vault.store.root;
+    final folder = Directory(vault.folder);
     // Shown inside the app's data folder; Show opens the real place.
     final supportDir = ref.watch(appSupportDirProvider).path;
-    final shownPath = folder.path.startsWith(supportDir)
-        ? 'App data${folder.path.substring(supportDir.length)}'
-        : folder.path;
+    final shownPath = vault.folder.startsWith(supportDir)
+        ? 'App data${vault.folder.substring(supportDir.length)}'
+        : vault.folder;
     final showLabel = switch (context.desktopKit) {
       DesktopKit.macos => 'Show in Finder',
       DesktopKit.fluent => 'Show in Explorer',
@@ -622,8 +643,8 @@ class _VaultFacts extends ConsumerWidget {
           title: 'Encryption',
           description:
               'XChaCha20-Poly1305 · Argon2id '
-              '${kdf.memLimit ~/ (1024 * 1024)} MiB, ${kdf.opsLimit} '
-              '${kdf.opsLimit == 1 ? 'pass' : 'passes'} · '
+              '${vault.kdfMemLimit ~/ (1024 * 1024)} MiB, ${vault.kdfOpsLimit} '
+              '${vault.kdfOpsLimit == 1 ? 'pass' : 'passes'} · '
               'format v${Envelope.formatVersion}',
         ),
       ],

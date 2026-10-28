@@ -12,9 +12,12 @@ import 'package:vault_core/vault_core.dart';
 
 import 'app/app.dart';
 import 'app/layout.dart';
+import 'app/settings_bridge.dart';
+import 'app/settings_window_launcher.dart';
 import 'app/routes.dart';
 import 'data/app_settings.dart';
 import 'data/providers.dart';
+import 'features/settings/settings_window.dart';
 import 'services/biometric_key_store.dart';
 import 'services/clipboard_guard.dart';
 import 'services/device_id.dart';
@@ -48,7 +51,13 @@ const _biometricPlatforms = {
   TargetPlatform.macOS,
 };
 
-Future<void> main() async {
+Future<void> main([List<String> args = const []]) async {
+  // desktop_multi_window starts each window's engine here with
+  // `multi_window`, its id and its arguments: macOS's Settings window.
+  if (args case ['multi_window', _, final arguments]) {
+    final settings = SettingsWindowArguments.decode(arguments);
+    if (settings != null) return runSettingsWindow(settings);
+  }
   WidgetsFlutterBinding.ensureInitialized();
   await initWindow();
 
@@ -101,6 +110,12 @@ Future<void> main() async {
             '/Helpers/devvault-mcp',
           ),
         if (!phone) bringToFrontProvider.overrideWithValue(bringWindowToFront),
+        if (!phone && defaultTargetPlatform == TargetPlatform.macOS)
+          settingsWindowProvider.overrideWith(
+            (ref) => SettingsWindows(
+              SettingsBridgeHost(ref, const WindowChannelTransport()),
+            ),
+          ),
         if (_biometricPlatforms.contains(defaultTargetPlatform))
           biometricKeyStoreProvider.overrideWithValue(
             const ChannelBiometricKeyStore(),

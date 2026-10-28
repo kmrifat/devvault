@@ -72,8 +72,8 @@ class _PairScreenState extends ConsumerState<PairScreen> {
 
   Future<void> _make() async {
     final setup = ref.read(syncSetupProvider);
-    final session = ref.read(vaultSessionProvider);
-    if (setup == null || session is! Unlocked || _making) return;
+    final vault = ref.read(vaultFactsProvider);
+    if (setup == null || vault == null || _making) return;
     final crypto = ref.read(cryptoProvider);
     final code = Pairing.newCode(crypto);
     final now = _now;
@@ -85,7 +85,7 @@ class _PairScreenState extends ConsumerState<PairScreen> {
     try {
       final payload = await Pairing.seal(
         crypto: crypto,
-        vaultId: session.vault.vaultId,
+        vaultId: vault.vaultId,
         settings: setup.settings,
         credentials: setup.credentials,
         code: code,

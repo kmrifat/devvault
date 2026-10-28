@@ -57,6 +57,8 @@ class _AutoLockState extends ConsumerState<AutoLock> {
     );
     ExternalUi.open.addListener(_externalUiChanged);
     // A fresh unlock starts a fresh idle period.
+    // Input in macOS's Settings window, reported by its engine.
+    ref.listenManual(userActivityProvider, (_, _) => _touch());
     ref.listenManual(vaultSessionProvider, (previous, next) {
       if (next is Unlocked && previous is! Unlocked) _touch();
     });

@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../app/routes.dart';
 import '../../core/shortcuts.dart';
 import '../../data/providers.dart';
 import '../../data/sync_controller.dart';
 import '../../data/sync_setup.dart';
 import '../../shared/ui.dart';
+import '../settings/open_settings.dart';
+import '../settings/settings_layout.dart';
 import 'adopt_key_dialog.dart';
 
 /// What the sync line says, whichever widget draws it.
@@ -33,7 +33,7 @@ describeSync(BuildContext context, WidgetRef ref) {
   String since(DateTime? t) =>
       t == null ? '' : ' · ${SyncStatusChip.ago(t, now)}';
   void sync() => ref.read(syncControllerProvider.notifier).syncNow();
-  void settings() => context.go(Routes.settingsSync);
+  void settings() => openSettings(context, SettingsPane.sync);
 
   final (state, text, onPressed, tooltip) = switch (status) {
     SyncOff() => (

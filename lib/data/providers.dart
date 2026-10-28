@@ -19,6 +19,7 @@ import '../services/incoming_files.dart';
 import '../services/link_opener.dart';
 import '../services/notifications.dart';
 import '../services/recovery_kit.dart';
+import '../app/settings_window_launcher.dart';
 import '../services/updates.dart';
 import 'updates.dart' show UpdateStatusFile;
 
@@ -229,6 +230,23 @@ final agentHelperPathProvider = Provider<String?>((ref) => null);
 /// sets it on desktop.
 final bringToFrontProvider = Provider<Future<void> Function()>(
   (ref) => () async {},
+);
+
+/// Settings in its own window (⌘,). main() sets it on macOS; elsewhere,
+/// and in tests, Settings is a page in the main window.
+final settingsWindowProvider = Provider<SettingsWindows?>((ref) => null);
+
+/// Input AutoLock can't see for itself: the Settings window's, which runs
+/// in its own engine. Each [UserActivity.touch] counts as input.
+class UserActivity extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void touch() => state++;
+}
+
+final userActivityProvider = NotifierProvider<UserActivity, int>(
+  UserActivity.new,
 );
 
 /// The clients paired with this device, next to the settings.

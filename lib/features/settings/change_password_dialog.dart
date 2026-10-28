@@ -72,7 +72,7 @@ class _ChangePasswordFormState extends ConsumerState<ChangePasswordForm> {
       return;
     }
     setState(() => _busy = true);
-    final session = ref.read(vaultSessionProvider.notifier);
+    final session = ref.read(vaultActionsProvider);
     try {
       if (!await session.checkPassword(_current.text)) {
         if (mounted) {

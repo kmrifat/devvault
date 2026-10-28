@@ -526,6 +526,117 @@ final vaultSessionProvider =
       VaultSessionNotifier.new,
     );
 
+/// What Settings shows about the open vault, read from `vault.json`: its
+/// id, its folder and the cost of its key derivation. No key material.
+class VaultFacts {
+  const VaultFacts({
+    required this.vaultId,
+    required this.folder,
+    required this.kdfOpsLimit,
+    required this.kdfMemLimit,
+  });
+
+  factory VaultFacts.of(Vault vault) => VaultFacts(
+    vaultId: vault.vaultId,
+    folder: vault.store.root.path,
+    kdfOpsLimit: vault.header.kdf.opsLimit,
+    kdfMemLimit: vault.header.kdf.memLimit,
+  );
+
+  final String vaultId;
+  final String folder;
+  final int kdfOpsLimit;
+  final int kdfMemLimit;
+
+  Map<String, Object?> toJson() => {
+    'vault_id': vaultId,
+    'folder': folder,
+    'kdf_ops_limit': kdfOpsLimit,
+    'kdf_mem_limit': kdfMemLimit,
+  };
+
+  factory VaultFacts.fromJson(Map<String, Object?> json) => VaultFacts(
+    vaultId: json['vault_id']! as String,
+    folder: json['folder']! as String,
+    kdfOpsLimit: json['kdf_ops_limit']! as int,
+    kdfMemLimit: json['kdf_mem_limit']! as int,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is VaultFacts &&
+      other.vaultId == vaultId &&
+      other.folder == folder &&
+      other.kdfOpsLimit == kdfOpsLimit &&
+      other.kdfMemLimit == kdfMemLimit;
+
+  @override
+  int get hashCode => Object.hash(vaultId, folder, kdfOpsLimit, kdfMemLimit);
+}
+
+/// The open vault's facts; null while it's locked.
+final vaultFactsProvider = Provider<VaultFacts?>(
+  (ref) => switch (ref.watch(vaultSessionProvider)) {
+    Unlocked(:final vault) => VaultFacts.of(vault),
+    _ => null,
+  },
+);
+
+/// What Settings asks of the open vault. In the main window it is the
+/// session itself; macOS's Settings window, which runs apart from the
+/// vault, sends each call to the main window.
+abstract interface class VaultActions {
+  /// Whether [password] is the master password. Never changes anything.
+  Future<bool> checkPassword(String password);
+
+  Future<void> changePassword(String newPassword);
+
+  /// A new recovery key; the old one stops working.
+  Future<RecoveryKey> replaceRecoveryKey();
+
+  /// Re-encrypts the vault under a new key (SPEC §9); its recovery key.
+  Future<RecoveryKey> rotateVaultKey(String password);
+
+  /// Keeps the vault key behind biometrics. False if the user cancelled.
+  /// Throws [BiometricKeyUnavailable].
+  Future<bool> enableBiometricUnlock({required String reason});
+
+  Future<void> disableBiometricUnlock();
+}
+
+/// [VaultActions] on this window's session.
+class SessionVaultActions implements VaultActions {
+  const SessionVaultActions(this._ref);
+
+  final Ref _ref;
+
+  VaultSessionNotifier get _session => _ref.read(vaultSessionProvider.notifier);
+
+  @override
+  Future<bool> checkPassword(String password) =>
+      _session.checkPassword(password);
+
+  @override
+  Future<void> changePassword(String newPassword) =>
+      _session.changePassword(newPassword);
+
+  @override
+  Future<RecoveryKey> replaceRecoveryKey() => _session.replaceRecoveryKey();
+
+  @override
+  Future<RecoveryKey> rotateVaultKey(String password) =>
+      _session.rotateVaultKey(password);
+
+  @override
+  Future<bool> enableBiometricUnlock({required String reason}) =>
+      _session.enableBiometricUnlock(reason: reason);
+
+  @override
+  Future<void> disableBiometricUnlock() => _session.disableBiometricUnlock();
+}
+
+final vaultActionsProvider = Provider<VaultActions>(SessionVaultActions.new);
+
 /// Device-bound unlock for this device's vault: what the device offers and
 /// whether the vault key is stored behind it.
 class BiometricUnlock {

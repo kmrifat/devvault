@@ -41,6 +41,15 @@ class AppMenus extends ConsumerWidget {
           unlocked: unlocked,
           syncing: syncing,
           go: router.go,
+          // Its own window on macOS (⌘,), a page in the window elsewhere.
+          settings: () {
+            final window = ref.read(settingsWindowProvider);
+            if (window == null) {
+              router.go(Routes.settings);
+            } else {
+              window.open();
+            }
+          },
           lock: () => ref.read(vaultSessionProvider.notifier).lock(),
           syncNow: () => ref.read(syncControllerProvider.notifier).syncNow(),
           open: (link) => ref.read(linkOpenerProvider).open(link),
@@ -79,6 +88,7 @@ class AppMenus extends ConsumerWidget {
     required bool unlocked,
     required bool syncing,
     required void Function(String location) go,
+    required VoidCallback settings,
     required VoidCallback lock,
     required VoidCallback syncNow,
     required void Function(Uri link) open,
@@ -89,10 +99,10 @@ class AppMenus extends ConsumerWidget {
         unlocked ? action : null;
     SingleActivator key(LogicalKeyboardKey trigger, {bool shift = false}) =>
         SingleActivator(trigger, meta: macos, control: !macos, shift: shift);
-    final settings = DesktopMenuItem(
+    final settingsItem = DesktopMenuItem(
       macos ? 'Settings…' : 'Settings',
       shortcut: macos ? key(LogicalKeyboardKey.comma) : null,
-      onSelected: whenUnlocked(() => go(Routes.settings)),
+      onSelected: whenUnlocked(settings),
     );
     final quit = DesktopMenuItem(
       'Quit',
@@ -104,7 +114,7 @@ class AppMenus extends ConsumerWidget {
         DesktopMenu('DevVault', [
           const DesktopMenuProvided(PlatformProvidedMenuItemType.about),
           const DesktopMenuDivider(),
-          settings,
+          settingsItem,
           const DesktopMenuDivider(),
           const DesktopMenuProvided(PlatformProvidedMenuItemType.hide),
           const DesktopMenuProvided(
@@ -132,7 +142,7 @@ class AppMenus extends ConsumerWidget {
           shortcut: key(LogicalKeyboardKey.keyI),
           onSelected: whenUnlocked(commands.importFile),
         ),
-        if (!macos) ...[const DesktopMenuDivider(), settings],
+        if (!macos) ...[const DesktopMenuDivider(), settingsItem],
         if (!macos) ...[const DesktopMenuDivider(), quit],
       ]),
       DesktopMenu('Edit', [
