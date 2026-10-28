@@ -37,6 +37,7 @@ void main() {
     unlocked: unlocked,
     syncing: syncing,
     go: (location) => log?.add('go $location'),
+    settings: () => log?.add('settings'),
     lock: () => log?.add('lock'),
     syncNow: () => log?.add('sync'),
     open: (link) => log?.add('open $link'),
@@ -96,7 +97,7 @@ void main() {
       expect(item(m, 'File', 'Quit').onSelected, isNotNull);
       item(m, 'File', 'Settings').onSelected!();
       item(m, 'Help', 'About DevVault').onSelected!();
-      expect(log, ['go ${Routes.settings}', 'about']);
+      expect(log, ['settings', 'about']);
       final import = item(m, 'File', 'Import…').shortcut!;
       expect((import.control, import.meta), (true, false));
       // Text fields keep their own copy and paste there.

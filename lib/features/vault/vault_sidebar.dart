@@ -14,6 +14,7 @@ import '../../data/vault_session.dart';
 import '../../shared/desktop_ui.dart';
 import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_mark.dart';
+import '../settings/open_settings.dart';
 import 'desktop_item_type.dart';
 import 'explorer_tree.dart';
 import 'tree_actions.dart';
@@ -1477,7 +1478,7 @@ class _Footer extends ConsumerWidget {
               icon: DesktopSymbol.settings,
               label: 'Settings',
               selected: selected,
-              onTap: () => context.go(Routes.settings),
+              onTap: () => openSettings(context),
             ),
           ),
           Semantics(

@@ -31,12 +31,23 @@ import 'sync_settings_screen.dart';
 /// along the top (General, Security, Sync, AI Agents), each a link to its path, and the
 /// pane's group boxes below.
 ///
-/// The design draws Settings as its own window (⌘,); until it has one, it
-/// is this page in the main window's content area.
+/// On macOS it fills Settings' own window (⌘,, `SettingsWindowApp`); on
+/// Windows and Linux it is a page in the main window's content area.
 class DesktopSettingsPage extends StatelessWidget {
-  const DesktopSettingsPage({super.key, required this.pane});
+  const DesktopSettingsPage({
+    super.key,
+    required this.pane,
+    this.onSelect,
+    this.titleBarInset = 0,
+  });
 
   final SettingsPane pane;
+
+  /// Shows another pane. Null goes to its path in the main window.
+  final ValueChanged<SettingsPane>? onSelect;
+
+  /// Room above the tabs for a window title drawn over them.
+  final double titleBarInset;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +55,11 @@ class DesktopSettingsPage extends StatelessWidget {
     final page = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SettingsTabs(selected: pane),
+        _SettingsTabs(
+          selected: pane,
+          onSelect: onSelect ?? (pane) => context.go(pane.route),
+          topInset: titleBarInset,
+        ),
         Expanded(
           child: ColoredBox(
             color: colors.groupBox,
@@ -78,9 +93,15 @@ class DesktopSettingsPage extends StatelessWidget {
 
 /// The tab strip: an icon over a label per pane, the current one tinted.
 class _SettingsTabs extends StatelessWidget {
-  const _SettingsTabs({required this.selected});
+  const _SettingsTabs({
+    required this.selected,
+    required this.onSelect,
+    required this.topInset,
+  });
 
   final SettingsPane selected;
+  final ValueChanged<SettingsPane> onSelect;
+  final double topInset;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +112,7 @@ class _SettingsTabs extends StatelessWidget {
         border: Border(bottom: BorderSide(color: colors.separator, width: 0.5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.only(top: 4 + topInset, bottom: 4),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           spacing: 4,
@@ -100,7 +121,7 @@ class _SettingsTabs extends StatelessWidget {
               _SettingsTab(
                 pane: pane,
                 selected: pane == selected,
-                onTap: () => context.go(pane.route),
+                onTap: () => onSelect(pane),
               ),
           ],
         ),

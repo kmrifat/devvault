@@ -88,6 +88,9 @@ class _DevVaultAppState extends ConsumerState<DevVaultApp> {
     ref.listenManual(syncControllerProvider, (_, _) {});
     // Keeps expiry reminders in step with the vault from here on.
     ref.read(expiryAlertsProvider);
+    // Ready for macOS's Settings window before it's first opened (⌘,),
+    // and listened to so its host keeps hearing what changes.
+    ref.listenManual(settingsWindowProvider, (_, _) {});
     // Serves AI agents while Settings › AI Agents is on (P5), and puts
     // what they ask in front of the user, one sheet at a time.
     ref.listenManual(

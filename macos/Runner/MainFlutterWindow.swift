@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import desktop_multi_window
 
 class MainFlutterWindow: NSWindow {
   /// Sparkle, behind the `devvault/updater` channel (P6-04).
@@ -19,6 +20,12 @@ class MainFlutterWindow: NSWindow {
     self.center()
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    // Settings opens in a window of its own (⌘,), on a second engine that
+    // needs the plugins too.
+    FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
+      RegisterGeneratedPlugins(registry: controller)
+      SettingsWindow.attach(controller)
+    }
     updater = AppUpdater(messenger: flutterViewController.engine.binaryMessenger)
     menus = NativeMenu(
       messenger: flutterViewController.engine.binaryMessenger,
