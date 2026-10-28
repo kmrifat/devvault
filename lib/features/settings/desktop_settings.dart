@@ -1,3 +1,5 @@
+import 'dart:io';
+
 // Desktop settings still use bc_ui's toasts: the desktop layer has none
 // yet, and the app's toast overlay is bc_ui's.
 import 'package:bc_ui/bc_ui.dart' show BCToastData, BCToastVariant;
@@ -410,8 +412,7 @@ class _SecurityPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final session = ref.watch(vaultSessionProvider);
-    final vault = session is Unlocked ? session.vault : null;
+    final vault = ref.watch(vaultFactsProvider);
     final lockKey = defaultTargetPlatform == TargetPlatform.macOS
         ? '⌘L'
         : 'Ctrl+L';
@@ -522,7 +523,7 @@ class _BiometricRow extends ConsumerWidget {
     final biometry = status?.biometry;
     if (status == null || biometry == null) return const SizedBox.shrink();
     final canToggle = status.storable && status.unavailable == null;
-    final session = ref.read(vaultSessionProvider.notifier);
+    final session = ref.read(vaultActionsProvider);
 
     Future<void> toggle(bool on) async {
       try {
@@ -564,18 +565,17 @@ class _BiometricRow extends ConsumerWidget {
 class _VaultFacts extends ConsumerWidget {
   const _VaultFacts({required this.vault});
 
-  final Vault vault;
+  final VaultFacts vault;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final revealer = ref.watch(folderRevealerProvider);
-    final kdf = vault.header.kdf;
-    final folder = vault.store.root;
+    final folder = Directory(vault.folder);
     // Shown inside the app's data folder; Show opens the real place.
     final supportDir = ref.watch(appSupportDirProvider).path;
-    final shownPath = folder.path.startsWith(supportDir)
-        ? 'App data${folder.path.substring(supportDir.length)}'
-        : folder.path;
+    final shownPath = vault.folder.startsWith(supportDir)
+        ? 'App data${vault.folder.substring(supportDir.length)}'
+        : vault.folder;
     final showLabel = switch (context.desktopKit) {
       DesktopKit.macos => 'Show in Finder',
       DesktopKit.fluent => 'Show in Explorer',
@@ -622,8 +622,8 @@ class _VaultFacts extends ConsumerWidget {
           title: 'Encryption',
           description:
               'XChaCha20-Poly1305 · Argon2id '
-              '${kdf.memLimit ~/ (1024 * 1024)} MiB, ${kdf.opsLimit} '
-              '${kdf.opsLimit == 1 ? 'pass' : 'passes'} · '
+              '${vault.kdfMemLimit ~/ (1024 * 1024)} MiB, ${vault.kdfOpsLimit} '
+              '${vault.kdfOpsLimit == 1 ? 'pass' : 'passes'} · '
               'format v${Envelope.formatVersion}',
         ),
       ],

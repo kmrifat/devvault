@@ -113,7 +113,7 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
       _busy = true;
       _error = null;
     });
-    final session = ref.read(vaultSessionProvider.notifier);
+    final session = ref.read(vaultActionsProvider);
     try {
       if (!await session.checkPassword(_password.text)) {
         if (mounted) {
@@ -199,10 +199,7 @@ class _NewRecoveryKitDialogState extends ConsumerState<NewRecoveryKitDialog> {
 
   RecoveryKitDocument _kit(String keyText) => RecoveryKitDocument(
     recoveryKey: keyText,
-    vaultId: switch (ref.read(vaultSessionProvider)) {
-      Unlocked(:final vault) => vault.vaultId,
-      _ => '',
-    },
+    vaultId: ref.read(vaultFactsProvider)?.vaultId ?? '',
     created: ref.read(clockProvider)(),
   );
 

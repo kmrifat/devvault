@@ -426,7 +426,7 @@ abstract final class _BiometricRow {
     final status = ref.watch(biometricUnlockProvider).value;
     final biometry = status?.biometry;
     if (biometry == null) return const [];
-    final session = ref.read(vaultSessionProvider.notifier);
+    final session = ref.read(vaultActionsProvider);
 
     Future<void> setBiometric(bool on) async {
       try {
