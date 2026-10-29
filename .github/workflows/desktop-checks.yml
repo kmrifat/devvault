@@ -136,6 +136,12 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      # AI agents (P5-11): the bridge over a named pipe, owner-only.
+      - name: The agent bridge over a named pipe
+        working-directory: packages/agent_bridge
+        run: |
+          dart pub get
+          dart test --reporter expanded
       - name: Windows storage keeps a key across launches
         shell: bash
         run: |
@@ -146,6 +152,35 @@ jobs:
               --reporter expanded
           done
       - run: flutter build windows --release
+      # AI agents (P5-11): the helper is beside the app and speaks MCP.
+      - name: devvault-mcp.exe answers MCP initialize
+        shell: bash
+        run: |
+          exe=build/windows/x64/runner/Release/devvault-mcp.exe
+          test -f "$exe" || { echo "::error::$exe is missing"; exit 1; }
+          request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
+          { echo "$request"; sleep 5; } \
+            | timeout 20 "$exe" --no-launch > mcp.out 2> mcp.err || true
+          cat mcp.out mcp.err
+          if ! grep -q '"serverInfo"' mcp.out; then
+            echo "::error::devvault-mcp.exe didn't answer initialize"
+            exit 1
+          fi
+      - name: The helper's Windows tests
+        working-directory: packages/devvault_mcp
+        run: |
+          dart pub get
+          dart test test/launch_test.dart --reporter expanded
+      # Unsigned: Windows warns before the first run. For trying a branch on
+      # another PC (docs/agent/USING.md).
+      - name: A zip of this build
+        shell: pwsh
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath devvault-windows-x64-test.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devvault-windows-x64-test
+          path: devvault-windows-x64-test.zip
+          retention-days: 14
       - name: MSIX, signed with a throwaway certificate
         shell: pwsh
         run: |

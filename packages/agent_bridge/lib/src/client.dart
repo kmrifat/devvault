@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'channel.dart';
 import 'framing.dart';
 import 'messages.dart';
 import 'protocol.dart';
@@ -23,30 +23,25 @@ class HelloResult {
 /// The helper side of the bridge: one connection to the app.
 class BridgeClient {
   BridgeClient._(this._socket) {
-    decodeLines(_socket).listen(
+    decodeLines(_socket.input).listen(
       _onMessage,
       onError: (Object _) => _socket.destroy(),
       onDone: _fail,
       cancelOnError: true,
     );
-    _socket.done.catchError((Object _) {}).whenComplete(_fail);
+    _socket.done.whenComplete(_fail);
   }
 
-  /// Connects to the app's socket at [path]. Throws [SocketException]
-  /// when nothing listens there (the app isn't running, or AI agents are
-  /// switched off).
+  /// Connects to the app's socket at [path] (or, on Windows, its named
+  /// pipe). Throws when nothing serves it (the app isn't running, or AI
+  /// agents are switched off), or when a pipe's server isn't the current
+  /// user's.
   static Future<BridgeClient> connect(
     String path, {
     Duration timeout = const Duration(seconds: 2),
-  }) async {
-    final socket = await Socket.connect(
-      InternetAddress(path, type: InternetAddressType.unix),
-      0,
-    ).timeout(timeout);
-    return BridgeClient._(socket);
-  }
+  }) async => BridgeClient._(await connectChannel(path, timeout));
 
-  final Socket _socket;
+  final BridgeChannel _socket;
   final Map<int, Completer<Map<String, Object?>>> _pending = {};
   final _done = Completer<void>();
   var _nextId = 1;

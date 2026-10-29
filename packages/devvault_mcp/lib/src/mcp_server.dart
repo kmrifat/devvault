@@ -212,7 +212,9 @@ final _runWithSecrets = Tool(
       r'`fastlane deliver --api_key_path "$ASC_KEY_PATH"`.',
   inputSchema: Schema.object(
     properties: {
-      'command': Schema.string(description: 'Run with /bin/sh -c.'),
+      'command': Schema.string(
+        description: 'Run with /bin/sh -c; on Windows, with cmd.exe /c.',
+      ),
       'env': _env,
       'cwd': Schema.string(description: 'Working directory (absolute).'),
       'timeout_seconds': Schema.int(description: 'Default 300, at most 3600.'),

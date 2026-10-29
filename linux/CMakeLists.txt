@@ -135,6 +135,8 @@ endif()
 # bundle. Compiled into the build directory, which outlives the bundle, so
 # it's only rebuilt when its sources change.
 set(MCP_HELPER "${PROJECT_BINARY_DIR}/devvault-mcp")
+# FLUTTER_ROOT is set in flutter/'s own scope only.
+include("${FLUTTER_MANAGED_DIR}/ephemeral/generated_config.cmake")
 install(CODE "
   execute_process(
     COMMAND \"${CMAKE_COMMAND}\" -E env \"FLUTTER_ROOT=${FLUTTER_ROOT}\"
