@@ -112,6 +112,8 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
 # and only again when its sources change.
 set(MCP_HELPER "${PROJECT_BINARY_DIR}/devvault-mcp.exe")
 set(MCP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+# FLUTTER_ROOT is set in flutter/'s own scope only.
+include("${FLUTTER_MANAGED_DIR}/ephemeral/generated_config.cmake")
 # Forward slashes: backslashes in the install script below are escapes.
 file(TO_CMAKE_PATH "${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart.exe" MCP_DART)
 file(TO_CMAKE_PATH "${MCP_HELPER}" MCP_HELPER)
