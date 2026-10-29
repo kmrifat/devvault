@@ -34,8 +34,7 @@ String socketPathInContainer(String containerHome) =>
 
 /// The socket on Linux, in the user's runtime directory
 /// (`$XDG_RUNTIME_DIR`: the user's own, mode 0700, emptied at logout).
-String socketPathInRuntimeDir(String runtimeDir) =>
-    '$runtimeDir/devvault.sock';
+String socketPathInRuntimeDir(String runtimeDir) => '$runtimeDir/devvault.sock';
 
 /// What the Linux AppImage's `AppRun` takes to run `devvault-mcp` instead
 /// of the app: the helper's path inside a mounted AppImage changes on
