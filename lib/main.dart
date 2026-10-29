@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:agent_bridge/agent_bridge.dart' show socketPathInContainer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +17,7 @@ import 'app/routes.dart';
 import 'data/app_settings.dart';
 import 'data/providers.dart';
 import 'features/settings/settings_window.dart';
+import 'services/agent_socket.dart';
 import 'services/biometric_key_store.dart';
 import 'services/clipboard_guard.dart';
 import 'services/device_id.dart';
@@ -82,15 +82,19 @@ Future<void> main([List<String> args = const []]) async {
       : AppVersion.tryParse((await PackageInfo.fromPlatform()).version);
   // Sparkle on macOS installs in place; elsewhere, View Release.
   final installer = phone ? null : await ChannelUpdateInstaller.load();
-  // AI agents (P5) reach the app through a socket in its sandbox
-  // container, where `$HOME` points (ADR-0006). macOS only for now.
-  final home = Platform.environment['HOME'];
-  final agentSocket =
-      defaultTargetPlatform == TargetPlatform.macOS &&
-          home != null &&
-          home.contains('/Library/Containers/')
-      ? socketPathInContainer(home)
-      : null;
+  // AI agents (P5) reach the app through a Unix socket (ADR-0006): in its
+  // sandbox container on macOS, in `$XDG_RUNTIME_DIR` on Linux.
+  final agents = switch (defaultTargetPlatform) {
+    TargetPlatform.macOS => AgentEndpoint.macOS(
+      Platform.environment,
+      Platform.resolvedExecutable,
+    ),
+    TargetPlatform.linux => AgentEndpoint.linux(
+      Platform.environment,
+      Platform.resolvedExecutable,
+    ),
+    _ => null,
+  };
 
   runApp(
     ProviderScope(
@@ -100,15 +104,13 @@ Future<void> main([List<String> args = const []]) async {
         cryptoProvider.overrideWithValue(crypto),
         initialSettingsProvider.overrideWithValue(settings),
         alertSchedulerProvider.overrideWithValue(alerts),
-        agentSocketPathProvider.overrideWithValue(agentSocket),
+        agentSocketPathProvider.overrideWithValue(agents?.socket),
         appVersionProvider.overrideWithValue(version),
         updateInstallerProvider.overrideWithValue(installer),
-        if (agentSocket != null)
-          agentHelperPathProvider.overrideWithValue(
-            // …/DevVault.app/Contents/MacOS/DevVault → Contents/Helpers.
-            '${File(Platform.resolvedExecutable).parent.parent.path}'
-            '/Helpers/devvault-mcp',
-          ),
+        agentHelperPathProvider.overrideWithValue(agents?.helper),
+        agentHelperArgsProvider.overrideWithValue(
+          agents?.helperArgs ?? const [],
+        ),
         if (!phone) bringToFrontProvider.overrideWithValue(bringWindowToFront),
         if (!phone && defaultTargetPlatform == TargetPlatform.macOS)
           settingsWindowProvider.overrideWith(

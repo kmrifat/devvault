@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Compiles devvault-mcp (packages/devvault_mcp) to a native executable at
-# $1 and signs it for the hardened runtime with macos/Runner/Helper.entitlements
-# (ADR-0006). The macOS build runs it to embed the helper at
-# DevVault.app/Contents/Helpers/devvault-mcp; it skips the compile when the
-# helper is newer than its sources.
+# $1 and, on macOS, signs it for the hardened runtime with
+# macos/Runner/Helper.entitlements (ADR-0006). The macOS build runs it to
+# embed the helper at DevVault.app/Contents/Helpers/devvault-mcp, the Linux
+# build to put it beside the app in the bundle (P5-11). It skips the
+# compile when the helper is newer than its sources.
 #
 #   tool/build_mcp_helper.sh <output> [signing identity, default "-"]
 set -euo pipefail
@@ -23,6 +24,8 @@ if [[ "$stale" == 1 ]]; then
   (cd "$root" && "$dart" compile exe packages/devvault_mcp/bin/devvault_mcp.dart -o "$out")
 fi
 
-codesign --force --options runtime --timestamp=none \
-  --entitlements "$root/macos/Runner/Helper.entitlements" \
-  --identifier com.binarycastle.devvault.mcp --sign "$identity" "$out"
+if [[ "$(uname)" == Darwin ]]; then
+  codesign --force --options runtime --timestamp=none \
+    --entitlements "$root/macos/Runner/Helper.entitlements" \
+    --identifier com.binarycastle.devvault.mcp --sign "$identity" "$out"
+fi

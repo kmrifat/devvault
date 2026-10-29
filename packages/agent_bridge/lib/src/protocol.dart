@@ -32,6 +32,15 @@ String socketPathForHome(String home) =>
 String socketPathInContainer(String containerHome) =>
     '$containerHome/tmp/dv.sock';
 
+/// The socket on Linux, in the user's runtime directory
+/// (`$XDG_RUNTIME_DIR`: the user's own, mode 0700, emptied at logout).
+String socketPathInRuntimeDir(String runtimeDir) => '$runtimeDir/devvault.sock';
+
+/// What the Linux AppImage's `AppRun` takes to run `devvault-mcp` instead
+/// of the app: the helper's path inside a mounted AppImage changes on
+/// every run, so MCP clients run the AppImage with this.
+const String appImageHelperArgument = '--mcp';
+
 /// Error codes on the wire (PROTOCOL.md §6).
 enum BridgeError {
   badRequest('bad_request'),

@@ -1,6 +1,5 @@
 import 'dart:io' as io;
 
-import 'package:agent_bridge/agent_bridge.dart';
 import 'package:dart_mcp/stdio.dart';
 import 'package:devvault_mcp/devvault_mcp.dart';
 
@@ -10,7 +9,8 @@ import 'package:devvault_mcp/devvault_mcp.dart';
 ///
 ///     devvault-mcp [--socket <path>] [--no-launch]
 void main(List<String> args) {
-  final home = io.Platform.environment['HOME'];
+  final environment = io.Platform.environment;
+  final home = environment['HOME'];
   if (home == null) {
     io.stderr.writeln('devvault-mcp: HOME is not set');
     io.exit(64);
@@ -18,7 +18,19 @@ void main(List<String> args) {
   final socketAt = args.indexOf('--socket');
   final socket = socketAt >= 0 && socketAt + 1 < args.length
       ? args[socketAt + 1]
-      : socketPathForHome(home);
+      : defaultSocketPath(
+          environment,
+          macOS: io.Platform.isMacOS,
+          linux: io.Platform.isLinux,
+        );
+  if (socket == null) {
+    io.stderr.writeln(
+      io.Platform.isLinux
+          ? 'devvault-mcp: XDG_RUNTIME_DIR is not set'
+          : 'devvault-mcp: DevVault agents run on macOS and Linux',
+    );
+    io.exit(64);
+  }
   final launch = !args.contains('--no-launch');
 
   DevVaultMcpServer(

@@ -222,9 +222,13 @@ final pairingMemLimitProvider = Provider<int>((ref) => Pairing.memLimit);
 /// supported yet. main() sets it on macOS, tests to a temp folder.
 final agentSocketPathProvider = Provider<String?>((ref) => null);
 
-/// Where `devvault-mcp` sits inside this app bundle, for the setup command
-/// in Settings › AI Agents; null when unknown. main() sets it on macOS.
+/// How an MCP client runs `devvault-mcp`, for the setup command in
+/// Settings › AI Agents: the helper in this app's bundle, or the AppImage
+/// with [agentHelperArgsProvider]. Null when unknown. main() sets them on
+/// macOS and Linux.
 final agentHelperPathProvider = Provider<String?>((ref) => null);
+
+final agentHelperArgsProvider = Provider<List<String>>((ref) => const []);
 
 /// Brings the window forward so the user sees an agent's request. main()
 /// sets it on desktop.

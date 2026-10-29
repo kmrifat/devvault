@@ -49,28 +49,31 @@ class DesktopAgentsPane extends ConsumerWidget {
                 semanticLabel: 'Allow AI agents',
               ),
             ),
-            DesktopSettingsRow(
-              title: 'Keep running when the window is closed',
-              onTap: supported && settings.agentsEnabled
-                  ? () => notifier.setKeepRunningWhenClosed(
-                      !settings.keepRunningWhenClosed,
-                    )
-                  : null,
-              description:
-                  'Closing the window locks the vault and hides DevVault, so '
-                  'agents can still reach it. Click the Dock icon to bring it '
-                  'back; ⌘Q quits.',
-              trailing: DesktopSwitch(
-                value:
-                    supported &&
-                    settings.agentsEnabled &&
-                    settings.keepRunningWhenClosed,
-                onChanged: supported && settings.agentsEnabled
-                    ? notifier.setKeepRunningWhenClosed
+            // macOS only: elsewhere a hidden window has no Dock icon to
+            // bring it back, and the helper starts DevVault when needed.
+            if (context.desktopKit == DesktopKit.macos)
+              DesktopSettingsRow(
+                title: 'Keep running when the window is closed',
+                onTap: supported && settings.agentsEnabled
+                    ? () => notifier.setKeepRunningWhenClosed(
+                        !settings.keepRunningWhenClosed,
+                      )
                     : null,
-                semanticLabel: 'Keep running when the window is closed',
+                description:
+                    'Closing the window locks the vault and hides DevVault, so '
+                    'agents can still reach it. Click the Dock icon to bring it '
+                    'back; ⌘Q quits.',
+                trailing: DesktopSwitch(
+                  value:
+                      supported &&
+                      settings.agentsEnabled &&
+                      settings.keepRunningWhenClosed,
+                  onChanged: supported && settings.agentsEnabled
+                      ? notifier.setKeepRunningWhenClosed
+                      : null,
+                  semanticLabel: 'Keep running when the window is closed',
+                ),
               ),
-            ),
             DesktopSettingsRow(
               title: 'Read metadata without asking',
               onTap: () => notifier.setAgentMetadataWithoutAsking(
@@ -111,7 +114,11 @@ class _AgentSetupRowState extends ConsumerState<_AgentSetupRow> {
 
   @override
   Widget build(BuildContext context) {
-    final setup = agentSetupFor(_kind, widget.helper);
+    final setup = agentSetupFor(
+      _kind,
+      widget.helper,
+      ref.watch(agentHelperArgsProvider),
+    );
     final mono = AppText.mono(
       context,
       fontSize: DesktopMetrics.secondarySize,

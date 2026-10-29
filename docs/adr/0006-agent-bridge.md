@@ -64,7 +64,13 @@ The socket path is 74 bytes for this user, against the 104-byte
 - The helper never reads the vault, the password or any file in the
   container other than the socket. Its pairing token lives in
   `~/.config/devvault/agent-token`.
-- Windows (named pipe) and Linux (`$XDG_RUNTIME_DIR`) get their own
-  transport in P5-11. The protocol above the byte stream is the same.
+- Linux uses the same transport at `$XDG_RUNTIME_DIR/devvault.sock`
+  (P5-11): the app serves only if that directory is closed to group and
+  others. The helper ships beside the app in the tarball; the AppImage
+  runs it with `AppRun --mcp`, because its path inside the mounted image
+  changes on every run. "Keep running when the window is closed" stays
+  macOS-only: elsewhere a hidden window has no Dock icon to bring it back.
+- Windows still needs its own transport (P5-11): Dart has no Unix sockets
+  there. The protocol above the byte stream will be the same.
 - The wire protocol is a contract like the vault format. It is versioned
   and specified in `docs/agent/PROTOCOL.md`.

@@ -130,3 +130,19 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# The MCP server AI agents run (P5-11, ADR-0006), beside the app in the
+# bundle. Compiled into the build directory, which outlives the bundle, so
+# it's only rebuilt when its sources change.
+set(MCP_HELPER "${PROJECT_BINARY_DIR}/devvault-mcp")
+install(CODE "
+  execute_process(
+    COMMAND \"${CMAKE_COMMAND}\" -E env \"FLUTTER_ROOT=${FLUTTER_ROOT}\"
+      \"${CMAKE_CURRENT_SOURCE_DIR}/../tool/build_mcp_helper.sh\" \"${MCP_HELPER}\"
+    RESULT_VARIABLE MCP_HELPER_RESULT)
+  if(NOT MCP_HELPER_RESULT EQUAL 0)
+    message(FATAL_ERROR \"Couldn't build devvault-mcp\")
+  endif()
+  " COMPONENT Runtime)
+install(PROGRAMS "${MCP_HELPER}" DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)

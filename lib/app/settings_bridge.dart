@@ -78,6 +78,7 @@ class SettingsSnapshot {
     this.activity = const [],
     this.agentSocket,
     this.agentHelper,
+    this.agentHelperArgs = const [],
   });
 
   final AppSettings settings;
@@ -100,6 +101,7 @@ class SettingsSnapshot {
   final List<AgentActivity> activity;
   final String? agentSocket;
   final String? agentHelper;
+  final List<String> agentHelperArgs;
 
   Map<String, Object?> toJson() => {
     'settings': settings.toJson(),
@@ -141,6 +143,7 @@ class SettingsSnapshot {
     ],
     'agent_socket': agentSocket,
     'agent_helper': agentHelper,
+    'agent_helper_args': agentHelperArgs,
   };
 
   factory SettingsSnapshot.fromJson(Map<String, Object?> json) {
@@ -204,6 +207,10 @@ class SettingsSnapshot {
       ],
       agentSocket: json['agent_socket'] as String?,
       agentHelper: json['agent_helper'] as String?,
+      agentHelperArgs: [
+        for (final arg in (json['agent_helper_args'] as List?) ?? const [])
+          '$arg',
+      ],
     );
   }
 }
@@ -294,6 +301,7 @@ class SettingsBridgeHost {
       activity: bridge.activity,
       agentSocket: _ref.read(agentSocketPathProvider),
       agentHelper: _ref.read(agentHelperPathProvider),
+      agentHelperArgs: _ref.read(agentHelperArgsProvider),
     );
   }
 
