@@ -83,7 +83,8 @@ Future<void> main([List<String> args = const []]) async {
   // Sparkle on macOS installs in place; elsewhere, View Release.
   final installer = phone ? null : await ChannelUpdateInstaller.load();
   // AI agents (P5) reach the app through a Unix socket (ADR-0006): in its
-  // sandbox container on macOS, in `$XDG_RUNTIME_DIR` on Linux.
+  // sandbox container on macOS, in `$XDG_RUNTIME_DIR` on Linux; through a
+  // named pipe on Windows.
   final agents = switch (defaultTargetPlatform) {
     TargetPlatform.macOS => AgentEndpoint.macOS(
       Platform.environment,
@@ -91,6 +92,9 @@ Future<void> main([List<String> args = const []]) async {
     ),
     TargetPlatform.linux => AgentEndpoint.linux(
       Platform.environment,
+      Platform.resolvedExecutable,
+    ),
+    TargetPlatform.windows => AgentEndpoint.windows(
       Platform.resolvedExecutable,
     ),
     _ => null,

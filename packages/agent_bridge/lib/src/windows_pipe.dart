@@ -27,15 +27,22 @@ import 'channel.dart';
 String pipeNameForCurrentUser() => '\\\\.\\pipe\\devvault-${currentUserSid()}';
 
 /// The current process's user, as a SID string (`S-1-5-21-…`).
-String currentUserSid() => _tokenUserSid(_getCurrentProcess());
+String currentUserSid() {
+  _resolveGetLastError();
+  return _tokenUserSid(_getCurrentProcess());
+}
 
 /// Starts serving [name], or returns null when another process already
 /// does.
-Future<BridgeListener?> bindPipe(String name) async => _PipeListener.bind(name);
+Future<BridgeListener?> bindPipe(String name) async {
+  _resolveGetLastError();
+  return _PipeListener.bind(name);
+}
 
 /// Connects to the app's pipe [name]. Throws [PipeException] when nothing
 /// serves it, or when what serves it isn't the current user's.
 Future<BridgeChannel> connectPipe(String name, Duration timeout) async {
+  _resolveGetLastError();
   final deadline = DateTime.now().add(timeout);
   final path = name.toNativeUtf16();
   try {
@@ -439,8 +446,9 @@ class _PipeChannel implements BridgeChannel {
   }
 }
 
-// Win32 (kernel32 and advapi32). GetLastError is looked up first, so that
-// reading it right after a call doesn't run a lookup that could reset it.
+// Win32 (kernel32 and advapi32). GetLastError is looked up before any other
+// call ([_resolveGetLastError], at every entry point): reading it right
+// after a call must not run the lookup, which can reset it.
 
 final _kernel32 = DynamicLibrary.open('kernel32.dll');
 final _advapi32 = DynamicLibrary.open('advapi32.dll');
@@ -492,13 +500,11 @@ final class _SecurityAttributes extends Struct {
   external int bInheritHandle;
 }
 
-final int Function() _getLastError = (() {
-  final f = _kernel32.lookupFunction<Uint32 Function(), int Function()>(
-    'GetLastError',
-  );
-  f();
-  return f;
-})();
+final int Function() _getLastError = _kernel32
+    .lookupFunction<Uint32 Function(), int Function()>('GetLastError');
+
+/// Looks GetLastError up now, before the call whose error it will read.
+void _resolveGetLastError() => _getLastError();
 
 final _getCurrentProcess = _kernel32
     .lookupFunction<Pointer<Void> Function(), Pointer<Void> Function()>(

@@ -70,7 +70,17 @@ The socket path is 74 bytes for this user, against the 104-byte
   runs it with `AppRun --mcp`, because its path inside the mounted image
   changes on every run. "Keep running when the window is closed" stays
   macOS-only: elsewhere a hidden window has no Dock icon to bring it back.
-- Windows still needs its own transport (P5-11): Dart has no Unix sockets
-  there. The protocol above the byte stream will be the same.
+- Windows uses a named pipe (P5-11), as Dart has no Unix sockets there:
+  `\\.\pipe\devvault-<user SID>`, since the pipe namespace is
+  machine-wide. A protected DACL grants the user alone, remote clients are
+  rejected, and `FILE_FLAG_FIRST_PIPE_INSTANCE` means a name that already
+  exists is not served. The helper connects at `SECURITY_IDENTIFICATION`
+  and checks the server process's user, so a pipe another user made
+  under that name gets neither tokens nor requests. It's raw Win32 over
+  FFI (`windows_pipe.dart`), overlapped and polled from a timer so nothing
+  blocks. Files the helper writes get an owner-only ACL (`icacls`);
+  `run_with_secrets` uses `cmd.exe /c`. `devvault-mcp.exe` sits beside
+  `devvault.exe`; the MSIX doesn't give it an execution alias yet. The
+  protocol above the byte stream is the same.
 - The wire protocol is a contract like the vault format. It is versioned
   and specified in `docs/agent/PROTOCOL.md`.

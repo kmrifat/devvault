@@ -46,4 +46,30 @@ void main() {
       expect(linuxLaunchCommand({}, helper), ['${dir.path}/devvault']);
     });
   });
+
+  group('Windows', () {
+    test('tokens live under %APPDATA%', () {
+      final store = TokenStore.forUser({
+        'APPDATA': r'C:\Users\a\AppData\Roaming',
+      }, windows: true);
+      expect(
+        store?.file.path,
+        r'C:\Users\a\AppData\Roaming\DevVault\agent-tokens.json',
+      );
+      expect(TokenStore.forUser({}, windows: true), isNull);
+      expect(
+        TokenStore.forUser({'HOME': '/home/a'})?.file.path,
+        '/home/a/.config/devvault/agent-tokens.json',
+      );
+    });
+
+    test('the app is devvault.exe beside the helper', () async {
+      final dir = await Directory.systemTemp.createTemp('devvault_win_');
+      addTearDown(() => dir.delete(recursive: true));
+      final helper = '${dir.path}\\devvault-mcp.exe';
+      expect(windowsLaunchCommand(helper), isNull);
+      await File('${dir.path}\\devvault.exe').writeAsString('');
+      expect(windowsLaunchCommand(helper), ['${dir.path}\\devvault.exe']);
+    }, testOn: 'windows');
+  });
 }

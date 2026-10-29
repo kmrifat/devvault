@@ -5,13 +5,30 @@ import 'secure_file.dart';
 
 /// The pairing tokens this user's agents got from DevVault, one per
 /// client name, in `~/.config/devvault/agent-tokens.json` (mode 0600, in
-/// a 0700 folder). DevVault keeps only their hashes.
+/// a 0700 folder; on Windows `%APPDATA%\DevVault\agent-tokens.json`, this
+/// user's alone). DevVault keeps only their hashes.
 class TokenStore {
   TokenStore(this.file);
 
   /// The default place, under [home].
   factory TokenStore.inHome(String home) =>
       TokenStore(File('$home/.config/devvault/agent-tokens.json'));
+
+  /// This OS's place for the user [environment] describes, or null when
+  /// it doesn't say where home is.
+  static TokenStore? forUser(
+    Map<String, String> environment, {
+    bool windows = false,
+  }) {
+    if (windows) {
+      final appData = environment['APPDATA'];
+      return appData == null
+          ? null
+          : TokenStore(File('$appData\\DevVault\\agent-tokens.json'));
+    }
+    final home = environment['HOME'];
+    return home == null ? null : TokenStore.inHome(home);
+  }
 
   final File file;
 
