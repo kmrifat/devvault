@@ -114,8 +114,54 @@ class AppConnection {
   }
 }
 
-/// Starts DevVault on macOS (`open -b`), in the background.
+/// Where the app's socket is on this OS, from the environment; null where
+/// there is none (Windows, or Linux without `$XDG_RUNTIME_DIR`).
+String? defaultSocketPath(
+  Map<String, String> environment, {
+  bool macOS = false,
+  bool linux = false,
+}) {
+  if (macOS) {
+    final home = environment['HOME'];
+    return home == null ? null : socketPathForHome(home);
+  }
+  if (linux) {
+    final runtime = environment['XDG_RUNTIME_DIR'];
+    return runtime == null || runtime.isEmpty
+        ? null
+        : socketPathInRuntimeDir(runtime);
+  }
+  return null;
+}
+
+/// How to start DevVault on Linux from the helper at [helperPath]: the
+/// AppImage it came from, or the `devvault` binary beside it in the
+/// release bundle. Null when neither is known.
+List<String>? linuxLaunchCommand(
+  Map<String, String> environment,
+  String helperPath,
+) {
+  final appImage = environment['APPIMAGE'];
+  if (appImage != null && appImage.isNotEmpty) return [appImage];
+  final app = File('${File(helperPath).parent.path}/devvault');
+  return app.existsSync() ? [app.path] : null;
+}
+
+/// Starts DevVault: on macOS with `open -b`, in the background; on Linux
+/// from [linuxLaunchCommand], detached from the helper.
 Future<void> launchDevVault() async {
-  if (!Platform.isMacOS) return;
-  await Process.run('open', ['-g', '-b', appBundleId]);
+  if (Platform.isMacOS) {
+    await Process.run('open', ['-g', '-b', appBundleId]);
+  } else if (Platform.isLinux) {
+    final command = linuxLaunchCommand(
+      Platform.environment,
+      Platform.resolvedExecutable,
+    );
+    if (command == null) return;
+    await Process.start(
+      command.first,
+      command.skip(1).toList(),
+      mode: ProcessStartMode.detached,
+    );
+  }
 }

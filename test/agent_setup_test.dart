@@ -46,4 +46,41 @@ void main() {
       "claude mcp add --scope user devvault -- '$_helper'",
     );
   });
+
+  group('the Linux AppImage, run with --mcp', () {
+    const appImage = '/home/a/Apps/devvault-linux-x64.AppImage';
+    const args = ['--mcp'];
+
+    test('JSON configs carry it as args', () {
+      final json = jsonDecode(
+        agentSetupFor(AgentClientKind.cursor, appImage, args).snippet,
+      );
+      expect(json['mcpServers']['devvault'], {
+        'command': appImage,
+        'args': args,
+      });
+      final vsCode = jsonDecode(
+        agentSetupFor(AgentClientKind.vsCode, appImage, args).snippet,
+      );
+      expect(vsCode['servers']['devvault']['args'], args);
+    });
+
+    test('Claude Code and Codex pass it after the command', () {
+      expect(
+        agentSetupFor(AgentClientKind.claudeCode, appImage, args).snippet,
+        "claude mcp add --scope user devvault -- '$appImage' '--mcp'",
+      );
+      expect(
+        agentSetupFor(AgentClientKind.codex, appImage, args).snippet,
+        contains('args = ["--mcp"]'),
+      );
+    });
+
+    test('a path with a quote stays one word', () {
+      expect(
+        agentSetupFor(AgentClientKind.claudeCode, "/home/o'neil/dv").snippet,
+        r"claude mcp add --scope user devvault -- '/home/o'\''neil/dv'",
+      );
+    });
+  });
 }

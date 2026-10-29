@@ -26,28 +26,35 @@ class AgentSetup {
   final String snippet;
 }
 
-/// Setup for [kind], running the helper at [helper].
+/// Setup for [kind], running the helper at [helper] with [args] (the
+/// Linux AppImage's `--mcp`; none elsewhere).
 ///
 /// Clients stop waiting for a tool after their own timeout; DevVault waits
 /// up to 2 minutes for the user, so where a client's default is shorter
 /// (Codex: 60 s) the snippet raises it.
-AgentSetup agentSetupFor(AgentClientKind kind, String helper) {
+AgentSetup agentSetupFor(
+  AgentClientKind kind,
+  String helper, [
+  List<String> args = const [],
+]) {
   String json(Map<String, Object?> config) =>
       const JsonEncoder.withIndent('  ').convert(config);
+  final server = {'command': helper, if (args.isNotEmpty) 'args': args};
   final mcpServers = json({
-    'mcpServers': {
-      'devvault': {'command': helper},
-    },
+    'mcpServers': {'devvault': server},
   });
+  String quoted(String word) => "'${word.replaceAll("'", r"'\''")}'";
+  final commandLine = [helper, ...args].map(quoted).join(' ');
   return switch (kind) {
     AgentClientKind.claudeCode => AgentSetup(
       'Run this once in a terminal:',
-      "claude mcp add --scope user devvault -- '$helper'",
+      'claude mcp add --scope user devvault -- $commandLine',
     ),
     AgentClientKind.codex => AgentSetup(
       'Add this to ~/.codex/config.toml:',
       '[mcp_servers.devvault]\n'
           'command = "$helper"\n'
+          '${args.isEmpty ? '' : 'args = ${jsonEncode(args)}\n'}'
           '# DevVault waits up to 2 minutes for you to approve.\n'
           'tool_timeout_sec = 150',
     ),
@@ -71,7 +78,7 @@ AgentSetup agentSetupFor(AgentClientKind kind, String helper) {
       'mcp.json (MCP: Open User Configuration):',
       json({
         'servers': {
-          'devvault': {'type': 'stdio', 'command': helper},
+          'devvault': {'type': 'stdio', ...server},
         },
       }),
     ),
@@ -81,9 +88,12 @@ AgentSetup agentSetupFor(AgentClientKind kind, String helper) {
       mcpServers,
     ),
     AgentClientKind.other => AgentSetup(
-      'Any MCP client: add a stdio server named devvault that runs this '
-      'command, with no arguments:',
-      helper,
+      args.isEmpty
+          ? 'Any MCP client: add a stdio server named devvault that runs this '
+                'command, with no arguments:'
+          : 'Any MCP client: add a stdio server named devvault that runs this '
+                'command with these arguments:',
+      commandLine,
     ),
   };
 }

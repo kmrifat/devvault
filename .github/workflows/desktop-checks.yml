@@ -21,6 +21,9 @@ on:
       - lib/services/credential_store.dart
       - lib/services/update_installer.dart
       - tool/release/**
+      - tool/build_mcp_helper.sh
+      - packages/agent_bridge/**
+      - packages/devvault_mcp/**
       - linux/**
       - windows/**
       - pubspec.yaml
@@ -32,6 +35,9 @@ on:
       - lib/services/credential_store.dart
       - lib/services/update_installer.dart
       - tool/release/**
+      - tool/build_mcp_helper.sh
+      - packages/agent_bridge/**
+      - packages/devvault_mcp/**
       - linux/**
       - windows/**
       - pubspec.yaml
@@ -82,6 +88,20 @@ jobs:
           done
       - run: flutter build linux --release
       - run: tool/release/linux_appimage.sh
+      # AI agents (P5-11): MCP clients run the AppImage with --mcp, which
+      # must answer as devvault-mcp over stdio.
+      - name: The AppImage runs devvault-mcp with --mcp
+        run: |
+          chmod +x devvault-linux-x64.AppImage
+          request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
+          { echo "$request"; sleep 5; } \
+            | APPIMAGE_EXTRACT_AND_RUN=1 timeout 20 ./devvault-linux-x64.AppImage --mcp --no-launch \
+            > mcp.out 2> mcp.err || true
+          cat mcp.out mcp.err
+          if ! grep -q '"serverInfo"' mcp.out; then
+            echo "::error::devvault-mcp didn't answer initialize through the AppImage"
+            exit 1
+          fi
       - name: The AppImage starts and stays up
         run: |
           chmod +x devvault-linux-x64.AppImage

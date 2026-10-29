@@ -6,7 +6,7 @@ the DevVault app**, use them. You never type your master password into
 the agent. DevVault asks you, in its own window, every time a secret
 value would leave it.
 
-macOS only for now. Windows and Linux are planned in P5-11.
+On macOS and Linux. Windows is planned in P5-11.
 
 ## Set it up (once)
 
@@ -28,9 +28,14 @@ macOS only for now. Windows and Linux are planned in P5-11.
    | Windsurf | `~/.codeium/windsurf/mcp_config.json`: the same `mcpServers` entry |
    | Anything else | a stdio MCP server named `devvault` running `<helper>` with no arguments |
 
-   - **The helper:** `<helper>` is
+   - **The helper:** on macOS `<helper>` is
      `/Applications/DevVault.app/Contents/Helpers/devvault-mcp`, or the
-     path shown in Settings.
+     path shown in Settings. On Linux it's `devvault-mcp` beside
+     `devvault` in the release tarball. With the AppImage, the client runs
+     the AppImage itself with the argument `--mcp`, so its config has
+     `"args": ["--mcp"]` (Claude Code: `-- '<AppImage>' '--mcp'`): keep
+     the AppImage where it is once set up. Settings shows the exact setup
+     for the copy you're running.
    - **Timeouts:** if your client gives up on tools before 2 minutes,
      raise its tool timeout. DevVault waits that long for you.
    - **From a source checkout, without a built app:** use
@@ -44,11 +49,12 @@ macOS only for now. Windows and Linux are planned in P5-11.
    separately, and a 15-minute approval never covers another client. If the vault is locked,
    it asks you to unlock it first. Choose **Allow**.
 
-Closing DevVault's window doesn't stop agents. While AI agents are on,
-it locks the vault and hides DevVault instead of quitting (Settings › AI
-Agents › Keep running when the window is closed). Click the Dock icon to
-bring the window back, or ⌘Q to quit. If DevVault isn't running, the
-helper starts it. If AI agents are off,
+On macOS, closing DevVault's window doesn't stop agents. While AI agents
+are on, it locks the vault and hides DevVault instead of quitting
+(Settings › AI Agents › Keep running when the window is closed). Click
+the Dock icon to bring the window back, or ⌘Q to quit. On Linux closing
+the window quits. Either way, if DevVault isn't running, the helper
+starts it. If AI agents are off,
 the agent is told to ask you to turn them on.
 
 ## What the agent can do

@@ -13,9 +13,15 @@ ADR-0006 explains the transport choice.
 - **macOS:** a Unix domain socket at
   `$HOME/Library/Containers/com.binarycastle.devvault/Data/tmp/dv.sock`.
   Inside the sandbox the app sees the same file as `$HOME/tmp/dv.sock`.
-- The app creates the socket only while *Settings → AI agents* is on. It
-  sits in the container's `tmp` folder, which is mode 0700, so only the
-  user's own processes can reach it.
+  The container's `tmp` folder is mode 0700.
+- **Linux:** a Unix domain socket at `$XDG_RUNTIME_DIR/devvault.sock`. The
+  XDG spec makes that directory the user's own, mode 0700, emptied at
+  logout; the app checks that no one else may open it and serves nothing
+  if `$XDG_RUNTIME_DIR` is unset or open to others.
+- **Windows:** not yet. Dart has no Unix sockets there (P5-11).
+- The app creates the socket only while *Settings → AI agents* is on, in a
+  directory only the user can open, so only the user's own processes can
+  reach it.
 - Before binding, the app tries to connect to an existing socket. If the
   connect succeeds, another DevVault instance owns it and this one doesn't
   serve. If it fails, the socket is stale, so the app deletes it and binds.

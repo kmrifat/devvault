@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -49,7 +50,10 @@ class _KeepRunningOnCloseState extends ConsumerState<KeepRunningOnClose>
   void _apply() {
     final keep = keepsRunningWhenClosed(
       ref.read(settingsProvider),
-      supported: ref.read(agentSocketPathProvider) != null,
+      // A hidden window comes back from the Dock: macOS only.
+      supported:
+          defaultTargetPlatform == TargetPlatform.macOS &&
+          ref.read(agentSocketPathProvider) != null,
     );
     if (keep == _keepRunning) return;
     _keepRunning = keep;

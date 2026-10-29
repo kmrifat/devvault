@@ -90,6 +90,7 @@ List<Override> settingsWindowOverrides(
     appVersionProvider.overrideWithValue(first.version),
     agentSocketPathProvider.overrideWithValue(first.agentSocket),
     agentHelperPathProvider.overrideWithValue(first.agentHelper),
+    agentHelperArgsProvider.overrideWithValue(first.agentHelperArgs),
     initialSettingsProvider.overrideWithValue(first.settings),
     settingsProvider.overrideWith(_RemoteSettings.new),
     updatesProvider.overrideWith(_RemoteUpdates.new),

@@ -29,9 +29,15 @@ rm -rf "$appdir"
 mkdir -p "$appdir/usr/lib/devvault"
 cp -r build/linux/x64/release/bundle/. "$appdir/usr/lib/devvault/"
 
+# `--mcp` runs devvault-mcp (P5-11): MCP clients start the AppImage
+# that way, as the helper's own path inside the mount changes every run.
 cat > "$appdir/AppRun" <<'RUN'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"
+if [ "$1" = "--mcp" ]; then
+  shift
+  exec "$HERE/usr/lib/devvault/devvault-mcp" "$@"
+fi
 exec "$HERE/usr/lib/devvault/devvault" "$@"
 RUN
 chmod +x "$appdir/AppRun"

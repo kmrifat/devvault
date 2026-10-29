@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- AI agents on Linux: `devvault-mcp` ships beside the app in the tarball,
+  and the AppImage runs it with `--mcp`. Settings › AI Agents shows the
+  setup for the copy you're running. The app serves agents through
+  `$XDG_RUNTIME_DIR/devvault.sock`, and only if that directory is closed to
+  other users.
+
 ## 1.2.0 (2026-10-29)
 
 [v1.2.0](https://github.com/kmrifat/devvault/releases/tag/v1.2.0), macOS and Linux.
