@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.2.0 (not released yet)
+## 1.2.0 (2026-10-29)
+
+[v1.2.0](https://github.com/kmrifat/devvault/releases/tag/v1.2.0), macOS and Linux.
 
 Settings in a window of its own on a Mac.
 
