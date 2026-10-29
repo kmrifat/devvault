@@ -112,6 +112,10 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
 # and only again when its sources change.
 set(MCP_HELPER "${PROJECT_BINARY_DIR}/devvault-mcp.exe")
 set(MCP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+# Forward slashes: backslashes in the install script below are escapes.
+file(TO_CMAKE_PATH "${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart.exe" MCP_DART)
+file(TO_CMAKE_PATH "${MCP_HELPER}" MCP_HELPER)
+file(TO_CMAKE_PATH "${MCP_ROOT}" MCP_ROOT)
 install(CODE "
   set(helper \"${MCP_HELPER}\")
   file(GLOB_RECURSE sources
@@ -128,12 +132,14 @@ install(CODE "
   endforeach()
   if(stale)
     execute_process(
-      COMMAND \"${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart.exe\" compile exe
+      COMMAND \"${MCP_DART}\" compile exe
         packages/devvault_mcp/bin/devvault_mcp.dart -o \"\${helper}\"
       WORKING_DIRECTORY \"${MCP_ROOT}\"
-      RESULT_VARIABLE result)
+      RESULT_VARIABLE result
+      OUTPUT_VARIABLE output
+      ERROR_VARIABLE output)
     if(NOT result EQUAL 0)
-      message(FATAL_ERROR \"Couldn't build devvault-mcp.exe\")
+      message(FATAL_ERROR \"Couldn't build devvault-mcp.exe: \${output}\")
     endif()
   endif()
   " COMPONENT Runtime)
