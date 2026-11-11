@@ -1,16 +1,20 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (not released yet)
+
+AI agents on Linux.
 
 - AI agents on Linux: `devvault-mcp` ships beside the app in the tarball,
   and the AppImage runs it with `--mcp`. Settings › AI Agents shows the
   setup for the copy you're running. The app serves agents through
   `$XDG_RUNTIME_DIR/devvault.sock`, and only if that directory is closed to
   other users.
-- AI agents on Windows, from the zip: `devvault-mcp.exe` sits beside
-  `devvault.exe`, and reaches the app through a named pipe only your user
-  can open; it refuses a pipe someone else made under that name. Files it
-  writes are yours alone, and `run_with_secrets` uses `cmd.exe`.
+- Windows builds get AI agents too, for when Windows ships (it isn't in
+  this release: it has no code-signing certificate yet).
+  `devvault-mcp.exe` sits beside `devvault.exe` and reaches the app
+  through a named pipe only your user can open; it refuses a pipe someone
+  else made under that name. Files it writes are yours alone, and
+  `run_with_secrets` uses `cmd.exe`.
 
 ## 1.2.0 (2026-10-29)
 

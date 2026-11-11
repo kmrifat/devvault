@@ -84,6 +84,8 @@ void main() {
         ],
       );
       addTearDown(mainWindow.dispose);
+      // Before the folder goes: a change's save may still be writing.
+      addTearDown(() => mainWindow.read(settingsProvider.notifier).saved);
       // Listened to, as DevVaultApp does, so it hears every change.
       mainWindow.listen(host, (_, _) {});
       await mainWindow.read(vaultSessionProvider.notifier).unlock(testPassword);
