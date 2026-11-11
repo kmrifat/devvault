@@ -1,7 +1,8 @@
 # Changelog
 
-## 1.3.0 (not released yet)
+## 1.3.0 (2026-11-11)
 
+[v1.3.0](https://github.com/kmrifat/devvault/releases/tag/v1.3.0), macOS and Linux.
 AI agents on Linux.
 
 - AI agents on Linux: `devvault-mcp` ships beside the app in the tarball,
