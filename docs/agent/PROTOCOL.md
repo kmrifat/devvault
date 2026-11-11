@@ -18,10 +18,14 @@ ADR-0006 explains the transport choice.
   XDG spec makes that directory the user's own, mode 0700, emptied at
   logout; the app checks that no one else may open it and serves nothing
   if `$XDG_RUNTIME_DIR` is unset or open to others.
-- **Windows:** not yet. Dart has no Unix sockets there (P5-11).
-- The app creates the socket only while *Settings → AI agents* is on, in a
-  directory only the user can open, so only the user's own processes can
-  reach it.
+- **Windows:** a named pipe, `\\.\pipe\devvault-<user SID>` (Dart has no
+  Unix sockets there). Its DACL grants that user alone; remote clients are
+  rejected; the app serves only a name it created first. The helper
+  connects at identification level and refuses a pipe whose server
+  process doesn't run as the same user.
+- The app creates the socket (or pipe) only while *Settings → AI agents*
+  is on, where only the user can open it, so only the user's own
+  processes can reach it.
 - Before binding, the app tries to connect to an existing socket. If the
   connect succeeds, another DevVault instance owns it and this one doesn't
   serve. If it fails, the socket is stale, so the app deletes it and binds.

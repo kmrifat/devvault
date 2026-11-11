@@ -6,7 +6,7 @@ the DevVault app**, use them. You never type your master password into
 the agent. DevVault asks you, in its own window, every time a secret
 value would leave it.
 
-On macOS and Linux. Windows is planned in P5-11.
+On macOS, Linux and Windows.
 
 ## Set it up (once)
 
@@ -34,8 +34,11 @@ On macOS and Linux. Windows is planned in P5-11.
      `devvault` in the release tarball. With the AppImage, the client runs
      the AppImage itself with the argument `--mcp`, so its config has
      `"args": ["--mcp"]` (Claude Code: `-- '<AppImage>' '--mcp'`): keep
-     the AppImage where it is once set up. Settings shows the exact setup
-     for the copy you're running.
+     the AppImage where it is once set up. On Windows it's
+     `devvault-mcp.exe` beside `devvault.exe` in the folder you unzipped
+     (the MSIX doesn't include a way to run it yet); `run_with_secrets`
+     commands run in `cmd.exe`. Settings shows the exact setup for the
+     copy you're running.
    - **Timeouts:** if your client gives up on tools before 2 minutes,
      raise its tool timeout. DevVault waits that long for you.
    - **From a source checkout, without a built app:** use

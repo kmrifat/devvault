@@ -83,4 +83,38 @@ void main() {
       );
     });
   });
+
+  group('Windows', () {
+    const exe = r'C:\Users\a\DevVault\devvault-mcp.exe';
+
+    test('Claude Code quotes with double quotes, for PowerShell and cmd', () {
+      expect(
+        agentSetupFor(AgentClientKind.claudeCode, exe, const [], true).snippet,
+        'claude mcp add --scope user devvault -- "$exe"',
+      );
+    });
+
+    test("Codex's TOML escapes the backslashes; JSON keeps the path", () {
+      expect(
+        agentSetupFor(AgentClientKind.codex, exe, const [], true).snippet,
+        contains(r'command = "C:\\Users\\a\\DevVault\\devvault-mcp.exe"'),
+      );
+      final json = jsonDecode(
+        agentSetupFor(AgentClientKind.cursor, exe, const [], true).snippet,
+      );
+      expect(json['mcpServers']['devvault']['command'], exe);
+    });
+
+    test("Claude Desktop's config is under %APPDATA%", () {
+      expect(
+        agentSetupFor(
+          AgentClientKind.claudeDesktop,
+          exe,
+          const [],
+          true,
+        ).instruction,
+        contains(r'%APPDATA%\Claude\claude_desktop_config.json'),
+      );
+    });
+  });
 }

@@ -114,13 +114,16 @@ class AppConnection {
   }
 }
 
-/// Where the app's socket is on this OS, from the environment; null where
-/// there is none (Windows, or Linux without `$XDG_RUNTIME_DIR`).
+/// Where the app's socket is on this OS, from the environment: on Windows
+/// the current user's named pipe. Null for Linux without
+/// `$XDG_RUNTIME_DIR`.
 String? defaultSocketPath(
   Map<String, String> environment, {
   bool macOS = false,
   bool linux = false,
+  bool windows = false,
 }) {
+  if (windows) return pipeNameForCurrentUser();
   if (macOS) {
     final home = environment['HOME'];
     return home == null ? null : socketPathForHome(home);
@@ -147,11 +150,28 @@ List<String>? linuxLaunchCommand(
   return app.existsSync() ? [app.path] : null;
 }
 
+/// How to start DevVault on Windows from the helper at [helperPath]: the
+/// `devvault.exe` beside it in the release folder. Null when it isn't
+/// there.
+List<String>? windowsLaunchCommand(String helperPath) {
+  final app = File('${File(helperPath).parent.path}\\devvault.exe');
+  return app.existsSync() ? [app.path] : null;
+}
+
 /// Starts DevVault: on macOS with `open -b`, in the background; on Linux
-/// from [linuxLaunchCommand], detached from the helper.
+/// from [linuxLaunchCommand] and on Windows from [windowsLaunchCommand],
+/// detached from the helper.
 Future<void> launchDevVault() async {
   if (Platform.isMacOS) {
     await Process.run('open', ['-g', '-b', appBundleId]);
+  } else if (Platform.isWindows) {
+    final command = windowsLaunchCommand(Platform.resolvedExecutable);
+    if (command == null) return;
+    await Process.start(
+      command.first,
+      const [],
+      mode: ProcessStartMode.detached,
+    );
   } else if (Platform.isLinux) {
     final command = linuxLaunchCommand(
       Platform.environment,

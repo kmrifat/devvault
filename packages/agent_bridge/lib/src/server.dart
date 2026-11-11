@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'channel.dart';
 import 'framing.dart';
 import 'protocol.dart';
 
@@ -52,37 +52,24 @@ class BridgeCall {
 /// exception becomes `internal`, without its message: it might hold data.
 typedef BridgeHandler = Future<Map<String, Object?>> Function(BridgeCall call);
 
-/// The app side of the bridge: owns the socket and the session rules
-/// (PROTOCOL.md §1–3) and passes every valid call to a [BridgeHandler].
+/// The app side of the bridge: owns the socket (or, on Windows, the named
+/// pipe) and the session rules (PROTOCOL.md §1–3), and passes every valid
+/// call to a [BridgeHandler].
 class BridgeServer {
-  BridgeServer._(this.path, this._socket, this._handler) {
-    _socket.listen(_serve);
+  BridgeServer._(this.path, this._listener, this._handler) {
+    _listener.connections.listen(_serve);
   }
 
-  /// Binds [path], or returns null when another live process serves it.
-  /// A stale socket left by a crash is removed first.
+  /// Serves [path] (a socket file, or a `\\.\pipe\…` name), or returns
+  /// null when another live process serves it. A stale socket left by a
+  /// crash is removed first.
   static Future<BridgeServer?> bind(String path, BridgeHandler handler) async {
-    final address = InternetAddress(path, type: InternetAddressType.unix);
-    if (FileSystemEntity.typeSync(path, followLinks: false) !=
-        FileSystemEntityType.notFound) {
-      try {
-        final probe = await Socket.connect(
-          address,
-          0,
-        ).timeout(const Duration(seconds: 1));
-        probe.destroy();
-        return null;
-      } on Object {
-        File(path).deleteSync();
-      }
-    }
-    Directory(File(path).parent.path).createSync(recursive: true);
-    final socket = await ServerSocket.bind(address, 0);
-    return BridgeServer._(path, socket, handler);
+    final listener = await listenChannel(path);
+    return listener == null ? null : BridgeServer._(path, listener, handler);
   }
 
   final String path;
-  final ServerSocket _socket;
+  final BridgeListener _listener;
   final BridgeHandler _handler;
   final Set<BridgeSession> _sessions = {};
   var _nextId = 1;
@@ -92,18 +79,13 @@ class BridgeServer {
 
   /// Closes the socket and every connection, and removes the socket file.
   Future<void> close() async {
-    await _socket.close();
+    await _listener.close();
     for (final session in _sessions.toList()) {
       session.close();
     }
-    try {
-      File(path).deleteSync();
-    } on FileSystemException {
-      // Already gone.
-    }
   }
 
-  void _serve(Socket socket) {
+  void _serve(BridgeChannel socket) {
     final session = BridgeSession._(_nextId++);
     _sessions.add(session);
     var pending = 0;
@@ -155,13 +137,13 @@ class BridgeServer {
       }
     }
 
-    decodeLines(socket).listen(
+    decodeLines(socket.input).listen(
       (message) => answer(message['id'], message['method'], message['params']),
       onError: (Object _) => socket.destroy(),
       onDone: socket.destroy,
       cancelOnError: true,
     );
-    socket.done.catchError((Object _) {}).whenComplete(() {
+    socket.done.whenComplete(() {
       _sessions.remove(session);
       if (!session._closed.isCompleted) session._closed.complete();
     });

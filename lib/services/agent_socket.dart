@@ -1,7 +1,11 @@
 import 'dart:io';
 
 import 'package:agent_bridge/agent_bridge.dart'
-    show appImageHelperArgument, socketPathInContainer, socketPathInRuntimeDir;
+    show
+        appImageHelperArgument,
+        pipeNameForCurrentUser,
+        socketPathInContainer,
+        socketPathInRuntimeDir;
 
 /// Where AI agents (P5, ADR-0006) reach the app on this machine, and how
 /// their MCP clients run the helper. Null where agents aren't served.
@@ -29,6 +33,17 @@ class AgentEndpoint {
       socket: socketPathInContainer(home),
       // …/DevVault.app/Contents/MacOS/DevVault → Contents/Helpers.
       helper: '${File(exe).parent.parent.path}/Helpers/devvault-mcp',
+    );
+  }
+
+  /// Windows: the current user's named pipe, `\\.\pipe\devvault-<SID>`
+  /// (owner-only, PROTOCOL.md §1). The helper is `devvault-mcp.exe`
+  /// beside the app in the release folder; the MSIX has none yet.
+  static AgentEndpoint windows(String exe) {
+    final bundled = File('${File(exe).parent.path}\\devvault-mcp.exe');
+    return AgentEndpoint(
+      socket: pipeNameForCurrentUser(),
+      helper: bundled.existsSync() ? bundled.path : null,
     );
   }
 

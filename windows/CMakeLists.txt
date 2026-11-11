@@ -106,3 +106,44 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# The MCP server AI agents run (P5-11, ADR-0006), devvault-mcp.exe beside
+# the app. Compiled into the build directory, which outlives the bundle,
+# and only again when its sources change.
+set(MCP_HELPER "${PROJECT_BINARY_DIR}/devvault-mcp.exe")
+set(MCP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+# FLUTTER_ROOT is set in flutter/'s own scope only.
+include("${FLUTTER_MANAGED_DIR}/ephemeral/generated_config.cmake")
+# Forward slashes: backslashes in the install script below are escapes.
+file(TO_CMAKE_PATH "${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart.exe" MCP_DART)
+file(TO_CMAKE_PATH "${MCP_HELPER}" MCP_HELPER)
+file(TO_CMAKE_PATH "${MCP_ROOT}" MCP_ROOT)
+install(CODE "
+  set(helper \"${MCP_HELPER}\")
+  file(GLOB_RECURSE sources
+    \"${MCP_ROOT}/packages/devvault_mcp/*.dart\"
+    \"${MCP_ROOT}/packages/agent_bridge/*.dart\")
+  set(stale FALSE)
+  if(NOT EXISTS \"\${helper}\")
+    set(stale TRUE)
+  endif()
+  foreach(source \${sources})
+    if(\"\${source}\" IS_NEWER_THAN \"\${helper}\")
+      set(stale TRUE)
+    endif()
+  endforeach()
+  if(stale)
+    execute_process(
+      COMMAND \"${MCP_DART}\" compile exe
+        packages/devvault_mcp/bin/devvault_mcp.dart -o \"\${helper}\"
+      WORKING_DIRECTORY \"${MCP_ROOT}\"
+      RESULT_VARIABLE result
+      OUTPUT_VARIABLE output
+      ERROR_VARIABLE output)
+    if(NOT result EQUAL 0)
+      message(FATAL_ERROR \"Couldn't build devvault-mcp.exe: \${output}\")
+    endif()
+  endif()
+  " COMPONENT Runtime)
+install(PROGRAMS "${MCP_HELPER}" DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)

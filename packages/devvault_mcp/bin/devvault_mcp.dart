@@ -10,9 +10,16 @@ import 'package:devvault_mcp/devvault_mcp.dart';
 ///     devvault-mcp [--socket <path>] [--no-launch]
 void main(List<String> args) {
   final environment = io.Platform.environment;
-  final home = environment['HOME'];
-  if (home == null) {
-    io.stderr.writeln('devvault-mcp: HOME is not set');
+  final tokens = TokenStore.forUser(
+    environment,
+    windows: io.Platform.isWindows,
+  );
+  if (tokens == null) {
+    io.stderr.writeln(
+      io.Platform.isWindows
+          ? 'devvault-mcp: APPDATA is not set'
+          : 'devvault-mcp: HOME is not set',
+    );
     io.exit(64);
   }
   final socketAt = args.indexOf('--socket');
@@ -22,12 +29,13 @@ void main(List<String> args) {
           environment,
           macOS: io.Platform.isMacOS,
           linux: io.Platform.isLinux,
+          windows: io.Platform.isWindows,
         );
   if (socket == null) {
     io.stderr.writeln(
       io.Platform.isLinux
           ? 'devvault-mcp: XDG_RUNTIME_DIR is not set'
-          : 'devvault-mcp: DevVault agents run on macOS and Linux',
+          : 'devvault-mcp: no DevVault socket on this OS',
     );
     io.exit(64);
   }
@@ -39,7 +47,7 @@ void main(List<String> args) {
     tools: (client) => DevVaultTools(
       AppConnection(
         socketPath: socket,
-        tokens: TokenStore.inHome(home),
+        tokens: tokens,
         client: client,
         launchApp: launch ? launchDevVault : null,
       ),

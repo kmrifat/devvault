@@ -145,7 +145,8 @@ class CommandResult {
   };
 }
 
-/// Runs [command] with `/bin/sh -c` in [cwd], with [env] added to this
+/// Runs [command] with `/bin/sh -c` (on Windows `cmd.exe /c`) in [cwd],
+/// with [env] added to this
 /// process's environment, and returns its output with every value in
 /// [env] redacted. Output is redacted as a whole, after the command ends,
 /// so a value split across reads is still caught; each stream keeps its
@@ -157,12 +158,20 @@ Future<CommandResult> runWithSecrets(
   Duration timeout = const Duration(minutes: 5),
   int maxOutput = 20000,
 }) async {
-  final process = await Process.start(
-    '/bin/sh',
-    ['-c', command],
-    workingDirectory: cwd,
-    environment: env,
-  );
+  final process = Platform.isWindows
+      ? await Process.start(
+          command,
+          const [],
+          runInShell: true,
+          workingDirectory: cwd,
+          environment: env,
+        )
+      : await Process.start(
+          '/bin/sh',
+          ['-c', command],
+          workingDirectory: cwd,
+          environment: env,
+        );
   final out = BytesBuilder(copy: false), err = BytesBuilder(copy: false);
   const cap = 4 * 1024 * 1024;
   final reading = Future.wait([

@@ -20,9 +20,13 @@ class DesktopAgentsPane extends ConsumerWidget {
     final notifier = ref.read(settingsProvider.notifier);
     final bridge = ref.watch(agentBridgeProvider);
     final supported = ref.watch(agentSocketPathProvider) != null;
+    // Where the app doesn't say (tests, a debug run), the Mac app's place;
+    // on Windows and Linux, nothing to point at.
     final helper =
         ref.watch(agentHelperPathProvider) ??
-        '/Applications/DevVault.app/Contents/Helpers/devvault-mcp';
+        (context.desktopKit == DesktopKit.macos
+            ? '/Applications/DevVault.app/Contents/Helpers/devvault-mcp'
+            : null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -88,7 +92,15 @@ class DesktopAgentsPane extends ConsumerWidget {
                 semanticLabel: 'Read metadata without asking',
               ),
             ),
-            _AgentSetupRow(helper: helper),
+            if (helper != null)
+              _AgentSetupRow(helper: helper)
+            else
+              const DesktopSettingsRow(
+                title: 'Set up an agent',
+                description:
+                    "This copy of DevVault doesn't include devvault-mcp. The "
+                    'release download does.',
+              ),
           ],
         ),
         _Clients(clients: bridge.clients),
@@ -118,6 +130,7 @@ class _AgentSetupRowState extends ConsumerState<_AgentSetupRow> {
       _kind,
       widget.helper,
       ref.watch(agentHelperArgsProvider),
+      context.desktopKit == DesktopKit.fluent,
     );
     final mono = AppText.mono(
       context,
