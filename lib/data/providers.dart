@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cred_parsers/cred_parsers.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_core/vault_core.dart';
@@ -112,6 +113,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
   /// Saves run one after another, each writing the latest state, so quick
   /// changes can't interleave in the temp file.
   Future<void> _saving = Future.value();
+
+  /// Completes once every change so far is on disk.
+  @visibleForTesting
+  Future<void> get saved => _saving;
 
   void update(AppSettings next) {
     if (next == state) return;
